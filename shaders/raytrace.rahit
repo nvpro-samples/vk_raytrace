@@ -1,0 +1,132 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+
+#include "binding.h"
+#include "sampling.glsl"
+#include "share.h"
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Any hit
+// - Will check the opacity value of the material at hit point
+// - If it is transparent, it will randomly go through proportionaly to the opacity level
+//
+
+
+// Incoming Payload information
+layout(location = 0) rayPayloadInNV PerRayData_raytrace prd;
+
+// Raytracing hit attributes: barycentrics
+hitAttributeNV vec3 attribs;
+
+// clang-format off
+layout(set = 1, binding = B_PRIM_INFO) readonly buffer _instanceInfo {primInfo i[];} instanceInfo;
+layout(set = 1, binding = B_VERTICES) readonly buffer _VertexBuf {float v[];} VertexBuf;
+layout(set = 1, binding = B_INDICES) readonly buffer _Indices {uint i[]; } indices;
+layout(set = 1, binding = B_TEXCOORDS) readonly buffer _UvBuf {float v[];} UvBuf;
+layout(set = 1, binding = B_MATERIAL) readonly buffer _MaterialBuffer {Material m[];} MaterialBuffer;
+layout(set = 2, binding = 0) uniform sampler2D albedoMap[];
+// clang-format on
+
+// Shading structure
+struct ShadingState
+{
+  vec2 texcoord0;
+  uint matIndex;
+  vec3 geom_normal;
+};
+
+// Return the vertex position
+vec3 getVertex(uint index)
+{
+  vec3 vp;
+  vp.x = VertexBuf.v[3 * index + 0];
+  vp.y = VertexBuf.v[3 * index + 1];
+  vp.z = VertexBuf.v[3 * index + 2];
+  return vp;
+}
+
+// Retrieving the Uv coordinates
+vec2 getTexCoord(uint index)
+{
+  vec2 vp;
+  vp.x = UvBuf.v[2 * index + 0];
+  vp.y = UvBuf.v[2 * index + 1];
+  return vp;
+}
+
+
+//--------------------------------------------------------------
+// Getting the interpolated vertex
+// gl_InstanceID gives the Instance Info
+// gl_PrimitiveID gives the triangle for this instance
+//
+ShadingState getShadingState()
+{
+  // Getting the 'first index' for this instance (offset of the instance + offset of the triangle)
+  uint indexOffset = instanceInfo.i[gl_InstanceID].indexOffset + (3 * gl_PrimitiveID);
+
+  // Vertex offset as defined in glTF
+  uint vertexOffset = instanceInfo.i[gl_InstanceID].vertexOffset;
+
+
+  // Getting the 3 indices of the triangle
+  ivec3 trianglIndex = ivec3(indices.i[indexOffset + 0], indices.i[indexOffset + 1], indices.i[indexOffset + 2]);
+  trianglIndex += ivec3(vertexOffset);
+
+  // Barycentric of the triangle
+  const vec3 barycentric = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
+
+  const vec3 pos0        = getVertex(trianglIndex.x);
+  const vec3 pos1        = getVertex(trianglIndex.y);
+  const vec3 pos2        = getVertex(trianglIndex.z);
+  const vec3 geom_normal = normalize(cross(pos1 - pos0, pos2 - pos0));
+
+  // The Uv on each triangle point
+  const vec2 uv0 = getTexCoord(trianglIndex.x);
+  const vec2 uv1 = getTexCoord(trianglIndex.y);
+  const vec2 uv2 = getTexCoord(trianglIndex.z);
+
+  // Returning state information
+  ShadingState state;
+  state.texcoord0   = uv0 * barycentric.x + uv1 * barycentric.y + uv2 * barycentric.z;
+  state.matIndex    = instanceInfo.i[gl_InstanceID].materialIndex;
+  state.geom_normal = normalize(cross(pos1 - pos0, pos2 - pos0));
+  return state;
+}
+
+bool is_back_face(ShadingState state)
+{
+  return dot(state.geom_normal, gl_WorldRayDirectionNV) > 0.0f;
+}
+
+void main()
+{
+  // Get the shading information
+  ShadingState state = getShadingState();
+
+  // Retrieve the material
+  Material material = MaterialBuffer.m[state.matIndex];
+
+  // Early return
+  if(material.alphaMode == 0)  // opaque
+    return;
+
+  // Single sided, culling back face
+  if(material.doubleSided == 0 && is_back_face(state))
+    ignoreIntersectionNV();
+
+  // Getting the opacity hold in the alpha channel
+  float opacity = texture(albedoMap[state.matIndex], state.texcoord0).a * material.baseColorFactor.a;
+
+  // Applying cutoff mask
+  if(material.alphaMode == 1 && opacity < material.alphaCutoff)  // mask
+    ignoreIntersectionNV();
+
+  // Blending
+  if(opacity == 0.0)  // fully transparent
+    ignoreIntersectionNV();
+  else if(rnd(prd.seed) > opacity)
+    ignoreIntersectionNV();
+}
