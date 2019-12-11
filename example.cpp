@@ -46,6 +46,7 @@
 // #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
 #include <fileformats/tiny_gltf.h>
 
+#include "imgui_impl_glfw.h"
 #include "nvh/fileoperations.hpp"
 #include "nvvkpp/commands_vkpp.hpp"
 #include "shaders/binding.h"
@@ -703,9 +704,9 @@ void VkRtExample::createRenderPass()
 // Overload callback when a key gets hit
 // - Pressing 'F' to move the camera to see the scene bounding box
 //
-void VkRtExample::onKeyboardChar(unsigned char key, int mods, int x, int y)
+void VkRtExample::onKeyboardChar(unsigned char key)
 {
-  AppBase::onKeyboardChar(key, mods, x, y);
+  AppBase::onKeyboardChar(key);
 
   if(key == 'f')
   {
@@ -726,8 +727,7 @@ void VkRtExample::drawUI()
   static int e = m_upVector;
 
   // Update imgui configuration
-  auto& imgui_io       = ImGui::GetIO();
-  imgui_io.DisplaySize = ImVec2(m_size.width, m_size.height);
+  ImGui_ImplGlfw_NewFrame();
 
   ImGui::NewFrame();
   ImGui::SetNextWindowBgAlpha(0.8);
@@ -887,18 +887,21 @@ void VkRtExample::loadImages(tinygltf::Model& gltfModel)
 // - Space: Trigger ray picking and set the interest point at the intersection
 //          also return all information under the cursor
 //
-void VkRtExample::onKeyboard(NVPWindow::KeyCode key, ButtonAction action, int mods, int x, int y)
+void VkRtExample::onKeyboard(int key, int scancode, int action, int mods)
 {
-  nvvkpp::AppBase::onKeyboard(key, action, mods, x, y);
+  nvvkpp::AppBase::onKeyboard(key, scancode, action, mods);
 
-  if(key == NVPWindow::KEY_HOME)
+  if(key == GLFW_KEY_HOME)
   {
     // Set the camera as to see the model
     fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false);
   }
 
-  if(key == NVPWindow::KEY_SPACE && action == 1)
+  if(key == GLFW_KEY_SPACE && action == 1)
   {
+    double x, y;
+    glfwGetCursorPos(m_window, &x, &y);
+
     // Set the camera as to see the model
     nvvkpp::SingleCommandBuffer sc(m_device, m_graphicsQueueIndex);
     vk::CommandBuffer           cmdBuf = sc.createCommandBuffer();
