@@ -36,12 +36,13 @@
 #include <iostream>
 
 
-#include "nvh/inputparser.h"
-#include "nvvkpp/context_vkpp.hpp"
-
 #include "example.hpp"
+#include "imgui_impl_glfw.h"
 #include "nvh/fileoperations.hpp"
+#include "nvh/inputparser.h"
+#include "nvpsystem.hpp"
 #include "nvvk/extensions_vk.hpp"
+#include "nvvkpp/context_vkpp.hpp"
 
 int const SAMPLE_SIZE_WIDTH  = 800;
 int const SAMPLE_SIZE_HEIGHT = 600;
@@ -88,6 +89,14 @@ int main(int argc, char** argv)
   // setup some basic things for the sample, logging file for example
   NVPSystem system(argv[0], PROJECT_NAME);
 
+  // Setup GLFW window
+  if(!glfwInit())
+  {
+    return 1;
+  }
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  GLFWwindow* window = glfwCreateWindow(SAMPLE_SIZE_WIDTH, SAMPLE_SIZE_HEIGHT, PROJECT_NAME, nullptr, nullptr);
+
   // Enabling the extension
   vk::PhysicalDeviceDescriptorIndexingFeaturesEXT feature;
 
@@ -123,11 +132,8 @@ int main(int argc, char** argv)
   example.setScene(filename);
   example.setEnvironmentHdr(hdrFilename);
 
-  // Creating the window
-  example.open(0, 0, SAMPLE_SIZE_WIDTH, SAMPLE_SIZE_HEIGHT, PROJECT_NAME);
-
   // Window need to be opened to get the surface on which to draw
-  vk::SurfaceKHR surface = example.getVkSurface(vkctx.m_instance);
+  vk::SurfaceKHR surface = example.getVkSurface(vkctx.m_instance, window);
   vkctx.setGCTQueueWithPresent(surface);
 
   LOGI("Using %s \n", vkctx.m_physicalDevice.getProperties().deviceName);
@@ -141,16 +147,26 @@ int main(int argc, char** argv)
   example.initGUI(0);     // Using sub-pass 0
 
 
-  // Window system loop
-  while(example.pollEvents() && !example.isClosing())
+  // GLFW Callback
+  example.setupGlfwCallbacks(window);
+  ImGui_ImplGlfw_InitForVulkan(window, true);
+
+  // Main loop
+  while(!glfwWindowShouldClose(window))
   {
-    if(example.isOpen())  // Not minimized
-    {
-      CameraManip.updateAnim();
-      example.display();  // infinitely drawing
-    }
+    glfwPollEvents();
+    if(example.isMinimized())
+      continue;
+
+    CameraManip.updateAnim();
+    example.display();  // infinitely drawing
   }
   example.destroy();
   vkctx.m_instance.destroySurfaceKHR(surface);
   vkctx.deinit();
+
+  glfwDestroyWindow(window);
+  glfwTerminate();
+
+  return 0;
 }
