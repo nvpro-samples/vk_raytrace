@@ -13,19 +13,24 @@ if(NOT BASE_DIRECTORY) # if not defined, it means this cmake file was called as 
   # check if the external repository is outside or inside the project (as a sub-module)
   # testing the file CMakeLists_include.txt because when sub-modules are not cloned, the folders are still there...
   # we also assume here that if shared_sources is there, shared_external is, too...
+  SET(BASE_DIRECTORY "" CACHE FILEPATH "folder containing shared_sources")
   SET(ADD_SUBDIR_BELOW 1)
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/shared_sources/CMakeLists_include.txt)
-    Message(STATUS "found sub-folder shared_sources")
     SET(BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/shared_sources/CMakeLists_include.txt)
-  elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../shared_sources)
-    SET(BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../..)
-    INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/../../shared_sources/CMakeLists_include.txt)
-  else()
+  elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../shared_sources/CMakeLists_include.txt)
     SET(BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
-    INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/../shared_sources/CMakeLists_include.txt)
+  elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../shared_sources/CMakeLists_include.txt)
+    SET(BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+  else()
   endif()
 endif(NOT BASE_DIRECTORY)
+
+if(EXISTS ${BASE_DIRECTORY}/shared_sources/CMakeLists_include.txt)
+  INCLUDE(${BASE_DIRECTORY}/shared_sources/CMakeLists_include.txt)
+else()
+  Message(FATAL_ERROR "could not find base directory, please set BASE_DIRECTORY to folder containing shared_sources")
+endif()
+    
 _add_project_definitions(${PROJNAME})
 
 #####################################################################################
