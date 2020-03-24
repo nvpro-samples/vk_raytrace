@@ -86,31 +86,38 @@ void VkRtExample::initExample()
   {
     s_stats.loadTime = -g_profiler.getMicroSeconds();
     fileLoaded       = gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warn, m_filename);
-    assert(error.empty() && error.c_str());
+    if(!warn.empty())
+    {
+      LOGE("Warning loading %s: %s", m_filename.c_str(), warn.c_str());
+    }
+    if(!error.empty())
+    {
+      LOGE("Error loading %s: %s", m_filename.c_str(), error.c_str());
+    }
+    assert(fileLoaded && error.empty() && error.c_str());
     s_stats.loadTime += g_profiler.getMicroSeconds();
   }
 
+  s_stats.sceneTime = -g_profiler.getMicroSeconds();
 
+  // From tinyGLTF to our glTF representation
   {
-    s_stats.sceneTime = -g_profiler.getMicroSeconds();
-    if(fileLoaded)
-    {
-      m_gltfScene.getMaterials(gltfModel);
-      m_vertices.attributes["NORMAL"]     = {0, 1, 0};  // Attributes we are interested in
-      m_vertices.attributes["TEXCOORD_0"] = {0, 0};
-      m_gltfScene.loadMeshes(gltfModel, m_indices, m_vertices);
-      m_gltfScene.loadNodes(gltfModel);
-      m_gltfScene.computeSceneDimensions();
-      createEmptyTexture();
-      loadImages(gltfModel);
-    }
-
-    // Set the camera as to see the model
-    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max);
-
-    m_skydome.loadEnvironment(m_hdrFilename);
-    s_stats.sceneTime += g_profiler.getMicroSeconds();
+    m_gltfScene.getMaterials(gltfModel);
+    m_vertices.attributes["NORMAL"]     = {0, 1, 0};  // Attributes we are interested in
+    m_vertices.attributes["TEXCOORD_0"] = {0, 0};
+    m_gltfScene.loadMeshes(gltfModel, m_indices, m_vertices);
+    m_gltfScene.loadNodes(gltfModel);
+    m_gltfScene.computeSceneDimensions();
+    createEmptyTexture();
+    loadImages(gltfModel);
   }
+
+  // Set the camera as to see the model
+  fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max);
+
+  m_skydome.loadEnvironment(m_hdrFilename);
+
+  s_stats.sceneTime += g_profiler.getMicroSeconds();
 
 
   // Lights
@@ -289,18 +296,10 @@ void VkRtExample::destroy()
 //
 void VkRtExample::display()
 {
-  if(m_frameNumber < m_raytracer.maxFrames())
-  {
-    m_frameNumber++;
-  }
+  updateFrame();
 
   g_profiler.beginFrame();
   drawUI();
-
-  if(needToResetFrame())
-  {
-    m_frameNumber = 0;
-  }
 
   // render the scene
   prepareFrame();
@@ -308,7 +307,7 @@ void VkRtExample::display()
   cmdBuf.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
   // Updating the matrices of the camera
-  updateUniformBuffer(cmdBuf);
+  updateCameraBuffer(cmdBuf);
 
   vk::ClearValue clearValues[2];
   clearValues[0].setColor(nvvkpp::util::clearColor({0.1f, 0.1f, 0.4f, 0.f}));
@@ -339,8 +338,6 @@ void VkRtExample::display()
       cmdBuf.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
       setViewport(cmdBuf);
 
-      auto aspectRatio = static_cast<float>(m_size.width) / static_cast<float>(m_size.height);
-      cmdBuf.pushConstants<float>(m_pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, aspectRatio);
       cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline);
       cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, m_descSet[Dset::eFinal], {});
 
@@ -380,20 +377,24 @@ void VkRtExample::display()
 // Check if the camera matrix has changed, if yes, then reset the frame to 0
 // otherwise, increment
 //
-bool VkRtExample::needToResetFrame()
+void VkRtExample::updateFrame()
 {
   static nvmath::mat4f refCamMatrix;
+  static float         fov = 0;
 
-  for(int i = 0; i < 16; i++)
+  auto& m = CameraManip.getMatrix();
+  if(memcmp(&refCamMatrix.a00, &m.a00, sizeof(nvmath::mat4f)) != 0 || fov != CameraManip.getFov())
   {
-    if(m_sceneUbo.model.mat_array[i] != refCamMatrix.mat_array[i])
-    {
-      refCamMatrix = m_sceneUbo.model;
-      return true;
-    }
+    resetFrame();
+    refCamMatrix = m;
+    fov          = CameraManip.getFov();
   }
+  m_frameNumber++;
+}
 
-  return false;
+void VkRtExample::resetFrame()
+{
+  m_frameNumber = -1;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -462,15 +463,10 @@ void VkRtExample::createPipeline()
 {
   std::vector<std::string> paths = defaultSearchPaths;
 
-  // Push constants in the fragment shader
-  vk::PushConstantRange pushConstantRanges = {vk::ShaderStageFlagBits::eFragment, 0, sizeof(nvh::gltf::Material::PushC)};
-
   // Creating the pipeline layout
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
   pipelineLayoutCreateInfo.setSetLayoutCount(1);
   pipelineLayoutCreateInfo.setPSetLayouts(&m_descSetLayout[eFinal]);
-  pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
-  pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstantRanges);
   m_pipelineLayout = m_device.createPipelineLayout(pipelineLayoutCreateInfo);
 
   // Pipeline: completely generic, no vertices
@@ -656,7 +652,7 @@ void VkRtExample::onResize(int w, int h)
   m_raytracer.updateDescriptorSet();
   m_tonemapper.updateRenderTarget(m_size);
   updateDescriptor(m_tonemapper.getOutput().descriptor);
-  m_frameNumber = -1;
+  resetFrame();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -676,7 +672,7 @@ void VkRtExample::setEnvironmentHdr(const std::string& hdrFilename)
 //--------------------------------------------------------------------------------------------------
 // Called at each frame to update the camera matrix
 //
-void VkRtExample::updateUniformBuffer(const vk::CommandBuffer& cmdBuffer)
+void VkRtExample::updateCameraBuffer(const vk::CommandBuffer& cmdBuffer)
 {
   const float aspectRatio = m_size.width / static_cast<float>(m_size.height);
   float       nearPlane   = m_gltfScene.m_dimensions.radius / 10.0f;
@@ -759,7 +755,7 @@ void VkRtExample::drawUI()
 
   if(modified)
   {
-    m_frameNumber = 0;
+    resetFrame();
   }
 
   if(ImGui::CollapsingHeader("Debug"))
@@ -812,11 +808,13 @@ void VkRtExample::drawUI()
 
   if(ImGui::CollapsingHeader("Statistics"))
   {
-    ImGui::Text("Nb instances  : %d", m_gltfScene.m_linearNodes.size());
-    ImGui::Text("Nb meshes     : %d", m_gltfScene.m_linearMeshes.size());
-    ImGui::Text("Nb materials  : %d", m_gltfScene.m_materials.size());
-    ImGui::Text("Nb triangles  : %d", m_indices.size() / 3);
+    ImGui::Text("Nb instances  : %zu", m_gltfScene.m_linearNodes.size());
+    ImGui::Text("Nb meshes     : %zu", m_gltfScene.m_linearMeshes.size());
+    ImGui::Text("Nb materials  : %zu", m_gltfScene.m_materials.size());
+    ImGui::Text("Nb triangles  : %zu", m_indices.size() / 3);
   }
+
+  AppBase::uiDisplayHelp();
 
   ImGui::End();
   ImGui::Render();
@@ -875,7 +873,7 @@ void VkRtExample::loadImages(tinygltf::Model& gltfModel)
     m_textures[i].descriptor = nvvkpp::image::create2DDescriptor(m_device, m_textures[i].image, samplerCreateInfo);
 
     m_gltfScene.m_textureDescriptors[i] = m_textures[i].descriptor;
-    m_debug.setObjectName(m_textures[0].image, std::string("Txt" + std::to_string(i)).c_str());
+    m_debug.setObjectName(m_textures[i].image, std::string("Txt" + std::to_string(i)).c_str());
   }
   sc.flushCommandBuffer(cmdBuf);
   m_alloc.flushStaging();

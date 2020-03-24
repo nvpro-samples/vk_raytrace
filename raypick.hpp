@@ -275,7 +275,7 @@ public:
   PickResult getResult()
   {
     PickResult pr;
-    VOID*      mapped = m_alloc.map(m_pickResult);
+    void*      mapped = m_alloc.map(m_pickResult);
     memcpy(&pr, mapped, sizeof(PickResult));
     m_alloc.unmap(m_pickResult);
     return pr;

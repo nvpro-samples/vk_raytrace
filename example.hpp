@@ -127,10 +127,11 @@ private:
   void           createEmptyTexture();
   void           prepareUniformBuffers();
   void           createPipeline();
-  void           updateUniformBuffer(const vk::CommandBuffer& cmdBuffer);
+  void           updateCameraBuffer(const vk::CommandBuffer& cmdBuffer);
   void           drawUI();
   void           loadImages(tinygltf::Model& gltfModel);
-  bool           needToResetFrame();
+  void           updateFrame();
+  void           resetFrame();
   bool           uiLights();
 
   vk::RenderPass     m_renderPassUI;
