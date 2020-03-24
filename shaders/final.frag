@@ -1,17 +1,10 @@
 #version 450
-layout(location = 0) in vec2 outUV;
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) in vec2 inUV;
+layout(location = 0) out vec4 outFragColor;
 
-layout(set = 0, binding = 0) uniform sampler2D noisyTxt;
-
-layout(push_constant) uniform shaderInformation
-{
-  float aspectRatio;
-}
-pushc;
+layout(set = 0, binding = 0) uniform sampler2D inTxt;
 
 void main()
 {
-  vec2 uv   = outUV;
-  fragColor = texture(noisyTxt, uv).rgba;
+  outFragColor = texture(inTxt, inUV).rgba;
 }
