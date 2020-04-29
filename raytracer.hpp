@@ -58,7 +58,7 @@ public:
 
   // Return the rendered image
   const nvvk::Texture& outputImage() const;
-  const int          maxFrames() const;
+  const int            maxFrames() const;
 
   void destroy();
 
@@ -87,16 +87,16 @@ public:
 
 private:
   std::vector<vk::RayTracingShaderGroupCreateInfoNV> m_groups;
-  nvvk::Texture                                        m_raytracingOutput;
+  nvvk::Texture                                      m_raytracingOutput;
   vk::Extent2D                                       m_outputSize;
   nvvk::DescriptorSetBindings                        m_binding;
 
-  vk::Device      m_device;
-  nvvk::DebugUtil m_debug;
-  uint32_t        m_queueIndex;
-  nvvk::Allocator*  m_alloc;
+  vk::Device       m_device;
+  nvvk::DebugUtil  m_debug;
+  uint32_t         m_queueIndex;
+  nvvk::Allocator* m_alloc{nullptr};
 
-  nvvk::Buffer                                         m_rtSBTBuffer;
+  nvvk::Buffer                                       m_rtSBTBuffer;
   vk::PhysicalDeviceRayTracingPropertiesNV           m_rtProperties;
   nvvk::RaytracingBuilderNV                          m_rtBuilder;
   nvvk::DescriptorSetBindings                        m_rtDescSetLayoutBind;

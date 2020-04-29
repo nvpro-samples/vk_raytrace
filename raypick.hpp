@@ -77,7 +77,7 @@ public:
   vk::PhysicalDevice                       m_physicalDevice;
   vk::Device                               m_device;
   uint32_t                                 m_queueIndex;
-  nvvk::Allocator*                           m_alloc;
+  nvvk::Allocator*                         m_alloc{nullptr};
   nvvk::DebugUtil                          m_debug;
 
   RayPicker() = default;
@@ -127,7 +127,7 @@ public:
     m_alloc->destroy(m_pickResult);
     m_pickResult =
         m_alloc->createBuffer(sizeof(PickResult), vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eStorageBuffer,
-                             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+                              vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     m_debug.setObjectName(m_pickResult.buffer, "PickResult");
   }
 
@@ -215,7 +215,7 @@ public:
     m_device.getRayTracingShaderGroupHandlesNV(m_pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data() /*, NVVKPP_DISPATCHER*/);
 
     m_sbtBuffer = m_alloc->createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
-                                       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+                                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     m_debug.setObjectName(m_sbtBuffer.buffer, std::string("PickSBT").c_str());
 
     // Write the handles in the SBT
