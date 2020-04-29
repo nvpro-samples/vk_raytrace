@@ -33,11 +33,11 @@
 #include <vulkan/vulkan.hpp>
 
 #include "example.hpp"
+#include <nvvk/descriptorsets_vk.hpp>
+#include <nvvk/pipeline_vk.hpp>
 #include <nvvk/profiler_vk.hpp>
-#include <nvvkpp/descriptorsets_vkpp.hpp>
-#include <nvvkpp/pipeline_vkpp.hpp>
-#include <nvvkpp/renderpass_vkpp.hpp>
-#include <nvvkpp/utilities_vkpp.hpp>
+#include <nvvk/renderpasses_vk.hpp>
+
 
 // Define these only in *one* .cc file.
 #define TINYGLTF_IMPLEMENTATION
@@ -48,7 +48,7 @@
 
 #include "imgui_impl_glfw.h"
 #include "nvh/fileoperations.hpp"
-#include "nvvkpp/commands_vkpp.hpp"
+#include "nvvk/commands_vk.hpp"
 #include "shaders/binding.h"
 #include <imgui/imgui_orient.h>
 
@@ -139,8 +139,8 @@ void VkRtExample::initExample()
   // Raytracing
   {
     std::vector<uint32_t>                            blassOffset;
-    std::vector<std::vector<vk::GeometryNV>>         blass;
-    std::vector<nvvkpp::RaytracingBuilder::Instance> rayInst;
+    std::vector<std::vector<VkGeometryNV>>           blass;
+    std::vector<nvvk::RaytracingBuilderNV::Instance> rayInst;
     m_primitiveOffsets.reserve(m_gltfScene.m_linearNodes.size());
 
     // BLAS - Storing each primitive in a geometry
@@ -165,7 +165,7 @@ void VkRtExample::initExample()
     {
       if(node->m_mesh != ~0u)
       {
-        nvvkpp::RaytracingBuilder::Instance inst;
+        nvvk::RaytracingBuilderNV::Instance inst;
         inst.transform = node->worldMatrix();
 
         // Same transform for each primitive of the mesh
@@ -183,11 +183,11 @@ void VkRtExample::initExample()
 
     // Uploading the geometry information
     {
-      nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
+      nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
       m_primitiveInfoBuffer = m_alloc.createBuffer(cmdBuf, m_primitiveOffsets, vk::BufferUsageFlagBits::eStorageBuffer);
       m_debug.setObjectName(m_primitiveInfoBuffer.buffer, "PrimitiveInfo");
     }
-    m_alloc.flushStaging();
+    m_alloc.finalizeAndReleaseStaging();
 
     LOGI("Creating Blas\n");
     m_raytracer.builder().buildBlas(blass);
@@ -279,12 +279,15 @@ void VkRtExample::destroy()
   m_alloc.destroy(m_emptyTexture[1]);
 
   m_rayPicker.destroy();
-  m_axis.destroy();
+  m_axis.deinit();
   m_skydome.destroy();
   m_tonemapper.destroy();
   m_raytracer.destroy();
 
+  m_alloc.deinit();
+#ifdef NVVK_ALLOC_DMA
   m_dmaAllocator.deinit();
+#endif  // NVVK_ALLOC_DMA
 
 
   AppBase::destroy();
@@ -303,14 +306,14 @@ void VkRtExample::display()
 
   // render the scene
   prepareFrame();
-  const vk::CommandBuffer& cmdBuf = m_commandBuffers[m_curFramebuffer];
+  const vk::CommandBuffer& cmdBuf = m_commandBuffers[getCurFrame()];
   cmdBuf.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
   // Updating the matrices of the camera
   updateCameraBuffer(cmdBuf);
 
   vk::ClearValue clearValues[2];
-  clearValues[0].setColor(nvvkpp::util::clearColor({0.1f, 0.1f, 0.4f, 0.f}));
+  clearValues[0].setColor(std::array<float, 4>({0.1f, 0.1f, 0.4f, 0.f}));
   clearValues[1].setDepthStencil({1.0f, 0});
 
   {
@@ -334,7 +337,7 @@ void VkRtExample::display()
     {
       auto dgbLabel = m_debug.scopeLabel(cmdBuf, "display");
 
-      vk::RenderPassBeginInfo renderPassBeginInfo = {m_renderPass, m_framebuffers[m_curFramebuffer], {{}, m_size}, 2, clearValues};
+      vk::RenderPassBeginInfo renderPassBeginInfo = {m_renderPass, m_framebuffers[getCurFrame()], {{}, m_size}, 2, clearValues};
       cmdBuf.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
       setViewport(cmdBuf);
 
@@ -404,7 +407,7 @@ void VkRtExample::resetFrame()
 void VkRtExample::prepareUniformBuffers()
 {
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
     m_sceneBuffer = m_alloc.createBuffer(cmdBuf, sizeof(SceneUBO), nullptr, vkBU::eUniformBuffer);
 
     // Creating the GPU buffer of the vertices
@@ -445,7 +448,7 @@ void VkRtExample::prepareUniformBuffers()
     }
     m_materialBuffer = m_alloc.createBuffer(cmdBuf, allMaterials, vkBU::eStorageBuffer);
   }
-  m_alloc.flushStaging();
+  m_alloc.finalizeAndReleaseStaging();
 
   m_debug.setObjectName(m_sceneBuffer.buffer, "SceneUbo");
   m_debug.setObjectName(m_vertexBuffer.buffer, "Vertex");
@@ -470,11 +473,11 @@ void VkRtExample::createPipeline()
   m_pipelineLayout = m_device.createPipelineLayout(pipelineLayoutCreateInfo);
 
   // Pipeline: completely generic, no vertices
-  nvvkpp::GraphicsPipelineGenerator pipelineGenerator(m_device, m_pipelineLayout, m_renderPass);
+  nvvk::GraphicsPipelineGeneratorCombined pipelineGenerator(m_device, m_pipelineLayout, m_renderPass);
   pipelineGenerator.addShader(nvh::loadFile("shaders/passthrough.vert.spv", true, paths), vk::ShaderStageFlagBits::eVertex);
   pipelineGenerator.addShader(nvh::loadFile("shaders/final.frag.spv", true, paths), vk::ShaderStageFlagBits::eFragment);
   pipelineGenerator.rasterizationState.setCullMode(vk::CullModeFlagBits::eNone);
-  m_pipeline = pipelineGenerator.create();
+  m_pipeline = pipelineGenerator.createPipeline();
 }
 
 
@@ -484,10 +487,10 @@ void VkRtExample::createPipeline()
 //
 void VkRtExample::createDescriptorFinal()
 {
-  m_descSetLayoutBind[eFinal].emplace_back(vkDS(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
-  m_descSetLayout[eFinal] = nvvkpp::util::createDescriptorSetLayout(m_device, m_descSetLayoutBind[eFinal]);
-  m_descPool[eFinal]      = nvvkpp::util::createDescriptorPool(m_device, m_descSetLayoutBind[eFinal]);
-  m_descSet[eFinal]       = nvvkpp::util::createDescriptorSet(m_device, m_descPool[eFinal], m_descSetLayout[eFinal]);
+  m_descSetLayoutBind[eFinal].addBinding(vkDS(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_descSetLayout[eFinal] = m_descSetLayoutBind[eFinal].createLayout(m_device);
+  m_descPool[eFinal]      = m_descSetLayoutBind[eFinal].createPool(m_device);
+  m_descSet[eFinal]       = nvvk::allocateDescriptorSet(m_device, m_descPool[eFinal], m_descSetLayout[eFinal]);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -499,16 +502,16 @@ void VkRtExample::createDescriptorMaterial()
   uint32_t nbMat = static_cast<uint32_t>(m_gltfScene.m_materials.size());
   uint32_t nbTxt = nbMat;
 
-  m_descSetLayoutBind[eMaterial].emplace_back(
+  m_descSetLayoutBind[eMaterial].addBinding(
       vkDS(0, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // albedo
-  m_descSetLayoutBind[eMaterial].emplace_back(vkDS(1, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // normal
-  m_descSetLayoutBind[eMaterial].emplace_back(vkDS(2, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // occlusion
-  m_descSetLayoutBind[eMaterial].emplace_back(vkDS(3, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // metallic/roughness
-  m_descSetLayoutBind[eMaterial].emplace_back(vkDS(4, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // emission
+  m_descSetLayoutBind[eMaterial].addBinding(vkDS(1, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // normal
+  m_descSetLayoutBind[eMaterial].addBinding(vkDS(2, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // occlusion
+  m_descSetLayoutBind[eMaterial].addBinding(vkDS(3, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // metallic/roughness
+  m_descSetLayoutBind[eMaterial].addBinding(vkDS(4, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // emission
 
-  m_descSetLayout[eMaterial] = nvvkpp::util::createDescriptorSetLayout(m_device, m_descSetLayoutBind[eMaterial]);
-  m_descPool[eMaterial]      = nvvkpp::util::createDescriptorPool(m_device, m_descSetLayoutBind[eMaterial], nbMat);
-  m_descSet[eMaterial] = nvvkpp::util::createDescriptorSet(m_device, m_descPool[eMaterial], m_descSetLayout[eMaterial]);
+  m_descSetLayout[eMaterial] = m_descSetLayoutBind[eMaterial].createLayout(m_device);
+  m_descPool[eMaterial]      = m_descSetLayoutBind[eMaterial].createPool(m_device, nbMat);
+  m_descSet[eMaterial]       = nvvk::allocateDescriptorSet(m_device, m_descPool[eMaterial], m_descSetLayout[eMaterial]);
 
 
   // The layout of the descriptor is done, but we have to allocate a descriptor from this template
@@ -523,16 +526,21 @@ void VkRtExample::createDescriptorMaterial()
   uint32_t matId = 0;
   for(auto& material : m_gltfScene.m_materials)
   {
-    idBaseColor[matId] =
-        (material.m_baseColorTexture ? m_gltfScene.getDescriptor(material.m_baseColorTexture) : m_emptyTexture[1].descriptor);
-    idNormal[matId] =
-        (material.m_normalTexture ? m_gltfScene.getDescriptor(material.m_normalTexture) : m_emptyTexture[0].descriptor);
-    idOcclusion[matId] =
-        (material.m_occlusionTexture ? m_gltfScene.getDescriptor(material.m_occlusionTexture) : m_emptyTexture[1].descriptor);
-    idMetallic[matId] = (material.m_metallicRoughnessTexture ? m_gltfScene.getDescriptor(material.m_metallicRoughnessTexture) :
-                                                               m_emptyTexture[1].descriptor);
-    idEmissive[matId] =
-        (material.m_emissiveTexture ? m_gltfScene.getDescriptor(material.m_emissiveTexture) : m_emptyTexture[0].descriptor);
+    idBaseColor[matId] = (material.m_baseColorTexture ?
+                              static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_baseColorTexture)) :
+                              m_emptyTexture[1].descriptor);
+    idNormal[matId]    = (material.m_normalTexture ?
+                           static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_normalTexture)) :
+                           m_emptyTexture[0].descriptor);
+    idOcclusion[matId] = (material.m_occlusionTexture ?
+                              static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_occlusionTexture)) :
+                              m_emptyTexture[1].descriptor);
+    idMetallic[matId]  = (material.m_metallicRoughnessTexture ?
+                             static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_metallicRoughnessTexture)) :
+                             m_emptyTexture[1].descriptor);
+    idEmissive[matId]  = (material.m_emissiveTexture ?
+                             static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_emissiveTexture)) :
+                             m_emptyTexture[0].descriptor);
 
     const auto& descSet = m_descSet[eMaterial];
     writes.emplace_back(descSet, 0, matId, 1, vkDT::eCombinedImageSampler, &idBaseColor[matId]);
@@ -555,22 +563,22 @@ void VkRtExample::createDescriptorRaytrace()
   using vkDSLB = vk::DescriptorSetLayoutBinding;
 
   auto& bind = m_descSetLayoutBind[eRaytrace];
-  bind.emplace_back(vkDSLB(B_SCENE, vkDT::eUniformBuffer, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));  // Scene, camera
-  bind.emplace_back(vkDSLB(B_PRIM_INFO, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // Primitive info
-  bind.emplace_back(vkDSLB(B_VERTICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // Vertices
-  bind.emplace_back(vkDSLB(B_INDICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));    // Indices
-  bind.emplace_back(vkDSLB(B_NORMALS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV));                      // Normals
-  bind.emplace_back(vkDSLB(B_TEXCOORDS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // UVs
-  bind.emplace_back(vkDSLB(B_MATRICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV));                     // Matrix
-  bind.emplace_back(vkDSLB(B_MATERIAL, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // material
-  bind.emplace_back(vkDSLB(B_HDR, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV | vkSS::eMissNV));   // skydome
-  bind.emplace_back(vkDSLB(B_FILTER_DIFFUSE, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));        // irradiance
-  bind.emplace_back(vkDSLB(B_LUT_BRDF, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));              // lutBrdf
-  bind.emplace_back(vkDSLB(B_FILTER_GLOSSY, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV | vkSS::eMissNV));  // prefilterdEnv
-  bind.emplace_back(vkDSLB(B_IMPORT_SMPL, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));  // importance sampling
+  bind.addBinding(vkDSLB(B_SCENE, vkDT::eUniformBuffer, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));  // Scene, camera
+  bind.addBinding(vkDSLB(B_PRIM_INFO, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // Primitive info
+  bind.addBinding(vkDSLB(B_VERTICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // Vertices
+  bind.addBinding(vkDSLB(B_INDICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));    // Indices
+  bind.addBinding(vkDSLB(B_NORMALS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV));                      // Normals
+  bind.addBinding(vkDSLB(B_TEXCOORDS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // UVs
+  bind.addBinding(vkDSLB(B_MATRICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV));                     // Matrix
+  bind.addBinding(vkDSLB(B_MATERIAL, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // material
+  bind.addBinding(vkDSLB(B_HDR, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV | vkSS::eMissNV));   // skydome
+  bind.addBinding(vkDSLB(B_FILTER_DIFFUSE, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));        // irradiance
+  bind.addBinding(vkDSLB(B_LUT_BRDF, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));              // lutBrdf
+  bind.addBinding(vkDSLB(B_FILTER_GLOSSY, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV | vkSS::eMissNV));  // prefilterdEnv
+  bind.addBinding(vkDSLB(B_IMPORT_SMPL, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));  // importance sampling
 
-  m_descPool[eRaytrace]      = nvvkpp::util::createDescriptorPool(m_device, m_descSetLayoutBind[eRaytrace]);
-  m_descSetLayout[eRaytrace] = nvvkpp::util::createDescriptorSetLayout(m_device, m_descSetLayoutBind[eRaytrace]);
+  m_descPool[eRaytrace]      = m_descSetLayoutBind[eRaytrace].createPool(m_device);
+  m_descSetLayout[eRaytrace] = m_descSetLayoutBind[eRaytrace].createLayout(m_device);
   m_descSet[eRaytrace] = m_device.allocateDescriptorSets({m_descPool[eRaytrace], 1, &m_descSetLayout[eRaytrace]})[0];
 
 
@@ -584,22 +592,19 @@ void VkRtExample::createDescriptorRaytrace()
   vk::DescriptorBufferInfo materialDesc{m_materialBuffer.buffer, 0, VK_WHOLE_SIZE};
 
   std::vector<vk::WriteDescriptorSet> writes;
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_SCENE], &sceneDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_PRIM_INFO], &primitiveInfoDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_VERTICES], &vertexDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_INDICES], &indexDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_NORMALS], &normalDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_TEXCOORDS], &uvDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_MATRICES], &matrixDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_MATERIAL], &materialDesc));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_HDR], &m_skydome.m_textures.txtHdr.descriptor));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_FILTER_DIFFUSE],
-                                                &m_skydome.m_textures.irradianceCube.descriptor));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_LUT_BRDF], &m_skydome.m_textures.lutBrdf.descriptor));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_FILTER_GLOSSY],
-                                                &m_skydome.m_textures.prefilteredCube.descriptor));
-  writes.emplace_back(nvvkpp::util::createWrite(m_descSet[eRaytrace], bind[B_IMPORT_SMPL],
-                                                &m_skydome.m_textures.accelImpSmpl.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_SCENE, &sceneDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_PRIM_INFO, &primitiveInfoDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_VERTICES, &vertexDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_INDICES, &indexDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_NORMALS, &normalDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_TEXCOORDS, &uvDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_MATRICES, &matrixDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_MATERIAL, &materialDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_HDR, &m_skydome.m_textures.txtHdr.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_FILTER_DIFFUSE, &m_skydome.m_textures.irradianceCube.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_LUT_BRDF, &m_skydome.m_textures.lutBrdf.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_FILTER_GLOSSY, &m_skydome.m_textures.prefilteredCube.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_IMPORT_SMPL, &m_skydome.m_textures.accelImpSmpl.descriptor));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
@@ -609,8 +614,7 @@ void VkRtExample::createDescriptorRaytrace()
 //
 void VkRtExample::updateDescriptor(const vk::DescriptorImageInfo& descriptor)
 {
-  vk::WriteDescriptorSet writeDescriptorSets =
-      nvvkpp::util::createWrite(m_descSet[eFinal], m_descSetLayoutBind[eFinal][0], &descriptor);
+  vk::WriteDescriptorSet writeDescriptorSets = m_descSetLayoutBind[eFinal].makeWrite(m_descSet[eFinal], 0, &descriptor);
   m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
 }
 
@@ -626,21 +630,27 @@ void VkRtExample::createEmptyTexture()
   vk::Extent2D         imgSize(1, 1);
 
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
-    vk::SamplerCreateInfo      samplerCreateInfo;  // default values
-    vk::ImageCreateInfo        imageCreateInfo = nvvkpp::image::create2DInfo(imgSize);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
+    vk::SamplerCreateInfo    samplerCreateInfo;  // default values
+    vk::ImageCreateInfo      imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize);
 
-    m_emptyTexture[0]            = m_alloc.createImage(cmdBuf, bufferSize, black.data(), imageCreateInfo);
-    m_emptyTexture[0].descriptor = nvvkpp::image::create2DDescriptor(m_device, m_emptyTexture[0].image, samplerCreateInfo);
+    {  // black
+      nvvk::Image               image  = m_alloc.createImage(cmdBuf, bufferSize, black.data(), imageCreateInfo);
+      vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
+      m_emptyTexture[0]              = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
+    }
 
-    m_emptyTexture[1]            = m_alloc.createImage(cmdBuf, bufferSize, white.data(), imageCreateInfo);
-    m_emptyTexture[1].descriptor = nvvkpp::image::create2DDescriptor(m_device, m_emptyTexture[1].image, samplerCreateInfo);
+    {  // white
+      nvvk::Image               image  = m_alloc.createImage(cmdBuf, bufferSize, white.data(), imageCreateInfo);
+      vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
+      m_emptyTexture[1]              = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
+    }
 
     m_debug.setObjectName(m_emptyTexture[0].image, "Black");
     m_debug.setObjectName(m_emptyTexture[1].image, "White");
   }
 
-  m_alloc.flushStaging();
+  m_alloc.finalizeAndReleaseStaging();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -692,8 +702,8 @@ void VkRtExample::updateCameraBuffer(const vk::CommandBuffer& cmdBuffer)
 //
 void VkRtExample::createRenderPass()
 {
-  m_renderPass   = nvvkpp::util::createRenderPass(m_device, {m_swapChain.colorFormat}, m_depthFormat, 1, true, true);
-  m_renderPassUI = nvvkpp::util::createRenderPass(m_device, {m_swapChain.colorFormat}, m_depthFormat, 1, false, false);
+  m_renderPass   = nvvk::createRenderPass(m_device, {getColorFormat()}, m_depthFormat, 1, true, true);
+  m_renderPassUI = nvvk::createRenderPass(m_device, {getColorFormat()}, m_depthFormat, 1, false, false);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -857,26 +867,27 @@ void VkRtExample::loadImages(tinygltf::Model& gltfModel)
   vk::Format            format{vk::Format::eR8G8B8A8Unorm};
   samplerCreateInfo.maxLod = FLT_MAX;
 
-  nvvkpp::SingleCommandBuffer sc(m_device, m_graphicsQueueIndex);
+  nvvk::CommandPool sc(m_device, m_graphicsQueueIndex);
 
-  auto cmdBuf = sc.createCommandBuffer();
+  vk::CommandBuffer cmdBuf = sc.createCommandBuffer();
   for(size_t i = 0; i < gltfModel.images.size(); i++)
   {
-    auto&        gltfimage       = gltfModel.images[i];
-    void*        buffer          = &gltfimage.image[0];
-    VkDeviceSize bufferSize      = gltfimage.image.size();
-    auto         imgSize         = vk::Extent2D(gltfimage.width, gltfimage.height);
-    auto         imageCreateInfo = nvvkpp::image::create2DInfo(imgSize, format, vkIU::eSampled, true);
+    auto&               gltfimage       = gltfModel.images[i];
+    void*               buffer          = &gltfimage.image[0];
+    VkDeviceSize        bufferSize      = gltfimage.image.size();
+    auto                imgSize         = vk::Extent2D(gltfimage.width, gltfimage.height);
+    vk::ImageCreateInfo imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, vkIU::eSampled, true);
 
-    m_textures[i] = m_alloc.createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
-    nvvkpp::image::generateMipmaps(cmdBuf, m_textures[i].image, format, imgSize, imageCreateInfo.mipLevels);
-    m_textures[i].descriptor = nvvkpp::image::create2DDescriptor(m_device, m_textures[i].image, samplerCreateInfo);
+    nvvk::Image image = m_alloc.createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
+    nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
+    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
+    m_textures[i]                  = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
 
     m_gltfScene.m_textureDescriptors[i] = m_textures[i].descriptor;
     m_debug.setObjectName(m_textures[i].image, std::string("Txt" + std::to_string(i)).c_str());
   }
-  sc.flushCommandBuffer(cmdBuf);
-  m_alloc.flushStaging();
+  sc.submitAndWait(cmdBuf);
+  m_alloc.finalizeAndReleaseStaging();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -887,7 +898,7 @@ void VkRtExample::loadImages(tinygltf::Model& gltfModel)
 //
 void VkRtExample::onKeyboard(int key, int scancode, int action, int mods)
 {
-  nvvkpp::AppBase::onKeyboard(key, scancode, action, mods);
+  nvvk::AppBase::onKeyboard(key, scancode, action, mods);
 
   if(key == GLFW_KEY_HOME)
   {
@@ -901,14 +912,14 @@ void VkRtExample::onKeyboard(int key, int scancode, int action, int mods)
     glfwGetCursorPos(m_window, &x, &y);
 
     // Set the camera as to see the model
-    nvvkpp::SingleCommandBuffer sc(m_device, m_graphicsQueueIndex);
-    vk::CommandBuffer           cmdBuf = sc.createCommandBuffer();
-    float                       px     = x / float(m_size.width);
-    float                       py     = y / float(m_size.height);
+    nvvk::CommandPool sc(m_device, m_graphicsQueueIndex);
+    vk::CommandBuffer cmdBuf = sc.createCommandBuffer();
+    float             px     = x / float(m_size.width);
+    float             py     = y / float(m_size.height);
     m_rayPicker.run(cmdBuf, px, py);
-    sc.flushCommandBuffer(cmdBuf);
+    sc.submitAndWait(cmdBuf);
 
-    nvvkpp::RayPicker::PickResult pr = m_rayPicker.getResult();
+    RayPicker::PickResult pr = m_rayPicker.getResult();
 
     if(pr.intanceID == ~0)
     {
