@@ -29,53 +29,54 @@
 #include "raytracer.hpp"
 #include "imgui.h"
 #include "nvh/fileoperations.hpp"
+#include "nvvk/shaders_vk.hpp"
 
 extern std::vector<std::string> defaultSearchPaths;
 
-nvvkpp::Raytracer::Raytracer() = default;
+Raytracer::Raytracer() = default;
 
 //--------------------------------------------------------------------------------------------------
 // Initializing the allocator and querying the raytracing properties
 //
-void nvvkpp::Raytracer::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvkMemAlloc& memoryAllocator)
+void Raytracer::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvk::Allocator* allocator)
 {
   m_device     = device;
   m_queueIndex = queueIndex;
   m_debug.setup(device);
-  m_alloc.init(device, &memoryAllocator);
+  m_alloc = allocator;
 
   // Requesting raytracing properties
   auto properties = physicalDevice.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceRayTracingPropertiesNV>();
   m_rtProperties = properties.get<vk::PhysicalDeviceRayTracingPropertiesNV>();
 
 
-  m_rtBuilder.setup(device, memoryAllocator, queueIndex);
+  m_rtBuilder.setup(device, allocator, queueIndex);
 }
 
-const nvvkpp::Raytracer::nvvkTexture& nvvkpp::Raytracer::outputImage() const
+const nvvk::Texture& Raytracer::outputImage() const
 {
   return m_raytracingOutput;
 }
 
-const int nvvkpp::Raytracer::maxFrames() const
+const int Raytracer::maxFrames() const
 {
   return m_maxFrames;
 }
 
-void nvvkpp::Raytracer::destroy()
+void Raytracer::destroy()
 {
-  m_alloc.destroy(m_raytracingOutput);
+  m_alloc->destroy(m_raytracingOutput);
   m_rtBuilder.destroy();
   m_device.destroy(m_rtDescPool);
   m_device.destroy(m_rtDescSetLayout);
   m_device.destroy(m_rtPipeline);
   m_device.destroy(m_rtPipelineLayout);
-  m_alloc.destroy(m_rtSBTBuffer);
+  m_alloc->destroy(m_rtSBTBuffer);
 }
 
-void nvvkpp::Raytracer::createOutputImage(vk::Extent2D size)
+void Raytracer::createOutputImage(vk::Extent2D size)
 {
-  m_alloc.destroy(m_raytracingOutput);
+  m_alloc->destroy(m_raytracingOutput);
 
   m_outputSize = size;
   auto usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc;
@@ -83,45 +84,44 @@ void nvvkpp::Raytracer::createOutputImage(vk::Extent2D size)
   vk::Format     format  = vk::Format::eR32G32B32A32Sfloat;
 
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-    vk::SamplerCreateInfo      samplerCreateInfo;  // default values
-    vk::ImageCreateInfo        imageCreateInfo = nvvkpp::image::create2DInfo(size, format, usage);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    vk::SamplerCreateInfo    samplerCreateInfo;  // default values
+    vk::ImageCreateInfo      imageCreateInfo = nvvk::makeImage2DCreateInfo(size, format, usage);
 
-    m_raytracingOutput = m_alloc.createImage(cmdBuf, imgSize, nullptr, imageCreateInfo, vk::ImageLayout::eGeneral);
-    m_raytracingOutput.descriptor = nvvkpp::image::create2DDescriptor(m_device, m_raytracingOutput.image, samplerCreateInfo,
-                                                                      format, vk::ImageLayout::eGeneral);
+    nvvk::Image image = m_alloc->createImage(cmdBuf, imgSize, nullptr, imageCreateInfo, vk::ImageLayout::eGeneral);
+    vk::ImageViewCreateInfo ivInfo            = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
+    m_raytracingOutput                        = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
+    m_raytracingOutput.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
   }
-  m_alloc.flushStaging();
+  m_alloc->finalizeAndReleaseStaging();
 }
 
-void nvvkpp::Raytracer::createDescriptorSet()
+void Raytracer::createDescriptorSet()
 {
   using vkDS = vk::DescriptorSetLayoutBinding;
   using vkDT = vk::DescriptorType;
   using vkSS = vk::ShaderStageFlagBits;
 
+  m_binding.addBinding(vkDS(0, vkDT::eAccelerationStructureNV, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
+  m_binding.addBinding(vkDS(1, vkDT::eStorageImage, 1, vkSS::eRaygenNV));  // Output image
 
-  m_binding.emplace_back(vkDS(0, vkDT::eAccelerationStructureNV, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
-  m_binding.emplace_back(vkDS(1, vkDT::eStorageImage, 1, vkSS::eRaygenNV));  // Output image
-
-  m_rtDescPool      = util::createDescriptorPool(m_device, m_binding);
-  m_rtDescSetLayout = util::createDescriptorSetLayout(m_device, m_binding);
+  m_rtDescPool      = m_binding.createPool(m_device);
+  m_rtDescSetLayout = m_binding.createLayout(m_device);
   m_rtDescSet       = m_device.allocateDescriptorSets({m_rtDescPool, 1, &m_rtDescSetLayout})[0];
 
-  vk::WriteDescriptorSetAccelerationStructureNV descAsInfo;  //{1, &m_tlas.as.accel};
-  descAsInfo.setAccelerationStructureCount(1);
-  descAsInfo.setPAccelerationStructures(&m_rtBuilder.getAccelerationStructure());
+  vk::AccelerationStructureNV                   tlas = m_rtBuilder.getAccelerationStructure();
+  vk::WriteDescriptorSetAccelerationStructureNV descAsInfo{1, &tlas};
   vk::DescriptorImageInfo imageInfo{{}, m_raytracingOutput.descriptor.imageView, vk::ImageLayout::eGeneral};
 
   std::vector<vk::WriteDescriptorSet> writes;
-  writes.emplace_back(util::createWrite(m_rtDescSet, m_binding[0], &descAsInfo));
-  writes.emplace_back(util::createWrite(m_rtDescSet, m_binding[1], &imageInfo));
+  writes.emplace_back(m_binding.makeWrite(m_rtDescSet, 0, &descAsInfo));
+  writes.emplace_back(m_binding.makeWrite(m_rtDescSet, 1, &imageInfo));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
   updateDescriptorSet();
 }
 
-void nvvkpp::Raytracer::updateDescriptorSet()
+void Raytracer::updateDescriptorSet()
 {
   using vkDT = vk::DescriptorType;
 
@@ -133,15 +133,15 @@ void nvvkpp::Raytracer::updateDescriptorSet()
   }
 }
 
-void nvvkpp::Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout, const vk::DescriptorSetLayout& matDescSetLayout)
+void Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout, const vk::DescriptorSetLayout& matDescSetLayout)
 {
   std::vector<std::string> paths = defaultSearchPaths;
-  vk::ShaderModule raygenSM = nvvkpp::util::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rgen.spv", true, paths));
-  vk::ShaderModule missSM = nvvkpp::util::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rmiss.spv", true, paths));
+  vk::ShaderModule raygenSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rgen.spv", true, paths));
+  vk::ShaderModule missSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rmiss.spv", true, paths));
   vk::ShaderModule shadowmissSM =
-      nvvkpp::util::createShaderModule(m_device, nvh::loadFile("shaders/raytraceShadow.rmiss.spv", true, paths));
-  vk::ShaderModule chitSM = nvvkpp::util::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rchit.spv", true, paths));
-  vk::ShaderModule rahitSM = nvvkpp::util::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rahit.spv", true, paths));
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/raytraceShadow.rmiss.spv", true, paths));
+  vk::ShaderModule chitSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rchit.spv", true, paths));
+  vk::ShaderModule rahitSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rahit.spv", true, paths));
 
   std::vector<vk::PipelineShaderStageCreateInfo> stages;
 
@@ -204,7 +204,7 @@ void nvvkpp::Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescS
   m_device.destroyShaderModule(rahitSM);
 }
 
-void nvvkpp::Raytracer::createShadingBindingTable()
+void Raytracer::createShadingBindingTable()
 {
   auto     groupCount      = static_cast<uint32_t>(m_groups.size());  // 3 shaders: raygen, miss, chit
   uint32_t groupHandleSize = m_rtProperties.shaderGroupHandleSize;    // Size of a program identifier
@@ -214,25 +214,22 @@ void nvvkpp::Raytracer::createShadingBindingTable()
   std::vector<uint8_t> shaderHandleStorage(sbtSize);
   m_device.getRayTracingShaderGroupHandlesNV(m_rtPipeline, 0, groupCount, sbtSize, shaderHandleStorage.data());
 
-  m_rtSBTBuffer = m_alloc.createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
+  m_rtSBTBuffer = m_alloc->createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
                                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
   m_debug.setObjectName(m_rtSBTBuffer.buffer, std::string("SBT").c_str());
 
   // Write the handles in the SBT
-  void* mapped = m_alloc.map(m_rtSBTBuffer);
+  void* mapped = m_alloc->map(m_rtSBTBuffer);
   auto* pData  = reinterpret_cast<uint8_t*>(mapped);
   for(uint32_t g = 0; g < groupCount; g++)
   {
     memcpy(pData, shaderHandleStorage.data() + g * groupHandleSize, groupHandleSize);  // raygen
     pData += groupHandleSize;
   }
-  m_alloc.unmap(m_rtSBTBuffer);
+  m_alloc->unmap(m_rtSBTBuffer);
 }
 
-void nvvkpp::Raytracer::run(const vk::CommandBuffer& cmdBuf,
-                            const vk::DescriptorSet& sceneDescSet,
-                            const vk::DescriptorSet& matDescSet,
-                            int                      frame /*= 0*/)
+void Raytracer::run(const vk::CommandBuffer& cmdBuf, const vk::DescriptorSet& sceneDescSet, const vk::DescriptorSet& matDescSet, int frame /*= 0*/)
 {
   m_pushC.frame = frame;
 
@@ -257,7 +254,7 @@ void nvvkpp::Raytracer::run(const vk::CommandBuffer& cmdBuf,
                      1 /*, NVVKPP_DISPATCHER*/);
 }
 
-bool nvvkpp::Raytracer::uiSetup()
+bool Raytracer::uiSetup()
 {
   bool modified = false;
   if(ImGui::CollapsingHeader("Raytracing"))

@@ -18,7 +18,7 @@
 layout(location = 0) rayPayloadInNV PerRayData_raytrace prd;
 
 // Raytracing hit attributes: barycentrics
-hitAttributeNV vec3 attribs;
+hitAttributeNV vec2 attribs;
 
 // clang-format off
 layout(set = 1, binding = B_PRIM_INFO) readonly buffer _instanceInfo {primInfo i[];} instanceInfo;

@@ -25,14 +25,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <vulkan/vulkan.hpp>
+
+#include "vkalloc.hpp"
+
+
 #include <array>
 #include <nvmath/nvmath.h>
 
 #include "nvh/gltfscene.hpp"
-#include "nvvkpp/allocator_dma_vkpp.hpp"
-#include "nvvkpp/appbase_vkpp.hpp"
-#include "nvvkpp/axis_vkpp.hpp"
-#include "nvvkpp/images_vkpp.hpp"
+#include "nvvk/appbase_vkpp.hpp"
+#include "nvvk/gizmos_vk.hpp"
+#include "nvvk/images_vk.hpp"
 #include "raypick.hpp"
 #include "raytracer.hpp"
 #include "skydome.hpp"
@@ -56,30 +60,30 @@ struct gltfScene : nvh::gltf::Scene
 //--------------------------------------------------------------------------------------------------
 // Loading a glTF scene, raytrace and tonemap result
 //
-class VkRtExample : public nvvkpp::AppBase
+class VkRtExample : public nvvk::AppBase
 {
-  using nvvkBuffer  = nvvkpp::BufferDma;
-  using nvvkImage   = nvvkpp::ImageDma;
-  using nvvkTexture = nvvkpp::TextureDma;
-
 public:
   VkRtExample() = default;
 
   void initExample();
   void display();
 
-  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t graphicsQueueIndex) override
+  void setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t graphicsQueueIndex) override
   {
-    AppBase::setup(device, physicalDevice, graphicsQueueIndex);
+    AppBase::setup(instance, device, physicalDevice, graphicsQueueIndex);
     m_debug.setup(device);
 
+#ifdef NVVK_ALLOC_DMA
     m_dmaAllocator.init(device, physicalDevice);
-    m_alloc.init(device, &m_dmaAllocator);
+    m_alloc.init(device, physicalDevice, &m_dmaAllocator);
+#elif defined(NVVK_ALLOC_DEDICATED)
+    m_alloc.init(device, physicalDevice);
+#endif
 
-    m_raytracer.setup(device, physicalDevice, graphicsQueueIndex, m_dmaAllocator);
-    m_rayPicker.setup(device, physicalDevice, graphicsQueueIndex, m_dmaAllocator);
-    m_tonemapper.setup(device, physicalDevice, graphicsQueueIndex, m_dmaAllocator);
-    m_skydome.setup(device, physicalDevice, graphicsQueueIndex, m_dmaAllocator);
+    m_raytracer.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
+    m_rayPicker.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
+    m_tonemapper.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
+    m_skydome.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
   }
 
   void destroy() override;
@@ -146,10 +150,10 @@ private:
     eRaytrace,  // All info for raytracer
     Total
   };
-  std::vector<std::vector<vk::DescriptorSetLayoutBinding>> m_descSetLayoutBind{Dset::Total};
-  std::vector<vk::DescriptorSetLayout>                     m_descSetLayout{Dset::Total};
-  std::vector<vk::DescriptorPool>                          m_descPool{Dset::Total};
-  std::vector<vk::DescriptorSet>                           m_descSet{Dset::Total};
+  std::vector<nvvk::DescriptorSetBindings> m_descSetLayoutBind{Dset::Total};
+  std::vector<vk::DescriptorSetLayout>     m_descSetLayout{Dset::Total};
+  std::vector<vk::DescriptorPool>          m_descPool{Dset::Total};
+  std::vector<vk::DescriptorSet>           m_descSet{Dset::Total};
 
 
   // GLTF scene model
@@ -157,7 +161,7 @@ private:
   nvh::gltf::VertexData     m_vertices;          // All vertices
   std::vector<uint32_t>     m_indices;           // All indices
   SceneUBO                  m_sceneUbo;          // Camera, light and more
-  nvvkTexture               m_emptyTexture[2];   // black and white
+  nvvk::Texture               m_emptyTexture[2];   // black and white
   std::vector<PrimitiveSBO> m_primitiveOffsets;  // Primitive information: vertex, index offset + mat
 
   std::string m_filename;  // Scene filename
@@ -166,28 +170,30 @@ private:
   int m_upVector = 1;  // Y up
   int m_frameNumber{0};
 
-  nvvkpp::AxisVK    m_axis;        // To display the axis in the lower left corner
-  nvvkpp::Raytracer m_raytracer;   // The raytracer
-  nvvkpp::RayPicker m_rayPicker;   // Picking under mouse using raytracer
-  Tonemapper        m_tonemapper;  //
-  SkydomePbr        m_skydome;     // The HDR environment
+  nvvk::AxisVK m_axis;        // To display the axis in the lower left corner
+  Raytracer    m_raytracer;   // The raytracer
+  RayPicker    m_rayPicker;   // Picking under mouse using raytracer
+  Tonemapper   m_tonemapper;  //
+  SkydomePbr   m_skydome;     // The HDR environment
 
   // All buffers on the Device
-  nvvkBuffer m_sceneBuffer;
-  nvvkBuffer m_vertexBuffer;
-  nvvkBuffer m_normalBuffer;
-  nvvkBuffer m_uvBuffer;
-  nvvkBuffer m_indexBuffer;
-  nvvkBuffer m_matrixBuffer;
-  nvvkBuffer m_materialBuffer;
-  nvvkBuffer m_primitiveInfoBuffer;
+  nvvk::Buffer m_sceneBuffer;
+  nvvk::Buffer m_vertexBuffer;
+  nvvk::Buffer m_normalBuffer;
+  nvvk::Buffer m_uvBuffer;
+  nvvk::Buffer m_indexBuffer;
+  nvvk::Buffer m_matrixBuffer;
+  nvvk::Buffer m_materialBuffer;
+  nvvk::Buffer m_primitiveInfoBuffer;
 
   // All textures
-  std::vector<nvvkTexture> m_textures;
+  std::vector<nvvk::Texture> m_textures;
 
   // Memory allocator for buffers and images
-  nvvk::DeviceMemoryAllocator m_dmaAllocator;
-  nvvkpp::AllocatorDma        m_alloc;
+#ifdef NVVK_ALLOC_DMA
+  nvvk::DeviceMemoryAllocator   m_dmaAllocator;
+#endif
+  nvvk::Allocator m_alloc;
 
-  nvvkpp::DebugUtil m_debug;
+  nvvk::DebugUtil m_debug;
 };

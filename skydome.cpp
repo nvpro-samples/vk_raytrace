@@ -32,17 +32,17 @@
 #include <iostream>
 #include <math.h>
 
+#include "fileformats/stb_image.h"
 #include "nvh/fileoperations.hpp"
 #include "nvh/nvprint.hpp"
-#include "nvvkpp/commands_vkpp.hpp"
-#include "nvvkpp/debug_util_vkpp.hpp"
-#include "nvvkpp/descriptorsets_vkpp.hpp"
-#include "nvvkpp/images_vkpp.hpp"
-#include "nvvkpp/pipeline_vkpp.hpp"
-#include "nvvkpp/renderpass_vkpp.hpp"
-#include "nvvkpp/utilities_vkpp.hpp"
+#include "nvmath/nvmath.h"
+#include "nvvk/commands_vk.hpp"
+#include "nvvk/debug_util_vk.hpp"
+#include "nvvk/descriptorsets_vk.hpp"
+#include "nvvk/images_vk.hpp"
+#include "nvvk/pipeline_vk.hpp"
+#include "nvvk/renderpasses_vk.hpp"
 #include "skydome.hpp"
-#include <fileformats/stb_image.h>
 
 
 using vkDT = vk::DescriptorType;
@@ -106,25 +106,25 @@ void SkydomePbr::createCube()
   };
 
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-    m_vertices = m_alloc.createBuffer<nvmath::vec3f>(cmdBuf, vertexBuffer, vk::BufferUsageFlagBits::eVertexBuffer);
-    m_indices  = m_alloc.createBuffer<uint32_t>(cmdBuf, indexBuffer, vk::BufferUsageFlagBits::eIndexBuffer);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    m_vertices = m_alloc->createBuffer<nvmath::vec3f>(cmdBuf, vertexBuffer, vk::BufferUsageFlagBits::eVertexBuffer);
+    m_indices  = m_alloc->createBuffer<uint32_t>(cmdBuf, indexBuffer, vk::BufferUsageFlagBits::eIndexBuffer);
 
     m_debug.setObjectName(m_vertices.buffer, "SkyVertex");
     m_debug.setObjectName(m_indices.buffer, "SkyIndex");
   }
-  m_alloc.flushStaging();
+  m_alloc->finalizeAndReleaseStaging();
 }
 
 void SkydomePbr::destroy()
 {
-  m_alloc.destroy(m_vertices);
-  m_alloc.destroy(m_indices);
-  m_alloc.destroy(m_textures.txtHdr);
-  m_alloc.destroy(m_textures.accelImpSmpl);
-  m_alloc.destroy(m_textures.irradianceCube);
-  m_alloc.destroy(m_textures.lutBrdf);
-  m_alloc.destroy(m_textures.prefilteredCube);
+  m_alloc->destroy(m_vertices);
+  m_alloc->destroy(m_indices);
+  m_alloc->destroy(m_textures.txtHdr);
+  m_alloc->destroy(m_textures.accelImpSmpl);
+  m_alloc->destroy(m_textures.irradianceCube);
+  m_alloc->destroy(m_textures.lutBrdf);
+  m_alloc->destroy(m_textures.prefilteredCube);
 
   m_device.destroyPipeline(m_pipeline);
   m_device.destroyPipelineLayout(m_pipelineLayout);
@@ -165,28 +165,30 @@ void SkydomePbr::createPipelines(const vk::DescriptorBufferInfo& sceneBufferDesc
     }
     {
       m_descriptorSet[eMaterial] = m_device.allocateDescriptorSets({m_descriptorpool, 1, &m_descriptorSetLayout[eMaterial]})[0];
-      vk::WriteDescriptorSet writeDescriptorSet{
-          m_descriptorSet[eMaterial],   0, 0, 1, vk::DescriptorType::eCombinedImageSampler,
-          &m_textures.txtHdr.descriptor};
+      vk::WriteDescriptorSet writeDescriptorSet;
+      writeDescriptorSet.dstSet          = m_descriptorSet[eMaterial];
+      writeDescriptorSet.descriptorCount = 1;
+      writeDescriptorSet.descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+      writeDescriptorSet.pImageInfo      = (vk::DescriptorImageInfo*)&m_textures.txtHdr.descriptor;
       m_device.updateDescriptorSets(writeDescriptorSet, nullptr);
     }
 
     m_pipelineLayout = m_device.createPipelineLayout({{}, 2, m_descriptorSetLayout});
   }
 
-  std::vector<std::string>          paths = defaultSearchPaths;
-  nvvkpp::GraphicsPipelineGenerator gpg(m_device, m_pipelineLayout, m_renderPass);
+  std::vector<std::string>                paths = defaultSearchPaths;
+  nvvk::GraphicsPipelineGeneratorCombined gpg(m_device, m_pipelineLayout, m_renderPass);
   gpg.addShader(nvh::loadFile("shaders/skybox.vert.spv", true, paths), vk::ShaderStageFlagBits::eVertex);
   gpg.addShader(nvh::loadFile("shaders/skybox.frag.spv", true, paths), vk::ShaderStageFlagBits::eFragment);
   gpg.rasterizationState.setCullMode(vk::CullModeFlagBits::eNone);
-  gpg.vertexInputState.bindingDescriptions   = {{0, sizeof(nvmath::vec3f)}};
-  gpg.vertexInputState.attributeDescriptions = {{0, 0, vk::Format::eR32G32B32Sfloat, 0}};
+  gpg.addBindingDescription({0, sizeof(nvmath::vec3f)});
+  gpg.addAttributeDescriptions({{0, 0, vk::Format::eR32G32B32Sfloat, 0}});
 
-  m_pipeline = gpg.create();
+  m_pipeline = gpg.createPipeline();
 
   m_debug.setObjectName(m_pipeline, "SkyPipeline");
-  m_debug.setObjectName(gpg.shaderStages[0].module, "SkyVS");
-  m_debug.setObjectName(gpg.shaderStages[1].module, "SkyFS");
+  m_debug.setObjectName(gpg.getShaderModule(0), "SkyVS");
+  m_debug.setObjectName(gpg.getShaderModule(1), "SkyFS");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -203,14 +205,15 @@ void SkydomePbr::loadEnvironment(const std::string& hrdImage)
 
   vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
   vk::Format            format = vk::Format::eR32G32B32A32Sfloat;
-  vk::ImageCreateInfo   icInfo = nvvkpp::image::create2DInfo(imgSize, format);
+  vk::ImageCreateInfo   icInfo = nvvk::makeImage2DCreateInfo(imgSize, format);
 
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-    m_textures.txtHdr            = m_alloc.createImage(cmdBuf, bufferSize, pixels, icInfo);
-    m_textures.txtHdr.descriptor = nvvkpp::image::create2DDescriptor(m_device, m_textures.txtHdr.image, samplerCreateInfo, format);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, pixels, icInfo);
+    vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
+    m_textures.txtHdr               = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
   }
-  m_alloc.flushStaging();
+  m_alloc->finalizeAndReleaseStaging();
 
   createEnvironmentAccelTexture(pixels, imgSize, m_textures.accelImpSmpl);
 
@@ -276,7 +279,7 @@ static float build_alias_map(const std::vector<float>& data, std::vector<Env_acc
 //--------------------------------------------------------------------------------------------------
 // Create acceleration data for importance sampling
 //
-void SkydomePbr::createEnvironmentAccelTexture(const float* pixels, vk::Extent2D& size, nvvkTexture& accelTex)
+void SkydomePbr::createEnvironmentAccelTexture(const float* pixels, vk::Extent2D& size, nvvk::Texture& accelTex)
 {
 
   const uint32_t rx = size.width;
@@ -312,17 +315,18 @@ void SkydomePbr::createEnvironmentAccelTexture(const float* pixels, vk::Extent2D
   }
 
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
 
     vk::SamplerCreateInfo samplerCreateInfo{};
     vk::Format            format     = vk::Format::eR32G32B32A32Sfloat;
-    vk::ImageCreateInfo   icInfo     = nvvkpp::image::create2DInfo({rx, ry}, format);
+    vk::ImageCreateInfo   icInfo     = nvvk::makeImage2DCreateInfo({rx, ry}, format);
     vk::DeviceSize        bufferSize = rx * ry * sizeof(Env_accel);
 
-    accelTex            = m_alloc.createImage(cmdBuf, bufferSize, env_accel.data(), icInfo);
-    accelTex.descriptor = nvvkpp::image::create2DDescriptor(m_device, accelTex.image, samplerCreateInfo, format);
+    nvvk::Image               image  = m_alloc->createImage(cmdBuf, bufferSize, env_accel.data(), icInfo);
+    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
+    accelTex                       = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
   }
-  m_alloc.flushStaging();
+  m_alloc->finalizeAndReleaseStaging();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -344,14 +348,15 @@ void SkydomePbr::integrateBrdf(uint32_t dim)
   imageCI.setMipLevels(1);
   imageCI.setArrayLayers(1);
   imageCI.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled);
-  target = m_alloc.createImage(imageCI);
+  nvvk::Image image = m_alloc->createImage(imageCI);
+
   // Image view
   vk::ImageViewCreateInfo viewCI;
   viewCI.setViewType(vk::ImageViewType::e2D);
   viewCI.setFormat(format);
   viewCI.setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
-  viewCI.setImage(target.image);
-  target.descriptor.imageView = m_device.createImageView(viewCI);
+  viewCI.setImage(image.image);
+
   // Sampler
   vk::SamplerCreateInfo samplerCI;
   samplerCI.setMagFilter(vk::Filter::eLinear);
@@ -362,21 +367,28 @@ void SkydomePbr::integrateBrdf(uint32_t dim)
   samplerCI.setAddressModeW(vk::SamplerAddressMode::eClampToEdge);
   samplerCI.setMaxLod(1.0f);
   samplerCI.setBorderColor(vk::BorderColor::eFloatOpaqueWhite);
-  target.descriptor.sampler     = m_device.createSampler(samplerCI);
-  target.descriptor.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+  target = m_alloc->createTexture(image, viewCI, samplerCI);
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-    nvvkpp::image::setImageLayout(cmdBuf, target.image, vk::ImageLayout::eUndefined, target.descriptor.imageLayout);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    nvvk::cmdBarrierImageLayout(cmdBuf, target.image, VK_IMAGE_LAYOUT_UNDEFINED, target.descriptor.imageLayout);
   }
-  m_alloc.flushStaging();
+  m_alloc->finalizeAndReleaseStaging();
 
   // Render pass, one attachment, no depth
-  vk::RenderPass renderpass = nvvkpp::util::createRenderPass(m_device, {format}, vk::Format::eUndefined, 1, true, true,
-                                                             vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
+  vk::RenderPass renderpass = nvvk::createRenderPass(m_device, {format}, vk::Format::eUndefined, 1, true, true,
+                                                     vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
 
   // Using texture in framebuffer
-  vk::FramebufferCreateInfo framebufferCI{{}, renderpass, 1, &target.descriptor.imageView, dim, dim, 1};
-  vk::Framebuffer           framebuffer = m_device.createFramebuffer(framebufferCI);
+  vk::FramebufferCreateInfo framebufferCI;
+  framebufferCI.renderPass      = renderpass;
+  framebufferCI.attachmentCount = 1;
+  framebufferCI.pAttachments    = (vk::ImageView*)&target.descriptor.imageView;
+  framebufferCI.width           = dim;
+  framebufferCI.height          = dim;
+  framebufferCI.layers          = 1;
+
+  vk::Framebuffer framebuffer = m_device.createFramebuffer(framebufferCI);
 
   // Descriptors
   vk::DescriptorSetLayout descriptorsetlayout = m_device.createDescriptorSetLayout({});
@@ -388,19 +400,19 @@ void SkydomePbr::integrateBrdf(uint32_t dim)
   vk::PipelineLayout pipelinelayout = m_device.createPipelineLayout({{}, 1, &descriptorsetlayout});
 
   // Pipeline
-  std::vector<std::string>          paths = defaultSearchPaths;
-  nvvkpp::GraphicsPipelineGenerator pipelineGenerator(m_device, pipelinelayout, renderpass);
+  std::vector<std::string>                paths = defaultSearchPaths;
+  nvvk::GraphicsPipelineGeneratorCombined pipelineGenerator(m_device, pipelinelayout, renderpass);
   pipelineGenerator.addShader(nvh::loadFile("shaders/integrate_brdf.vert.spv", true, paths), vk::ShaderStageFlagBits::eVertex);
   pipelineGenerator.addShader(nvh::loadFile("shaders/integrate_brdf.frag.spv", true, paths), vk::ShaderStageFlagBits::eFragment);
   pipelineGenerator.rasterizationState.setCullMode(vk::CullModeFlagBits::eNone);
-  vk::Pipeline pipeline = pipelineGenerator.create();
+  vk::Pipeline pipeline = pipelineGenerator.createPipeline();
 
   // Render to texture
-  vk::ClearValue          clearValues = nvvkpp::util::clearColor({0.0f, 0.0f, 0.0f, 1.0f});
+  vk::ClearValue          clearValues(std::array<float, 4>({0.0f, 0.0f, 0.0f, 1.0f}));
   vk::RenderPassBeginInfo renderPassBeginInfo{renderpass, framebuffer, {{}, {dim, dim}}, 1, &clearValues};
 
-  nvvkpp::SingleCommandBuffer sc(m_device, m_queueIndex);
-  const vk::CommandBuffer&    cmdBuf = sc.createCommandBuffer();
+  nvvk::CommandPool        sc(m_device, m_queueIndex);
+  const vk::CommandBuffer& cmdBuf = sc.createCommandBuffer();
   cmdBuf.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
   vk::Viewport viewport{0, 0, (float)dim, (float)dim, 0, 1};
   vk::Rect2D   scissor{{}, {dim, dim}};
@@ -409,7 +421,7 @@ void SkydomePbr::integrateBrdf(uint32_t dim)
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
   cmdBuf.draw(3, 1, 0, 0);
   cmdBuf.endRenderPass();
-  sc.flushCommandBuffer(cmdBuf);
+  sc.submitAndWait(cmdBuf);
 
   // cleanup
   m_device.destroyPipeline(pipeline);
@@ -455,33 +467,34 @@ void SkydomePbr::prefilterDiffuse(uint32_t dim)
     samplerCreateInfo.maxLod     = numMips;
 
     vk::ImageCreateInfo imageCreateInfo =
-        nvvkpp::image::createCubeInfo(size, format, vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, true);
+        nvvk::makeImageCubeCreateInfo(size, format, vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, true);
     vk::DeviceSize bufferSize = size.width * size.height * 4 * sizeof(float);
 
     {
-      nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-      filteredEnv            = m_alloc.createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
-      filteredEnv.descriptor = nvvkpp::image::createCubeDescriptor(m_device, filteredEnv.image, samplerCreateInfo, format);
+      nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+      nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
+      vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo, true);
+      filteredEnv                     = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
     }
 
-    m_alloc.flushStaging();
+    m_alloc->finalizeAndReleaseStaging();
   }
 
   // Render pass, one attachment, no depth
-  vk::RenderPass renderpass = nvvkpp::util::createRenderPass(m_device, {format}, vk::Format::eUndefined, 1, true, true,
-                                                             vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+  vk::RenderPass renderpass = nvvk::createRenderPass(m_device, {format}, vk::Format::eUndefined, 1, true, true,
+                                                     vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
   // Descriptors
-  std::vector<vk::DescriptorSetLayoutBinding> descSetBind;
-  descSetBind.emplace_back(vk::DescriptorSetLayoutBinding(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
-  descSetBind.emplace_back(vk::DescriptorSetLayoutBinding(1, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
-  vk::DescriptorSetLayout descSetLayout = nvvkpp::util::createDescriptorSetLayout(m_device, descSetBind);
-  vk::DescriptorPool      descPool      = nvvkpp::util::createDescriptorPool(m_device, descSetBind);
-  vk::DescriptorSet       descSet       = nvvkpp::util::createDescriptorSet(m_device, descPool, descSetLayout);
+  nvvk::DescriptorSetBindings descSetBind;
+  descSetBind.addBinding(vk::DescriptorSetLayoutBinding(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  descSetBind.addBinding(vk::DescriptorSetLayoutBinding(1, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  vk::DescriptorSetLayout descSetLayout = descSetBind.createLayout(m_device);
+  vk::DescriptorPool      descPool      = descSetBind.createPool(m_device);
+  vk::DescriptorSet       descSet       = nvvk::allocateDescriptorSet(m_device, descPool, descSetLayout);
 
   std::vector<vk::WriteDescriptorSet> writes;
-  writes.emplace_back(nvvkpp::util::createWrite(descSet, descSetBind[0], &m_textures.txtHdr.descriptor));
-  writes.emplace_back(nvvkpp::util::createWrite(descSet, descSetBind[1], &m_textures.accelImpSmpl.descriptor));
+  writes.emplace_back(descSetBind.makeWrite(descSet, 0, &m_textures.txtHdr.descriptor));
+  writes.emplace_back(descSetBind.makeWrite(descSet, 1, &m_textures.accelImpSmpl.descriptor));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
 
@@ -490,15 +503,15 @@ void SkydomePbr::prefilterDiffuse(uint32_t dim)
   vk::PipelineLayout    pipelinelayout = m_device.createPipelineLayout({{}, 1, &descSetLayout, 1, &pushConstantRange});
 
   // Pipeline
-  std::vector<std::string>          paths = defaultSearchPaths;
-  nvvkpp::GraphicsPipelineGenerator pipelineGenerator(m_device, pipelinelayout, renderpass);
+  std::vector<std::string>                paths = defaultSearchPaths;
+  nvvk::GraphicsPipelineGeneratorCombined pipelineGenerator(m_device, pipelinelayout, renderpass);
   pipelineGenerator.addShader(nvh::loadFile("shaders/filtercube.vert.spv", true, paths), vk::ShaderStageFlagBits::eVertex);
   pipelineGenerator.addShader(nvh::loadFile("shaders/prefilter_diffuse.frag.spv", true, paths), vk::ShaderStageFlagBits::eFragment);
   pipelineGenerator.rasterizationState.setCullMode(vk::CullModeFlagBits::eNone);
-  pipelineGenerator.vertexInputState.bindingDescriptions   = {{0, sizeof(nvmath::vec3f)}};
-  pipelineGenerator.vertexInputState.attributeDescriptions = {{0, 0, vk::Format::eR32G32B32Sfloat, 0}};
+  pipelineGenerator.addBindingDescription({0, sizeof(nvmath::vec3f)});
+  pipelineGenerator.addAttributeDescriptions({{0, 0, vk::Format::eR32G32B32Sfloat, 0}});
   pipelineGenerator.depthStencilState.setDepthTestEnable(false);
-  vk::Pipeline pipeline = pipelineGenerator.create();
+  vk::Pipeline pipeline = pipelineGenerator.createPipeline();
   renderToCube(renderpass, filteredEnv, pipelinelayout, pipeline, descSet, dim, format, numMips);
 
   // todo: cleanup
@@ -535,32 +548,33 @@ void SkydomePbr::prefilterGlossy(uint32_t dim)
     samplerCreateInfo.maxLod     = numMips;
 
     vk::ImageCreateInfo imageCreateInfo =
-        nvvkpp::image::createCubeInfo(size, format, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, true);
+        nvvk::makeImageCubeCreateInfo(size, format, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, true);
     vk::DeviceSize bufferSize = size.width * size.height * 4 * sizeof(float);
 
     {
-      nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-      filteredEnv            = m_alloc.createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
-      filteredEnv.descriptor = nvvkpp::image::createCubeDescriptor(m_device, filteredEnv.image, samplerCreateInfo, format);
+      nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+      nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
+      vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo, true);
+      filteredEnv                     = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
     }
-    m_alloc.flushStaging();
+    m_alloc->finalizeAndReleaseStaging();
   }
 
   // Render pass, one attachment, no depth
-  vk::RenderPass renderpass = nvvkpp::util::createRenderPass(m_device, {format}, vk::Format::eUndefined, 1, true, true,
-                                                             vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+  vk::RenderPass renderpass = nvvk::createRenderPass(m_device, {format}, vk::Format::eUndefined, 1, true, true,
+                                                     vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
   // Descriptors
-  std::vector<vk::DescriptorSetLayoutBinding> descSetBind;
-  descSetBind.emplace_back(vk::DescriptorSetLayoutBinding(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
-  descSetBind.emplace_back(vk::DescriptorSetLayoutBinding(1, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
-  vk::DescriptorSetLayout descSetLayout = nvvkpp::util::createDescriptorSetLayout(m_device, descSetBind);
-  vk::DescriptorPool      descPool      = nvvkpp::util::createDescriptorPool(m_device, descSetBind);
-  vk::DescriptorSet       descSet       = nvvkpp::util::createDescriptorSet(m_device, descPool, descSetLayout);
+  nvvk::DescriptorSetBindings descSetBind;
+  descSetBind.addBinding(vk::DescriptorSetLayoutBinding(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  descSetBind.addBinding(vk::DescriptorSetLayoutBinding(1, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  vk::DescriptorSetLayout descSetLayout = descSetBind.createLayout(m_device);
+  vk::DescriptorPool      descPool      = descSetBind.createPool(m_device);
+  vk::DescriptorSet       descSet       = nvvk::allocateDescriptorSet(m_device, descPool, descSetLayout);
 
   std::vector<vk::WriteDescriptorSet> writes;
-  writes.emplace_back(nvvkpp::util::createWrite(descSet, descSetBind[0], &m_textures.txtHdr.descriptor));
-  writes.emplace_back(nvvkpp::util::createWrite(descSet, descSetBind[1], &m_textures.accelImpSmpl.descriptor));
+  writes.emplace_back(descSetBind.makeWrite(descSet, 0, &m_textures.txtHdr.descriptor));
+  writes.emplace_back(descSetBind.makeWrite(descSet, 1, &m_textures.accelImpSmpl.descriptor));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
 
@@ -569,15 +583,15 @@ void SkydomePbr::prefilterGlossy(uint32_t dim)
   vk::PipelineLayout    pipelinelayout = m_device.createPipelineLayout({{}, 1, &descSetLayout, 1, &pushConstantRange});
 
   // Pipeline
-  std::vector<std::string>          paths = defaultSearchPaths;
-  nvvkpp::GraphicsPipelineGenerator pipelineGenerator(m_device, pipelinelayout, renderpass);
+  std::vector<std::string>                paths = defaultSearchPaths;
+  nvvk::GraphicsPipelineGeneratorCombined pipelineGenerator(m_device, pipelinelayout, renderpass);
   pipelineGenerator.addShader(nvh::loadFile("shaders/filtercube.vert.spv", true, paths), vk::ShaderStageFlagBits::eVertex);
   pipelineGenerator.addShader(nvh::loadFile("shaders/prefilter_glossy.frag.spv", true, paths), vk::ShaderStageFlagBits::eFragment);
   pipelineGenerator.rasterizationState.setCullMode(vk::CullModeFlagBits::eNone);
-  pipelineGenerator.vertexInputState.bindingDescriptions   = {{0, sizeof(nvmath::vec3f)}};
-  pipelineGenerator.vertexInputState.attributeDescriptions = {{0, 0, vk::Format::eR32G32B32Sfloat, 0}};
+  pipelineGenerator.addBindingDescriptions({{0, sizeof(nvmath::vec3f)}});
+  pipelineGenerator.addAttributeDescriptions({{0, 0, vk::Format::eR32G32B32Sfloat, 0}});
   pipelineGenerator.depthStencilState.setDepthTestEnable(false);
-  vk::Pipeline pipeline = pipelineGenerator.create();
+  vk::Pipeline pipeline = pipelineGenerator.createPipeline();
   renderToCube(renderpass, filteredEnv, pipelinelayout, pipeline, descSet, dim, format, numMips);
 
   // todo: cleanup
@@ -597,7 +611,7 @@ void SkydomePbr::prefilterGlossy(uint32_t dim)
 // Render into all 6 sides of a cube with mipmaping
 //
 void SkydomePbr::renderToCube(const vk::RenderPass& renderpass,
-                              nvvkTexture&          filteredEnv,
+                              nvvk::Texture&          filteredEnv,
                               vk::PipelineLayout    pipelinelayout,
                               vk::Pipeline          pipeline,
                               vk::DescriptorSet     descSet,
@@ -607,7 +621,7 @@ void SkydomePbr::renderToCube(const vk::RenderPass& renderpass,
 {
   // Render
   vk::ClearValue clearValues[1];
-  clearValues[0].color = nvvkpp::util::clearColor({0.0f, 0.0f, 0.2f, 0.0f});
+  clearValues[0].color = std::array<float, 4>({0.0f, 0.0f, 0.2f, 0.0f});
 
   // Rendering to image, then copy to cube
   Offscreen offscreen = createOffscreen(dim, format, renderpass);
@@ -625,8 +639,8 @@ void SkydomePbr::renderToCube(const vk::RenderPass& renderpass,
   mv[5] = nvmath::look_at(pos, nvmath::vec3f(0.0f, 0.0f, -1.0f), nvmath::vec3f(0.0f, -1.0f, 0.0f));  // Negative Z
 
 
-  nvvkpp::SingleCommandBuffer sc(m_device, m_queueIndex);
-  const vk::CommandBuffer&    cmdBuf = sc.createCommandBuffer();
+  nvvk::CommandPool        sc(m_device, m_queueIndex);
+  const vk::CommandBuffer& cmdBuf = sc.createCommandBuffer();
 
   vk::Viewport viewport{0, 0, (float)dim, (float)dim, 0, 1};
   vk::Rect2D   scissor{vk::Offset2D{}, vk::Extent2D{(uint32_t)dim, (uint32_t)dim}};
@@ -634,8 +648,8 @@ void SkydomePbr::renderToCube(const vk::RenderPass& renderpass,
   cmdBuf.setScissor(0, scissor);
   vk::ImageSubresourceRange subresourceRange{vk::ImageAspectFlagBits::eColor, 0, numMips, 0, 6};
   // Change image layout for all cubemap faces to transfer destination
-  nvvkpp::image::setImageLayout(cmdBuf, filteredEnv.image, vk::ImageLayout::eUndefined,
-                                vk::ImageLayout::eTransferDstOptimal, subresourceRange);
+  nvvk::cmdBarrierImageLayout(cmdBuf, filteredEnv.image, vk::ImageLayout::eUndefined,
+                              vk::ImageLayout::eTransferDstOptimal, subresourceRange);
 
   nvmath::mat4f matPers = nvmath::perspectiveVK(90.0f, 1.0f, 0.1f, 10.0f);
 
@@ -662,14 +676,14 @@ void SkydomePbr::renderToCube(const vk::RenderPass& renderpass,
       cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout, 0, descSet, nullptr);
 
       std::vector<vk::DeviceSize> offsets{0};
-      cmdBuf.bindVertexBuffers(0, 1, &m_vertices.buffer, offsets.data());
+      cmdBuf.bindVertexBuffers(0, {m_vertices.buffer}, {offsets});
       cmdBuf.bindIndexBuffer(m_indices.buffer, 0, vk::IndexType::eUint32);
       cmdBuf.drawIndexed(36, 1, 0, 0, 0);
 
       cmdBuf.endRenderPass();
 
-      nvvkpp::image::setImageLayout(cmdBuf, offscreen.image.image, vk::ImageAspectFlagBits::eColor,
-                                    vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eTransferSrcOptimal);
+      nvvk::cmdBarrierImageLayout(cmdBuf, offscreen.image.image, vk::ImageLayout::eColorAttachmentOptimal,
+                                  vk::ImageLayout::eTransferSrcOptimal, vk::ImageAspectFlagBits::eColor);
 
       // Copy region for transfer from framebuffer to cube face
       vk::ImageCopy copyRegion;
@@ -691,17 +705,17 @@ void SkydomePbr::renderToCube(const vk::RenderPass& renderpass,
                        vk::ImageLayout::eTransferDstOptimal, copyRegion);
 
       // Transform framebuffer color attachment back
-      nvvkpp::image::setImageLayout(cmdBuf, offscreen.image.image, vk::ImageAspectFlagBits::eColor,
-                                    vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eColorAttachmentOptimal);
+      nvvk::cmdBarrierImageLayout(cmdBuf, offscreen.image.image, vk::ImageLayout::eTransferSrcOptimal,
+                                  vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor);
     }
   }
-  nvvkpp::image::setImageLayout(cmdBuf, filteredEnv.image, vk::ImageLayout::eTransferDstOptimal,
-                                vk::ImageLayout::eShaderReadOnlyOptimal, subresourceRange);
-  sc.flushCommandBuffer(cmdBuf);
+  nvvk::cmdBarrierImageLayout(cmdBuf, filteredEnv.image, vk::ImageLayout::eTransferDstOptimal,
+                              vk::ImageLayout::eShaderReadOnlyOptimal, subresourceRange);
+  sc.submitAndWait(cmdBuf);
 
   // destroy
   m_device.destroyFramebuffer(offscreen.framebuffer, nullptr);
-  m_alloc.destroy(offscreen.image);
+  m_alloc->destroy(offscreen.image);
   m_device.destroyImageView(offscreen.descriptor.imageView);
 }
 
@@ -721,7 +735,7 @@ SkydomePbr::Offscreen SkydomePbr::createOffscreen(int dim, vk::Format format, co
   imageCreateInfo.mipLevels     = 1;
   imageCreateInfo.arrayLayers   = 1;
   imageCreateInfo.usage         = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
-  offscreen.image               = m_alloc.createImage(imageCreateInfo);
+  offscreen.image               = m_alloc->createImage(imageCreateInfo);
 
   vk::ImageViewCreateInfo colorImageView;
   colorImageView.viewType                    = vk::ImageViewType::e2D;
@@ -742,11 +756,11 @@ SkydomePbr::Offscreen SkydomePbr::createOffscreen(int dim, vk::Format format, co
   offscreen.framebuffer          = m_device.createFramebuffer(fbufCreateInfo);
 
   {
-    nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-    nvvkpp::image::setImageLayout(cmdBuf, offscreen.image.image, vk::ImageAspectFlagBits::eColor,
-                                  vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    nvvk::cmdBarrierImageLayout(cmdBuf, offscreen.image.image, vk::ImageLayout::eUndefined,
+                                vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor);
   }
-  m_alloc.flushStaging();
+  m_alloc->finalizeAndReleaseStaging();
   offscreen.descriptor.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 
   return offscreen;

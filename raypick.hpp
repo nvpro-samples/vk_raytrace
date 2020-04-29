@@ -33,23 +33,14 @@
 
 
 #include "nvh/fileoperations.hpp"
-#include "nvvkpp/allocator_dma_vkpp.hpp"
-#include "nvvkpp/debug_util_vkpp.hpp"
-#include "nvvkpp/descriptorsets_vkpp.hpp"
-#include "nvvkpp/utilities_vkpp.hpp"
+#include "nvvk/debug_util_vk.hpp"
+#include "nvvk/descriptorsets_vk.hpp"
+#include "nvvk/shaders_vk.hpp"
+#include "vkalloc.hpp"
+
 
 extern std::vector<std::string> defaultSearchPaths;
 
-namespace nvvkpp {
-
-using vkDT   = vk::DescriptorType;
-using vkSS   = vk::ShaderStageFlagBits;
-using vkCB   = vk::CommandBufferUsageFlagBits;
-using vkDSLB = vk::DescriptorSetLayoutBinding;
-
-using nvvkBuffer   = nvvkpp::BufferDma;
-using nvvkAlloc    = nvvkpp::AllocatorDma;
-using nvvkMemAlloc = nvvk::DeviceMemoryAllocator;
 
 struct RayPicker
 {
@@ -71,10 +62,10 @@ public:
     uint32_t      primitiveID{0};
   };
 
-  nvvkBuffer m_pickResult;
-  nvvkBuffer m_sbtBuffer;
+  nvvk::Buffer m_pickResult;
+  nvvk::Buffer m_sbtBuffer;
 
-  std::vector<vk::DescriptorSetLayoutBinding> m_binding;
+  nvvk::DescriptorSetBindings m_binding;
 
   vk::DescriptorPool                       m_descPool;
   vk::DescriptorSetLayout                  m_descSetLayout;
@@ -86,19 +77,19 @@ public:
   vk::PhysicalDevice                       m_physicalDevice;
   vk::Device                               m_device;
   uint32_t                                 m_queueIndex;
-  nvvkAlloc                                m_alloc;
-  nvvkpp::DebugUtil                        m_debug;
+  nvvk::Allocator*                           m_alloc;
+  nvvk::DebugUtil                          m_debug;
 
   RayPicker() = default;
 
 
-  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvkMemAlloc& memAlloc)
+  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvk::Allocator* allocator)
   {
     m_physicalDevice = physicalDevice;
     m_device         = device;
     m_queueIndex     = queueIndex;
     m_debug.setup(device);
-    m_alloc.init(device, &memAlloc);
+    m_alloc = allocator;
   }
 
 
@@ -106,8 +97,8 @@ public:
 
   void destroy()
   {
-    m_alloc.destroy(m_pickResult);
-    m_alloc.destroy(m_sbtBuffer);
+    m_alloc->destroy(m_pickResult);
+    m_alloc->destroy(m_sbtBuffer);
     m_device.destroyDescriptorSetLayout(m_descSetLayout);
     m_device.destroyPipelineLayout(m_pipelineLayout);
     m_device.destroyPipeline(m_pipeline);
@@ -133,30 +124,30 @@ public:
 
   void createOutputResult()
   {
-    m_alloc.destroy(m_pickResult);
+    m_alloc->destroy(m_pickResult);
     m_pickResult =
-        m_alloc.createBuffer(sizeof(PickResult), vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eStorageBuffer,
+        m_alloc->createBuffer(sizeof(PickResult), vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eStorageBuffer,
                              vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     m_debug.setObjectName(m_pickResult.buffer, "PickResult");
   }
 
   void createDescriptorSet(const vk::DescriptorBufferInfo& sceneUbo)
   {
-    m_binding.emplace_back(vkDSLB(0, vkDT::eAccelerationStructureNV, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
-    m_binding.emplace_back(vkDSLB(1, vkDT::eStorageBuffer, 1, vkSS::eRaygenNV));
-    m_binding.emplace_back(vkDSLB(2, vkDT::eUniformBuffer, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
+    m_binding.addBinding(vkDS(0, vkDT::eAccelerationStructureNV, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
+    m_binding.addBinding(vkDS(1, vkDT::eStorageBuffer, 1, vkSS::eRaygenNV));
+    m_binding.addBinding(vkDS(2, vkDT::eUniformBuffer, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
 
-    m_descPool      = util::createDescriptorPool(m_device, m_binding);
-    m_descSetLayout = util::createDescriptorSetLayout(m_device, m_binding);
+    m_descPool      = m_binding.createPool(m_device);
+    m_descSetLayout = m_binding.createLayout(m_device);
     m_descSet       = m_device.allocateDescriptorSets({m_descPool, 1, &m_descSetLayout})[0];
 
     vk::WriteDescriptorSetAccelerationStructureNV descAsInfo{1, &m_tlas};
 
     vk::DescriptorBufferInfo            pickDesc{m_pickResult.buffer, 0, VK_WHOLE_SIZE};
     std::vector<vk::WriteDescriptorSet> writes;
-    writes.emplace_back(util::createWrite(m_descSet, m_binding[0], &descAsInfo));
-    writes.emplace_back(util::createWrite(m_descSet, m_binding[1], &pickDesc));
-    writes.emplace_back(util::createWrite(m_descSet, m_binding[2], &sceneUbo));
+    writes.emplace_back(m_binding.makeWrite(m_descSet, 0, &descAsInfo));
+    writes.emplace_back(m_binding.makeWrite(m_descSet, 1, &pickDesc));
+    writes.emplace_back(m_binding.makeWrite(m_descSet, 2, &sceneUbo));
     m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
   }
 
@@ -164,9 +155,9 @@ public:
   void createPipeline()
   {
     std::vector<std::string> paths = defaultSearchPaths;
-    vk::ShaderModule raygenSM = util::createShaderModule(m_device, nvh::loadFile("shaders/pick.rgen.spv", true, paths));
-    vk::ShaderModule missSM = util::createShaderModule(m_device, nvh::loadFile("shaders/pick.rmiss.spv", true, paths));
-    vk::ShaderModule chitSM = util::createShaderModule(m_device, nvh::loadFile("shaders/pick.rchit.spv", true, paths));
+    vk::ShaderModule raygenSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/pick.rgen.spv", true, paths));
+    vk::ShaderModule missSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/pick.rmiss.spv", true, paths));
+    vk::ShaderModule chitSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/pick.rchit.spv", true, paths));
 
     std::vector<vk::PipelineShaderStageCreateInfo> stages;
 
@@ -223,19 +214,19 @@ public:
     std::vector<uint8_t> shaderHandleStorage(sbtSize);
     m_device.getRayTracingShaderGroupHandlesNV(m_pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data() /*, NVVKPP_DISPATCHER*/);
 
-    m_sbtBuffer = m_alloc.createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
+    m_sbtBuffer = m_alloc->createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
                                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     m_debug.setObjectName(m_sbtBuffer.buffer, std::string("PickSBT").c_str());
 
     // Write the handles in the SBT
-    void* mapped = m_alloc.map(m_sbtBuffer);
+    void* mapped = m_alloc->map(m_sbtBuffer);
     auto* pData  = reinterpret_cast<uint8_t*>(mapped);
     for(uint32_t g = 0; g < groupCount; g++)
     {
       memcpy(pData, shaderHandleStorage.data() + g * groupHandleSize, groupHandleSize);  // raygen
       pData += groupHandleSize;
     }
-    m_alloc.unmap(m_sbtBuffer);
+    m_alloc->unmap(m_sbtBuffer);
   }
 
   void run(const vk::CommandBuffer& cmdBuf, float x, float y)
@@ -275,10 +266,9 @@ public:
   PickResult getResult()
   {
     PickResult pr;
-    void*      mapped = m_alloc.map(m_pickResult);
+    void*      mapped = m_alloc->map(m_pickResult);
     memcpy(&pr, mapped, sizeof(PickResult));
-    m_alloc.unmap(m_pickResult);
+    m_alloc->unmap(m_pickResult);
     return pr;
   }
 };
-}  // namespace nvvkpp

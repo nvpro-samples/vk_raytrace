@@ -37,35 +37,27 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "nvvkpp/commands_vkpp.hpp"
-#include "nvvkpp/descriptorsets_vkpp.hpp"
-#include "nvvkpp/utilities_vkpp.hpp"
+#include <vulkan/vulkan.hpp>
 
-#define ALLOC_DMA
-#include "nvvk/memorymanagement_vk.hpp"
-#include "nvvkpp/allocator_dma_vkpp.hpp"
-#include "nvvkpp/raytrace_vkpp.hpp"
+#include "vkalloc.hpp"
 
+#include "nvvk/commands_vk.hpp"
+#include "nvvk/descriptorsets_vk.hpp"
+#include "nvvk/raytraceNV_vk.hpp"
 
-namespace nvvkpp {
 
 class Raytracer
 {
-  using nvvkBuffer   = nvvkpp::BufferDma;
-  using nvvkTexture  = nvvkpp::TextureDma;
-  using nvvkAlloc    = nvvkpp::AllocatorDma;
-  using nvvkMemAlloc = nvvk::DeviceMemoryAllocator;
-
 
 public:
   Raytracer();
 
   // Initializing the allocator and querying the raytracing properties
-  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvkMemAlloc& memoryAllocator);
+  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvk::Allocator* allocator);
 
 
   // Return the rendered image
-  const nvvkTexture& outputImage() const;
+  const nvvk::Texture& outputImage() const;
   const int          maxFrames() const;
 
   void destroy();
@@ -91,23 +83,23 @@ public:
   // To control the raytracer
   bool uiSetup();
 
-  nvvkpp::RaytracingBuilder& builder() { return m_rtBuilder; }
+  nvvk::RaytracingBuilderNV& builder() { return m_rtBuilder; }
 
 private:
   std::vector<vk::RayTracingShaderGroupCreateInfoNV> m_groups;
-  nvvkTexture                                        m_raytracingOutput;
+  nvvk::Texture                                        m_raytracingOutput;
   vk::Extent2D                                       m_outputSize;
-  std::vector<vk::DescriptorSetLayoutBinding>        m_binding;
+  nvvk::DescriptorSetBindings                        m_binding;
 
-  vk::Device        m_device;
-  nvvkpp::DebugUtil m_debug;
-  uint32_t          m_queueIndex;
-  nvvkAlloc         m_alloc;
+  vk::Device      m_device;
+  nvvk::DebugUtil m_debug;
+  uint32_t        m_queueIndex;
+  nvvk::Allocator*  m_alloc;
 
-  nvvkBuffer                                         m_rtSBTBuffer;
+  nvvk::Buffer                                         m_rtSBTBuffer;
   vk::PhysicalDeviceRayTracingPropertiesNV           m_rtProperties;
-  nvvkpp::RaytracingBuilder                          m_rtBuilder;
-  std::vector<vk::DescriptorSetLayoutBinding>        m_rtDescSetLayoutBind;
+  nvvk::RaytracingBuilderNV                          m_rtBuilder;
+  nvvk::DescriptorSetBindings                        m_rtDescSetLayoutBind;
   vk::DescriptorPool                                 m_rtDescPool;
   vk::DescriptorSetLayout                            m_rtDescSetLayout;
   vk::DescriptorSet                                  m_rtDescSet;
@@ -125,4 +117,3 @@ private:
 
   int m_maxFrames{100};  // Max iterations
 };
-}  // namespace nvvkpp

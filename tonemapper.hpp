@@ -26,14 +26,11 @@
  */
 
 #pragma once
+#include <vulkan/vulkan.hpp>
 
-#include <nvvkpp/pipeline_vkpp.hpp>
+#include "vkalloc.hpp"
 
-
-using vkDT = vk::DescriptorType;
-using vkSS = vk::ShaderStageFlagBits;
-using vkCB = vk::CommandBufferUsageFlagBits;
-
+#include "nvvk/pipeline_vk.hpp"
 
 // Take as an input an image (RGB32F) and apply a tonemapper
 //
@@ -45,18 +42,14 @@ using vkCB = vk::CommandBufferUsageFlagBits;
 // - getOutput
 class Tonemapper
 {
-  using nvvkTexture  = nvvkpp::TextureDma;
-  using nvvkAlloc    = nvvkpp::AllocatorDma;
-  using nvvkMemAlloc = nvvk::DeviceMemoryAllocator;
-
 public:
   Tonemapper() = default;
-  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvkMemAlloc& memAlloc)
+  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueIndex, nvvk::Allocator* allocator)
   {
     m_device     = device;
     m_queueIndex = queueIndex;
 
-    m_alloc.init(device, &memAlloc);
+    m_alloc = allocator;
   }
 
   void initialize(const VkExtent2D& size)
@@ -79,21 +72,22 @@ public:
   void updateRenderTarget(const VkExtent2D& size)
   {
     m_size = size;
-    m_alloc.destroy(m_output);
+    m_alloc->destroy(m_output);
 
 
     vk::SamplerCreateInfo samplerCreateInfo;  // default values
     vk::ImageCreateInfo   imageCreateInfo =
-        nvvkpp::image::create2DInfo(m_size, vk::Format::eR8G8B8A8Unorm,
+        nvvk::makeImage2DCreateInfo(m_size, vk::Format::eR8G8B8A8Unorm,
                                     vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled);
     vk::DeviceSize bufferSize = m_size.width * m_size.height * 4;
 
     {
-      nvvkpp::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-      m_output            = m_alloc.createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
-      m_output.descriptor = nvvkpp::image::create2DDescriptor(m_device, m_output.image, samplerCreateInfo);
+      nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+      nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
+      vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
+      m_output                        = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
     }
-    m_alloc.flushStaging();
+    m_alloc->finalizeAndReleaseStaging();
 
 
     if(m_framebuffer)
@@ -116,7 +110,7 @@ public:
 
   void destroy()
   {
-    m_alloc.destroy(m_output);
+    m_alloc->destroy(m_output);
     m_device.destroyFramebuffer(m_framebuffer);
     m_device.destroyDescriptorSetLayout(m_descriptorSetLayout);
     m_device.destroyRenderPass(m_renderPass);
@@ -125,7 +119,7 @@ public:
     m_device.destroyDescriptorPool(m_descriptorPool);
   }
 
-  nvvkTexture getOutput() { return m_output; }
+  nvvk::Texture getOutput() { return m_output; }
 
   // Executing the the tonemapper
   void run(const vk::CommandBuffer& cmdBuf)
@@ -200,11 +194,11 @@ private:
     std::vector<std::string> paths = defaultSearchPaths;
 
     // Pipeline: completely generic, no vertices
-    nvvkpp::GraphicsPipelineGenerator pipelineGenerator(m_device, m_pipelineLayout, m_renderPass);
+    nvvk::GraphicsPipelineGeneratorCombined pipelineGenerator(m_device, m_pipelineLayout, m_renderPass);
     pipelineGenerator.addShader(nvh::loadFile("shaders/passthrough.vert.spv", true, paths), vk::ShaderStageFlagBits::eVertex);
     pipelineGenerator.addShader(nvh::loadFile("shaders/tonemap.frag.spv", true, paths), vk::ShaderStageFlagBits::eFragment);
     pipelineGenerator.rasterizationState.setCullMode(vk::CullModeFlagBits::eNone);
-    m_pipeline = pipelineGenerator.create();
+    m_pipeline = pipelineGenerator.createPipeline();
   }
 
   struct pushConstant
@@ -225,9 +219,9 @@ private:
   vk::Framebuffer         m_framebuffer;
   vk::Extent2D            m_size{0, 0};
 
-  nvvkTexture m_output;
-  uint32_t    m_queueIndex;
-  nvvkAlloc   m_alloc;
+  nvvk::Texture    m_output;
+  uint32_t       m_queueIndex;
+  nvvk::Allocator* m_alloc;
 
   pushConstant m_pushCnt{1, 2.2, 1.0};
 };

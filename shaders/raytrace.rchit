@@ -25,7 +25,7 @@ layout(push_constant) uniform Constants
 
 
 // Raytracing hit attributes: barycentrics
-hitAttributeNV vec3 attribs;
+hitAttributeNV vec2 attribs;
 
 layout(set = 0, binding = 0) uniform accelerationStructureNV topLevelAS;
 
