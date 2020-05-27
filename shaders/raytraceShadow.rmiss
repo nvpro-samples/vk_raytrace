@@ -1,7 +1,8 @@
 #version 460
 #extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
 
-layout(location = 2) rayPayloadInNV bool isShadowed;
+#include "share.h"
 
 //-------------------------------------------------------------------------------------------------
 // This will be executed when sending shadow rays and missing all geometries
@@ -11,7 +12,13 @@ layout(location = 2) rayPayloadInNV bool isShadowed;
 //   set to false.
 //-------------------------------------------------------------------------------------------------
 
+//-----------------------------------------------------------------
+// Miss shader for the shadow rayPayloadInNV
+//
+
+layout(location = 1) rayPayloadInNV ShadowHitInfo payload;
+
 void main()
 {
-  isShadowed = false;
+  payload.isHit = false;
 }

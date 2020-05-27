@@ -2,6 +2,7 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
 
 #include "binding.h"
 #include "sampling.glsl"
@@ -13,20 +14,21 @@
 // - If it is transparent, it will randomly go through proportionaly to the opacity level
 //
 
-
-// Incoming Payload information
-layout(location = 0) rayPayloadInNV PerRayData_raytrace prd;
-
 // Raytracing hit attributes: barycentrics
 hitAttributeNV vec2 attribs;
 
 // clang-format off
-layout(set = 1, binding = B_PRIM_INFO) readonly buffer _instanceInfo {primInfo i[];} instanceInfo;
+
+// Incoming Payload information
+layout(location = 0) rayPayloadInNV RadianceHitInfo payload;
+
+layout(set = 0, binding = 2) readonly buffer _InstanceInfo {PrimMeshInfo i[];} InstanceInfo;
+
 layout(set = 1, binding = B_VERTICES) readonly buffer _VertexBuf {float v[];} VertexBuf;
 layout(set = 1, binding = B_INDICES) readonly buffer _Indices {uint i[]; } indices;
 layout(set = 1, binding = B_TEXCOORDS) readonly buffer _UvBuf {float v[];} UvBuf;
 layout(set = 1, binding = B_MATERIAL) readonly buffer _MaterialBuffer {Material m[];} MaterialBuffer;
-layout(set = 2, binding = 0) uniform sampler2D albedoMap[];
+layout(set = 1, binding = B_TEXTURES) uniform sampler2D texturesMap[];
 // clang-format on
 
 // Shading structure
@@ -64,35 +66,39 @@ vec2 getTexCoord(uint index)
 //
 ShadingState getShadingState()
 {
-  // Getting the 'first index' for this instance (offset of the instance + offset of the triangle)
-  uint indexOffset = instanceInfo.i[gl_InstanceID].indexOffset + (3 * gl_PrimitiveID);
+  // Retrieve the Primitive mesh buffer information
+  PrimMeshInfo pinfo = InstanceInfo.i[gl_InstanceCustomIndexNV];
 
-  // Vertex offset as defined in glTF
-  uint vertexOffset = instanceInfo.i[gl_InstanceID].vertexOffset;
+  // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
+  uint indexOffset  = pinfo.indexOffset + (3 * gl_PrimitiveID);
+  uint vertexOffset = pinfo.vertexOffset;           // Vertex offset as defined in glTF
+  uint matIndex     = max(0, pinfo.materialIndex);  // material of primitive mesh
 
 
-  // Getting the 3 indices of the triangle
-  ivec3 trianglIndex = ivec3(indices.i[indexOffset + 0], indices.i[indexOffset + 1], indices.i[indexOffset + 2]);
-  trianglIndex += ivec3(vertexOffset);
+  // Getting the 3 indices of the triangle (local)
+  ivec3 triangleIndex = ivec3(indices.i[indexOffset + 0], indices.i[indexOffset + 1], indices.i[indexOffset + 2]);
+  triangleIndex += ivec3(vertexOffset);  // (global)
 
   // Barycentric of the triangle
   const vec3 barycentric = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
-  const vec3 pos0        = getVertex(trianglIndex.x);
-  const vec3 pos1        = getVertex(trianglIndex.y);
-  const vec3 pos2        = getVertex(trianglIndex.z);
-  const vec3 geom_normal = normalize(cross(pos1 - pos0, pos2 - pos0));
+  const vec3 pos0              = getVertex(triangleIndex.x);
+  const vec3 pos1              = getVertex(triangleIndex.y);
+  const vec3 pos2              = getVertex(triangleIndex.z);
+  const vec3 geom_normal       = normalize(cross(pos1 - pos0, pos2 - pos0));
+  const vec3 world_geom_normal = normalize(vec3(geom_normal * gl_WorldToObjectNV));
 
   // The Uv on each triangle point
-  const vec2 uv0 = getTexCoord(trianglIndex.x);
-  const vec2 uv1 = getTexCoord(trianglIndex.y);
-  const vec2 uv2 = getTexCoord(trianglIndex.z);
+  const vec2 uv0       = getTexCoord(triangleIndex.x);
+  const vec2 uv1       = getTexCoord(triangleIndex.y);
+  const vec2 uv2       = getTexCoord(triangleIndex.z);
+  const vec2 texcoord0 = uv0 * barycentric.x + uv1 * barycentric.y + uv2 * barycentric.z;
 
   // Returning state information
   ShadingState state;
-  state.texcoord0   = uv0 * barycentric.x + uv1 * barycentric.y + uv2 * barycentric.z;
-  state.matIndex    = instanceInfo.i[gl_InstanceID].materialIndex;
-  state.geom_normal = normalize(cross(pos1 - pos0, pos2 - pos0));
+  state.texcoord0   = texcoord0;
+  state.matIndex    = matIndex;
+  state.geom_normal = world_geom_normal;
   return state;
 }
 
@@ -114,11 +120,23 @@ void main()
     return;
 
   // Single sided, culling back face
-  if(material.doubleSided == 0 && is_back_face(state))
+  if(material.doubleSided == false && is_back_face(state))
     ignoreIntersectionNV();
 
   // Getting the opacity hold in the alpha channel
-  float opacity = texture(albedoMap[state.matIndex], state.texcoord0).a * material.baseColorFactor.a;
+  float opacity = 1;
+  if(material.shadingModel == 0)
+  {
+    opacity = material.pbrBaseColorFactor.a;
+    if(material.pbrBaseColorTexture > -1)
+      opacity *= texture(texturesMap[nonuniformEXT(material.pbrBaseColorTexture)], state.texcoord0).a;
+  }
+  else
+  {
+    opacity = material.khrDiffuseFactor.a;
+    if(material.khrDiffuseTexture > -1)
+      opacity *= texture(texturesMap[nonuniformEXT(material.khrDiffuseTexture)], state.texcoord0).a;
+  }
 
   // Applying cutoff mask
   if(material.alphaMode == 1 && opacity < material.alphaCutoff)  // mask
@@ -127,6 +145,6 @@ void main()
   // Blending
   if(opacity == 0.0)  // fully transparent
     ignoreIntersectionNV();
-  else if(rnd(prd.seed) > opacity)
+  else if(rnd(payload.seed) > opacity)
     ignoreIntersectionNV();
 }

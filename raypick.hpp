@@ -59,6 +59,7 @@ public:
     nvmath::vec4f worldPos{0, 0, 0, 0};
     nvmath::vec4f barycentrics{0, 0, 0, 0};
     uint32_t      intanceID{0};
+    uint32_t      intanceCustomID{0};
     uint32_t      primitiveID{0};
   };
 
@@ -93,7 +94,7 @@ public:
   }
 
 
-  const vk::Buffer& outputResult() const { return m_pickResult.buffer; }
+  VkBuffer outputResult() const { return m_pickResult.buffer; }
 
   void destroy()
   {
@@ -133,6 +134,7 @@ public:
 
   void createDescriptorSet(const vk::DescriptorBufferInfo& sceneUbo)
   {
+    m_binding.clear();
     m_binding.addBinding(vkDS(0, vkDT::eAccelerationStructureNV, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
     m_binding.addBinding(vkDS(1, vkDT::eStorageBuffer, 1, vkSS::eRaygenNV));
     m_binding.addBinding(vkDS(2, vkDT::eUniformBuffer, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));

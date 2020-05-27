@@ -1,18 +1,46 @@
 
-struct PerRayData_raytrace
+const uint FLAG_NONE               = 0;
+const uint FLAG_INSIDE             = 1;
+const uint FLAG_DONE               = 2;
+const uint FLAG_FIRST_PATH_SEGMENT = 4;
+
+const uint MATERIAL_FLAG_NONE         = 0;
+const uint MATERIAL_FLAG_OPAQUE       = 1;  // allows to skip opacity evaluation
+const uint MATERIAL_FLAG_DOUBLE_SIDED = 2;  // geometry is only visible from the front side
+
+
+// clang-format off
+void add_flag(inout uint flags, uint to_add) { flags |= to_add; }
+void toggle_flag(inout uint flags, uint to_toggle) { flags ^= to_toggle; }
+void remove_flag(inout uint flags, uint to_remove) {flags &= ~to_remove; }
+bool has_flag(uint flags, uint to_check) { return (flags & to_check) != 0; }
+// clang-format on
+
+struct RadianceHitInfo
 {
-  vec3  result;
-  vec3  importance;
-  float roughness;
+  vec3  contribution;
+  vec3  weight;
+  vec3  rayOrigin;
+  vec3  rayDir;
   uint  seed;
-  int   depth;
+  float last_pdf;
+  uint  flags;
 };
+
+// Payload for Shadow
+struct ShadowHitInfo
+{
+  bool isHit;
+  uint seed;
+};
+
 
 struct PerRayData_pick
 {
   vec4 worldPos;
   vec4 barycentrics;
   uint instanceID;
+  uint instanceCustomID;
   uint primitiveID;
 };
 
@@ -31,12 +59,12 @@ struct Light
   vec2  padding;
 };
 
-// Per Instance information
-struct primInfo
+// Primitive Mesh information
+struct PrimMeshInfo
 {
   uint indexOffset;
   uint vertexOffset;
-  uint materialIndex;
+  int  materialIndex;
 };
 
 // Matrices buffer for all instances
@@ -51,28 +79,41 @@ struct Scene
   mat4  projection;
   mat4  model;
   vec4  camPos;
+  int   debugMode;
   int   nbLights;  // w = lightRadiance
   int   _pad1;
   int   _pad2;
-  int   _pad3;
   Light lights[10];
 };
 
 struct Material
 {
-  vec4  baseColorFactor;
+  int shadingModel;  // 0: metallic-roughness, 1: specular-glossiness
+
+  // PbrMetallicRoughness
+  vec4  pbrBaseColorFactor;
+  int   pbrBaseColorTexture;
+  float pbrMetallicFactor;
+  float pbrRoughnessFactor;
+  int   pbrMetallicRoughnessTexture;
+
+  // KHR_materials_pbrSpecularGlossiness
+  vec4  khrDiffuseFactor;
+  int   khrDiffuseTexture;
+  vec3  khrSpecularFactor;
+  float khrGlossinessFactor;
+  int   khrSpecularGlossinessTexture;
+
+  int   emissiveTexture;
   vec3  emissiveFactor;
-  float metallicFactor;  // 8
-  vec3  specularFactor;
-  float roughnessFactor;  // 12 -
-  int   alphaMode;        // 0: opaque, 1: mask, 2: blend
+  int   alphaMode;
   float alphaCutoff;
-  float glossinessFactor;
-  int   shadingModel;  // 16 - 0: metallic-roughness, 1: specular-glossiness
-  int   doubleSided;
-  int   pad0;
-  int   pad1;
-  int   pad2;
+  bool  doubleSided;
+
+  int   normalTexture;
+  float normalTextureScale;
+  int   occlusionTexture;
+  float occlusionTextureStrength;
 };
 
 #define MATERIAL_METALLICROUGHNESS 0

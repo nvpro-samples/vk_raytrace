@@ -13,10 +13,9 @@ hitAttributeNV vec2 attribs;
 
 void main()
 {
-  prd.worldPos =  vec4(gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV, 0);
-  prd.barycentrics = vec4(1.0 - attribs.x - attribs.y, attribs.x, attribs.y, 0);
-  prd.instanceID = gl_InstanceID;
-  prd.primitiveID = gl_PrimitiveID;
-
-
+  prd.worldPos         = vec4(gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV, 0);
+  prd.barycentrics     = vec4(1.0 - attribs.x - attribs.y, attribs.x, attribs.y, 0);
+  prd.instanceID       = gl_InstanceID;
+  prd.instanceCustomID = gl_InstanceCustomIndexNV;
+  prd.primitiveID      = gl_PrimitiveID;
 }

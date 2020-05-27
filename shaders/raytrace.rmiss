@@ -13,7 +13,7 @@
 #include "sampling.glsl"
 #include "share.h"
 
-layout(location = 0) rayPayloadInNV PerRayData_raytrace prd;
+layout(location = 0) rayPayloadInNV RadianceHitInfo payload;
 
 layout(set = 1, binding = B_HDR) uniform sampler2D samplerEnv;
 layout(set = 1, binding = B_FILTER_GLOSSY) uniform samplerCube prefilteredMap;
@@ -30,16 +30,18 @@ vec3 prefilteredReflection(vec3 R, float roughness)
 void main()
 {
 
-  vec3 hitValue = vec3(0);
-  if(prd.roughness > 0)
-  {
-    hitValue = prefilteredReflection(gl_WorldRayDirectionNV, prd.roughness);
-  }
-  else
+  vec3 radiance = vec3(0);
+//  if(prd.roughness > 0)
+//  {
+//    hitValue = prefilteredReflection(gl_WorldRayDirectionNV, prd.roughness);
+//  }
+//  else
   {
     vec2 uv  = get_spherical_uv(gl_WorldRayDirectionNV);  // See sampling.glsl
-    hitValue = texture(samplerEnv, uv).rgb;
+    radiance = texture(samplerEnv, uv).rgb;
   }
-  prd.result += hitValue * prd.importance;
-  prd.depth = 1000;  // Will stop rendering
+
+  payload.contribution += radiance * payload.weight;
+    payload.flags =  FLAG_DONE;
+
 }

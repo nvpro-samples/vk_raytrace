@@ -42,21 +42,6 @@
 #include "skydome.hpp"
 #include "tonemapper.hpp"
 
-
-// Overloading the glTF scene to hold the vk::DescriptorImageInfo needed for Vulkan
-struct gltfScene : nvh::gltf::Scene
-{
-  std::vector<vk::DescriptorImageInfo> m_textureDescriptors;
-
-  void getMaterials(tinygltf::Model& gltfModel)
-  {
-    Scene::loadMaterials(gltfModel);
-    m_textureDescriptors.resize(m_numTextures);
-  }
-
-  vk::DescriptorImageInfo& getDescriptor(nvh::gltf::TextureIDX idx) { return m_textureDescriptors[idx]; }
-};
-
 //--------------------------------------------------------------------------------------------------
 // Loading a glTF scene, raytrace and tonemap result
 //
@@ -64,43 +49,30 @@ class VkRtExample : public nvvk::AppBase
 {
 public:
   VkRtExample() = default;
+  void destroy() override;
+  void setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t graphicsQueueIndex) override;
 
-  void initExample();
+  void loadScene(const std::string& filename);
+  void loadEnvironmentHdr(const std::string& hdrFilename);
+
   void display();
 
-  void setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t graphicsQueueIndex) override
-  {
-    AppBase::setup(instance, device, physicalDevice, graphicsQueueIndex);
-    m_debug.setup(device);
-
-#ifdef NVVK_ALLOC_DMA
-    m_dmaAllocator.init(device, physicalDevice);
-    m_alloc.init(device, physicalDevice, &m_dmaAllocator);
-#elif defined(NVVK_ALLOC_DEDICATED)
-    m_alloc.init(device, physicalDevice);
-#endif
-
-    m_raytracer.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
-    m_rayPicker.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
-    m_tonemapper.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
-    m_skydome.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
-  }
-
-  void destroy() override;
-  void onResize(int w, int h) override;
   void createRenderPass() override;
+  void createTonemapper();
+  void createAxis();
+  void createDescriptorFinal();
+  void createFinalPipeline();
+
   void onKeyboardChar(unsigned char key) override;
   void onKeyboard(int key, int scancode, int action, int mods) override;
-  void setScene(const std::string& filename);
-  void setEnvironmentHdr(const std::string& hdrFilename);
+  void onFileDrop(const char* filename) override;
+  void onResize(int w, int h) override;
 
 private:
   struct Light
   {
     nvmath::vec4f position{50.f, 50.f, 50.f, 1.f};
     nvmath::vec4f color{1.f, 1.f, 1.f, 1.f};
-    //float         intensity{10.f};
-    //float         _pad;
   };
 
   struct SceneUBO
@@ -108,34 +80,20 @@ private:
     nvmath::mat4f projection;
     nvmath::mat4f model;
     nvmath::vec4f cameraPosition{0.f, 0.f, 0.f};
+    int           debugMode{0};
     int           nbLights{0};
-    int           _pad1{0};
-    int           _pad2{0};
-    int           _pad3{0};
-    Light         lights[10];
+    Light         lights[1];
   };
 
-  // Each primitive/BLAS used for retrieving info
-  struct PrimitiveSBO
-  {
-    uint32_t indexOffset;
-    uint32_t vertexOffset;
-    uint32_t materialIndex;
-  };
-
-  vk::GeometryNV primitiveToGeometry(const nvh::gltf::Primitive& prim);
-  void           createDescriptorFinal();
-  void           createDescriptorMaterial();
-  void           createDescriptorRaytrace();
+  vk::GeometryNV primitiveToGeometry(const nvh::GltfPrimMesh& prim);
+  void           createSceneDescriptors();
+  void           createSceneBuffers();
   void           updateDescriptor(const vk::DescriptorImageInfo& descriptor);
-  void           createEmptyTexture();
-  void           prepareUniformBuffers();
-  void           createPipeline();
   void           updateCameraBuffer(const vk::CommandBuffer& cmdBuffer);
-  void           drawUI();
-  void           loadImages(tinygltf::Model& gltfModel);
+  void           importImages(tinygltf::Model& gltfModel);
   void           updateFrame();
   void           resetFrame();
+  void           drawUI();
   bool           uiLights();
 
   vk::RenderPass     m_renderPassUI;
@@ -145,29 +103,22 @@ private:
   // Descriptors
   enum Dset
   {
-    eFinal,     // For the tonemapper
-    eMaterial,  // All materials
-    eRaytrace,  // All info for raytracer
+    eFinal,  // For the tonemapper
+    eScene,  // All scene data
     Total
   };
-  std::vector<nvvk::DescriptorSetBindings> m_descSetLayoutBind{Dset::Total};
   std::vector<vk::DescriptorSetLayout>     m_descSetLayout{Dset::Total};
   std::vector<vk::DescriptorPool>          m_descPool{Dset::Total};
   std::vector<vk::DescriptorSet>           m_descSet{Dset::Total};
+  std::vector<nvvk::DescriptorSetBindings> m_descSetLayoutBind{Dset::Total};
 
 
   // GLTF scene model
-  gltfScene                 m_gltfScene;         // The scene
-  nvh::gltf::VertexData     m_vertices;          // All vertices
-  std::vector<uint32_t>     m_indices;           // All indices
-  SceneUBO                  m_sceneUbo;          // Camera, light and more
-  nvvk::Texture               m_emptyTexture[2];   // black and white
-  std::vector<PrimitiveSBO> m_primitiveOffsets;  // Primitive information: vertex, index offset + mat
+  nvh::GltfScene m_gltfScene;   // The scene
+  nvh::GltfStats m_sceneStats;  // The scene stats
 
-  std::string m_filename;  // Scene filename
-  std::string m_hdrFilename;
+  SceneUBO m_sceneUbo;  // Camera, light and more
 
-  int m_upVector = 1;  // Y up
   int m_frameNumber{0};
 
   nvvk::AxisVK m_axis;        // To display the axis in the lower left corner
@@ -181,17 +132,16 @@ private:
   nvvk::Buffer m_vertexBuffer;
   nvvk::Buffer m_normalBuffer;
   nvvk::Buffer m_uvBuffer;
+  nvvk::Buffer m_tangentBuffer;
   nvvk::Buffer m_indexBuffer;
-  nvvk::Buffer m_matrixBuffer;
   nvvk::Buffer m_materialBuffer;
-  nvvk::Buffer m_primitiveInfoBuffer;
 
   // All textures
   std::vector<nvvk::Texture> m_textures;
 
   // Memory allocator for buffers and images
 #ifdef NVVK_ALLOC_DMA
-  nvvk::DeviceMemoryAllocator   m_dmaAllocator;
+  nvvk::MemAllocator m_memAllocator;
 #endif
   nvvk::Allocator m_alloc;
 

@@ -209,7 +209,7 @@ void SkydomePbr::loadEnvironment(const std::string& hrdImage)
 
   {
     nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-    nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, pixels, icInfo);
+    nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, pixels, icInfo);
     vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
     m_textures.txtHdr               = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
   }
@@ -307,7 +307,8 @@ void SkydomePbr::createEnvironmentAccelTexture(const float* pixels, vk::Extent2D
     }
   }
 
-  const float inv_env_integral = 1.0f / build_alias_map(importance_data, env_accel);
+  m_integral                   = build_alias_map(importance_data, env_accel);
+  const float inv_env_integral = 1.0f / m_integral;
   for(uint32_t i = 0; i < rx * ry; ++i)
   {
     const uint32_t idx4 = i * 4;
@@ -322,7 +323,7 @@ void SkydomePbr::createEnvironmentAccelTexture(const float* pixels, vk::Extent2D
     vk::ImageCreateInfo   icInfo     = nvvk::makeImage2DCreateInfo({rx, ry}, format);
     vk::DeviceSize        bufferSize = rx * ry * sizeof(Env_accel);
 
-    nvvk::Image               image  = m_alloc->createImage(cmdBuf, bufferSize, env_accel.data(), icInfo);
+    nvvk::Image             image  = m_alloc->createImage(cmdBuf, bufferSize, env_accel.data(), icInfo);
     vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
     accelTex                       = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
   }
@@ -472,7 +473,7 @@ void SkydomePbr::prefilterDiffuse(uint32_t dim)
 
     {
       nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-      nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
+      nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
       vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo, true);
       filteredEnv                     = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
     }
@@ -553,7 +554,7 @@ void SkydomePbr::prefilterGlossy(uint32_t dim)
 
     {
       nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-      nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
+      nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
       vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo, true);
       filteredEnv                     = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
     }
@@ -611,7 +612,7 @@ void SkydomePbr::prefilterGlossy(uint32_t dim)
 // Render into all 6 sides of a cube with mipmaping
 //
 void SkydomePbr::renderToCube(const vk::RenderPass& renderpass,
-                              nvvk::Texture&          filteredEnv,
+                              nvvk::Texture&        filteredEnv,
                               vk::PipelineLayout    pipelinelayout,
                               vk::Pipeline          pipeline,
                               vk::DescriptorSet     descSet,

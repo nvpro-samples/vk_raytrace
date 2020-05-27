@@ -54,10 +54,11 @@ public:
     m_debug.setup(device);
   }
 
-  void loadEnvironment(const std::string& hrdImage);
-  void create(const vk::DescriptorBufferInfo& sceneBufferDesc, const vk::RenderPass& renderPass);
-  void draw(const vk::CommandBuffer& commandBuffer);
-  void destroy();
+  void  loadEnvironment(const std::string& hrdImage);
+  void  create(const vk::DescriptorBufferInfo& sceneBufferDesc, const vk::RenderPass& renderPass);
+  void  draw(const vk::CommandBuffer& commandBuffer);
+  void  destroy();
+  float getIntegral() { return m_integral; }
 
   struct Textures
   {
@@ -89,6 +90,8 @@ private:
   uint32_t         m_queueIndex{0};
   nvvk::Allocator* m_alloc{nullptr};
   nvvk::DebugUtil  m_debug;
+
+  float m_integral{1.f};
 
   void createCube();
   void createEnvironmentAccelTexture(const float* pixels, vk::Extent2D& size, nvvk::Texture& accelTex);

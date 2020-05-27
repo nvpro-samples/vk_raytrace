@@ -83,7 +83,7 @@ public:
 
     {
       nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
-      nvvk::Image                image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
+      nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, nullptr, imageCreateInfo);
       vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
       m_output                        = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
     }
@@ -117,6 +117,9 @@ public:
     m_device.destroyPipeline(m_pipeline);
     m_device.destroyPipelineLayout(m_pipelineLayout);
     m_device.destroyDescriptorPool(m_descriptorPool);
+
+    m_renderPass  = vk::RenderPass();
+    m_framebuffer = vk::Framebuffer();
   }
 
   nvvk::Texture getOutput() { return m_output; }
@@ -220,7 +223,7 @@ private:
   vk::Extent2D            m_size{0, 0};
 
   nvvk::Texture    m_output;
-  uint32_t       m_queueIndex;
+  uint32_t         m_queueIndex;
   nvvk::Allocator* m_alloc;
 
   pushConstant m_pushCnt{1, 2.2, 1.0};

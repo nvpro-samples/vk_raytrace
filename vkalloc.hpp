@@ -24,3 +24,28 @@ using vkCB = vk::CommandBufferUsageFlagBits;
 using vkBU = vk::BufferUsageFlagBits;
 using vkIU = vk::ImageUsageFlagBits;
 using vkMP = vk::MemoryPropertyFlagBits;
+
+
+// Utility to time the execution of something resetting the timer
+// on each elapse call
+// Usage:
+// {
+//   MilliTimer timer;
+//   ... stuff ...
+//   double time_elapse = timer.elapse();
+// }
+#include <chrono>
+
+struct MilliTimer
+{
+  MilliTimer() { reset(); }
+  void   reset() { startTime = std::chrono::high_resolution_clock::now(); }
+  double elapse()
+  {
+    auto now  = std::chrono::high_resolution_clock::now();
+    auto t    = std::chrono::duration_cast<std::chrono::microseconds>(now - startTime).count() / 1000.0;
+    startTime = now;
+    return t;
+  }
+  std::chrono::high_resolution_clock::time_point startTime;
+};

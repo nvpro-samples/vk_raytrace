@@ -133,8 +133,6 @@ int main(int argc, char** argv)
   vkctx.initDevice(compatibleDevices[0], contextInfo);
 
   VkRtExample example;
-  example.setScene(filename);
-  example.setEnvironmentHdr(hdrFilename);
 
   // Window need to be opened to get the surface on which to draw
   vk::SurfaceKHR surface = example.getVkSurface(vkctx.m_instance, window);
@@ -143,12 +141,19 @@ int main(int argc, char** argv)
   example.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
   LOGI("Using %s \n", example.getPhysicalDevice().getProperties().deviceName);
 
+  example.loadEnvironmentHdr(hdrFilename);
+
   example.createSurface(surface, SAMPLE_SIZE_WIDTH, SAMPLE_SIZE_HEIGHT);
   example.createDepthBuffer();
   example.createRenderPass();
   example.createFrameBuffers();
-  example.initExample();  // Now build the example
-  example.initGUI(0);     // Using sub-pass 0
+  example.createTonemapper();
+  example.createAxis();
+  example.createDescriptorFinal();
+  example.createFinalPipeline();  // How the quad will be rendered
+
+  example.loadScene(filename);  // Now build the example
+  example.initGUI(0);           // Using sub-pass 0
 
 
   // GLFW Callback

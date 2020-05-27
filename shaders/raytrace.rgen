@@ -26,13 +26,18 @@ ubo;
 //------------------------------------
 layout(push_constant) uniform Constants
 {
-  int frame;    // Current frame
-  int depth;    // Trace depth
-  int samples;  // Number of samples per pixel
-};
+  int   frame;     // Current frame
+  int   maxDepth;  // Trace depth
+  int   samples;   // Number of samples per pixel
+  float hdrMultiplier;
+  float fireflyClampThreshold;
+}
+pushC;
 
 // Payload
-layout(location = 0) rayPayloadNV PerRayData_raytrace prd;
+//layout(location = 0) rayPayloadNV PerRayData_raytrace prd;
+
+layout(location = 0) rayPayloadNV RadianceHitInfo payload;
 
 
 //-------------------------------
@@ -40,16 +45,16 @@ layout(location = 0) rayPayloadNV PerRayData_raytrace prd;
 //-------------------------------
 void main()
 {
-  vec3 hitValue = vec3(0);
-  for(int smpl = 0; smpl < samples; ++smpl)
+  vec3 hitValues = vec3(0);
+  for(int smpl = 0; smpl < pushC.samples; ++smpl)
   {
     // Initialize the random number
-    uint  seed = tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, frame * samples + smpl);
-    float r1   = radinv_fl(seed, 2);
-    float r2   = radinv_fl(seed, 3);
+    uint  seed = tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, pushC.frame * pushC.samples + smpl);
+    float r1   = rnd(seed);
+    float r2   = rnd(seed);
 
     // Subpixel jitter: send the ray through a different position inside the pixel each time, to provide antialiasing.
-    vec2 subpixel_jitter = (frame * samples + smpl) == 0 ? vec2(0.0f, 0.0f) : vec2(r1 - 0.5f, r2 - 0.5f);
+    vec2 subpixel_jitter = (pushC.frame * pushC.samples + smpl) == 0 ? vec2(0.0f, 0.0f) : vec2(r1 - 0.5f, r2 - 0.5f);
 
     const vec2 pixelCenter = vec2(gl_LaunchIDNV.xy) + vec2(0.5) + subpixel_jitter;
     const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeNV.xy);
@@ -65,42 +70,75 @@ void main()
     float Tmax        = 100000.0;
 
     // Payload
-    prd.result     = vec3(0.f);
-    prd.importance = vec3(1.f);
-    prd.seed       = seed;
-    prd.depth      = 0;
-    prd.roughness  = 0;
+    //    prd.result     = vec3(0.f);
+    //    prd.importance = vec3(1.f);
+    //    prd.seed       = seed;
+    //    prd.depth      = 0;
+    //    prd.roughness  = 0;
 
-    traceNV(topLevelAS,         // acceleration structure
-            gl_RayFlagsNoneNV,  // rayFlags
-            0xFF,               // cullMask
-            0,                  // sbtRecordOffset
-            0,                  // sbtRecordStride
-            0,                  // missIndex
-            origin.xyz,         // ray origin
-            Tmin,               // ray min range
-            direction.xyz,      // ray direction
-            Tmax,               // ray max range
-            0                   // payload layout(location = 0)
-    );
 
-    // Accumulating the result for this sample
-    hitValue += prd.result;
+    payload.flags        = FLAG_FIRST_PATH_SEGMENT;
+    payload.rayOrigin    = origin.xyz;
+    payload.rayDir       = direction.xyz;
+    payload.contribution = vec3(0., 0., 0.);
+    payload.weight       = vec3(1., 1., 1.);
+    payload.last_pdf     = -1.f;
+    payload.seed         = seed;
+
+    for(int depth = 0; depth < pushC.maxDepth; depth++)
+    {
+      traceNV(topLevelAS,         // acceleration structure
+              gl_RayFlagsNoneNV,  // rayFlags
+              0xFF,               // cullMask
+              0,                  // sbtRecordOffset
+              0,                  // sbtRecordStride
+              0,                  // missIndex
+              origin.xyz,         // ray origin
+              Tmin,               // ray min range
+              direction.xyz,      // ray direction
+              Tmax,               // ray max range
+              0                   // payload layout(location = 0)
+      );
+
+      hitValues += payload.contribution;
+
+      {
+        float lum = dot(hitValues, vec3(0.212671f, 0.715160f, 0.072169f));
+        if(lum > pushC.fireflyClampThreshold)
+          hitValues *= pushC.fireflyClampThreshold / lum;
+      }
+
+      // Russian roulette termination
+      if(!has_flag(payload.flags, FLAG_FIRST_PATH_SEGMENT))
+      {
+        float pcont = max(payload.weight.x, max(payload.weight.y, payload.weight.z));
+        if(rnd(seed) >= pcont)
+          break;
+        payload.weight /= pcont;
+      }
+
+      if(has_flag(payload.flags, FLAG_DONE))
+        break;
+
+      origin.xyz    = payload.rayOrigin;
+      direction.xyz = payload.rayDir;
+      remove_flag(payload.flags, FLAG_FIRST_PATH_SEGMENT);
+    }
   }
 
   // Average result
-  hitValue = hitValue / samples;
+  hitValues = hitValues / pushC.samples;
 
   // Do accumulation over time
-  if(frame > 0)
+  if(pushC.frame > 0)
   {
-    float a         = 1.0f / float(frame);
+    float a         = 1.0f / float(pushC.frame);
     vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDNV.xy)).xyz;
-    imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(mix(old_color, hitValue, a), 1.f));
+    imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(mix(old_color, hitValues, a), 1.f));
   }
   else
   {
     // First frame, replace value in the buffer
-    imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(hitValue, 1.f));
+    imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(hitValues, 1.f));
   }
 }
