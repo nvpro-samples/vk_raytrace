@@ -2,59 +2,52 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
-//#extension GL_KHR_vulkan_glsl : enable
+#extension GL_EXT_scalar_block_layout : enable
 
 #include "binding.h"
+#include "sampling.glsl"
 #include "share.h"
 
-
-const float M_PI             = 3.141592653589793;
+const float M_PI             = 3.14159265359;
+const float M_2PI            = 6.28318530718;
 const float c_MinReflectance = 0.04;
 
 // Payload information of the ray returning: 0 hit, 2 shadow
-layout(location = 0) rayPayloadInNV PerRayData_raytrace prd;
-layout(location = 2) rayPayloadNV bool prdIsInShadow;
+layout(location = 0) rayPayloadInNV RadianceHitInfo payload;
+layout(location = 1) rayPayloadNV ShadowHitInfo shadow_payload;
 
 layout(push_constant) uniform Constants
 {
   int   frame;
-  int   depth;
+  int   rayDepth;
   int   samples;
-  float hdrMultiplier;
-};
+  float environmentIntensityFactor;
+}
+pushC;
 
 
 // Raytracing hit attributes: barycentrics
 hitAttributeNV vec2 attribs;
 
-layout(set = 0, binding = 0) uniform accelerationStructureNV topLevelAS;
-
 // clang-format off
+layout(set = 0, binding = 0) uniform accelerationStructureNV topLevelAS;
+layout(set = 0, binding = 2) readonly buffer _InstanceInfo {PrimMeshInfo i[];} InstanceInfo;
+
 layout(set = 1, binding = B_SCENE) uniform _ubo {Scene s;} ubo;
-layout(set = 1, binding = B_PRIM_INFO) readonly buffer _instanceInfo {primInfo i[];} instanceInfo;
 layout(set = 1, binding = B_VERTICES) readonly buffer _VertexBuf {float v[];} VertexBuf;
 layout(set = 1, binding = B_INDICES) readonly buffer _Indices {uint i[]; } indices;
 layout(set = 1, binding = B_NORMALS) readonly buffer _NormalBuf {float v[];} NormalBuf;
 layout(set = 1, binding = B_TEXCOORDS) readonly buffer _UvBuf {float v[];} UvBuf;
-layout(set = 1, binding = B_MATRICES) readonly buffer _MatrixBuffer {InstancesMatrices m[];} MatrixBuffer;
+layout(set = 1, binding = B_TANGENTS) readonly buffer _TangentBuf {float v[];} TangentBuf;
 layout(set = 1, binding = B_MATERIAL) readonly buffer _MaterialBuffer {Material m[];} MaterialBuffer;
-layout(set = 1, binding = B_HDR) uniform sampler2D samplerEnv;
+layout(set = 1, binding = B_HDR) uniform sampler2D environmentTexture;
 //layout(set = 1, binding = B_FILTER_DIFFUSE) uniform samplerCube samplerIrradiance;
 layout(set = 1, binding = B_LUT_BRDF) uniform sampler2D samplerBRDFLUT;
 //layout(set = 1, binding = B_FILTER_GLOSSY) uniform samplerCube prefilteredMap;
-layout(set = 1, binding = B_IMPORT_SMPL) uniform sampler2D env_accel_tex;
+layout(set = 1, binding = B_IMPORT_SMPL) uniform sampler2D environmentSamplingData;
+layout(set = 1, binding = B_TEXTURES) uniform sampler2D texturesMap[]; // all textures
 
 // clang-format on
-
-// All textures
-layout(set = 2, binding = 0) uniform sampler2D albedoMap[];
-layout(set = 2, binding = 1) uniform sampler2D normalMap[];
-layout(set = 2, binding = 2) uniform sampler2D occlusionMap[];
-layout(set = 2, binding = 3) uniform sampler2D metallicRoughness[];
-layout(set = 2, binding = 4) uniform sampler2D emissiveMap[];
-
-
-#include "sampling.glsl"
 
 
 // Return the vertex position
@@ -84,15 +77,25 @@ vec2 getTexCoord(uint index)
   return vp;
 }
 
+vec4 getTangents(uint index)
+{
+  vec4 vp;
+  vp.x = TangentBuf.v[4 * index + 0];
+  vp.y = TangentBuf.v[4 * index + 1];
+  vp.z = TangentBuf.v[4 * index + 2];
+  vp.w = TangentBuf.v[4 * index + 3];
+  return vp;
+}
+
 // Structure of what a vertex is
 struct ShadingState
 {
   vec3 pos;
-  vec3 nrm;
-  vec3 geo_nrm;
+  vec3 normal;
+  vec3 geom_normal;
   vec2 texcoord0;
   vec3 tangent;
-  vec3 binormal;
+  vec3 bitangent;
   uint matIndex;
 };
 
@@ -116,37 +119,6 @@ struct AngularInfo
   vec3  padding;
 };
 
-
-void computeTangent(in vec3 pos0, in vec3 pos1, in vec3 pos2, in vec2 uv0, in vec2 uv1, in vec2 uv2, in vec3 geo_normal, out vec3 tangent, out vec3 binormal)
-{
-  // Tangent and Binormal
-  // http://www.terathon.com/code/tangent.html
-  float x1 = pos1.x - pos0.x;
-  float x2 = pos2.x - pos0.x;
-  float y1 = pos1.y - pos0.y;
-  float y2 = pos2.y - pos0.y;
-  float z1 = pos1.z - pos0.z;
-  float z2 = pos2.z - pos0.z;
-
-  float s1 = uv1.x - uv0.x;
-  float s2 = uv2.x - uv0.x;
-  float t1 = uv1.y - uv0.y;
-  float t2 = uv2.y - uv0.y;
-
-  float r    = 1.0F / (s1 * t2 - s2 * t1);
-  vec3  sdir = vec3((t2 * x1 - t1 * x2) * r, (t2 * y1 - t1 * y2) * r, (t2 * z1 - t1 * z2) * r);
-  vec3  tdir = vec3((s1 * x2 - s2 * x1) * r, (s1 * y2 - s2 * y1) * r, (s1 * z2 - s2 * z1) * r);
-
-  vec3  N          = normalize(geo_normal);
-  vec3  T          = normalize(sdir - N * dot(N, sdir));
-  float handedness = (dot(cross(N, sdir), tdir) < 0.0F) ? -1.0F : 1.0F;
-  vec3  B          = normalize(cross(N, T)) * handedness;
-
-  tangent  = T;
-  binormal = B;
-}
-
-
 //--------------------------------------------------------------
 // Getting the interpolated vertex
 // gl_InstanceID gives the Instance Info
@@ -154,42 +126,35 @@ void computeTangent(in vec3 pos0, in vec3 pos1, in vec3 pos2, in vec2 uv0, in ve
 //
 ShadingState getShadingState()
 {
-  // Getting the 'first index' for this instance (offset of the instance + offset of the triangle)
-  uint indexOffset = instanceInfo.i[gl_InstanceID].indexOffset + (3 * gl_PrimitiveID);
+  // Retrieve the Primitive mesh buffer information
+  PrimMeshInfo pinfo = InstanceInfo.i[gl_InstanceCustomIndexNV];
 
-  // Vertex offset as defined in glTF
-  uint vertexOffset = instanceInfo.i[gl_InstanceID].vertexOffset;
+  // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
+  uint indexOffset  = pinfo.indexOffset + (3 * gl_PrimitiveID);
+  uint vertexOffset = pinfo.vertexOffset;           // Vertex offset as defined in glTF
+  uint matIndex     = max(0, pinfo.materialIndex);  // material of primitive mesh
 
-  uint matIndex = instanceInfo.i[gl_InstanceID].materialIndex;
-
-  // Getting the 3 indices of the triangle
-  ivec3 trianglIndex = ivec3(indices.i[indexOffset + 0], indices.i[indexOffset + 1], indices.i[indexOffset + 2]);
-  trianglIndex += ivec3(vertexOffset);
+  // Getting the 3 indices of the triangle (local)
+  ivec3 triangleIndex = ivec3(indices.i[indexOffset + 0], indices.i[indexOffset + 1], indices.i[indexOffset + 2]);
+  triangleIndex += ivec3(vertexOffset);  // (global)
 
   const vec3 barycentric = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
-  const vec3 pos0        = getVertex(trianglIndex.x);
-  const vec3 pos1        = getVertex(trianglIndex.y);
-  const vec3 pos2        = getVertex(trianglIndex.z);
-  const vec3 geom_normal = normalize(cross(pos1 - pos0, pos2 - pos0));
-  const vec3 position    = getVertex(trianglIndex.x) * barycentric.x + getVertex(trianglIndex.y) * barycentric.y
-                        + getVertex(trianglIndex.z) * barycentric.z;
+  // Position
+  const vec3 pos0           = getVertex(triangleIndex.x);
+  const vec3 pos1           = getVertex(triangleIndex.y);
+  const vec3 pos2           = getVertex(triangleIndex.z);
+  const vec3 position       = pos0 * barycentric.x + pos1 * barycentric.y + pos2 * barycentric.z;
+  const vec3 world_position = vec3(gl_ObjectToWorldNV * vec4(position, 1.0));
 
-  const vec3 normal = normalize(getNormal(trianglIndex.x) * barycentric.x    //
-                                + getNormal(trianglIndex.y) * barycentric.y  //
-                                + getNormal(trianglIndex.z) * barycentric.z);
-
-  const vec3 world_position = vec3(MatrixBuffer.m[gl_InstanceID].world * vec4(position, 1.0));
-
-  // transform normals using inverse transpose
-  vec3 world_geom_normal = normalize(vec3(MatrixBuffer.m[gl_InstanceID].worldIT * vec4(geom_normal, 0.0)));
-  vec3 world_normal      = normalize(vec3(MatrixBuffer.m[gl_InstanceID].worldIT * vec4(normal, 0.0)));
-
-  const vec2 uv0       = getTexCoord(trianglIndex.x);
-  const vec2 uv1       = getTexCoord(trianglIndex.y);
-  const vec2 uv2       = getTexCoord(trianglIndex.z);
-  const vec2 texcoord0 = uv0 * barycentric.x + uv1 * barycentric.y + uv2 * barycentric.z;
-
+  // Normal
+  const vec3 nrm0              = getNormal(triangleIndex.x);
+  const vec3 nrm1              = getNormal(triangleIndex.y);
+  const vec3 nrm2              = getNormal(triangleIndex.z);
+  const vec3 normal            = normalize(nrm0 * barycentric.x + nrm1 * barycentric.y + nrm2 * barycentric.z);
+  const vec3 world_normal      = normalize(vec3(normal * gl_WorldToObjectNV));
+  const vec3 geom_normal       = normalize(cross(pos1 - pos0, pos2 - pos0));
+  vec3       world_geom_normal = normalize(vec3(geom_normal * gl_WorldToObjectNV));
 
   // flip geometry normal to the side of the incident ray
   if(dot(world_geom_normal, gl_WorldRayDirectionNV) > 0.0)
@@ -197,39 +162,47 @@ ShadingState getShadingState()
     world_geom_normal *= -1.0f;
   }
 
+  // Texture coord
+  const vec2 uv0       = getTexCoord(triangleIndex.x);
+  const vec2 uv1       = getTexCoord(triangleIndex.y);
+  const vec2 uv2       = getTexCoord(triangleIndex.z);
+  const vec2 texcoord0 = uv0 * barycentric.x + uv1 * barycentric.y + uv2 * barycentric.z;
+
+
   ShadingState state;
-  state.pos       = world_position;
-  state.nrm       = world_normal;
-  state.geo_nrm   = world_geom_normal;
-  state.texcoord0 = texcoord0;
-  state.matIndex  = matIndex;
+  state.pos         = world_position;
+  state.normal      = world_normal;
+  state.geom_normal = world_geom_normal;
+  state.texcoord0   = texcoord0;
+  state.matIndex    = matIndex;
 
   // Tangent and Binormal
-  vec3 tangentNormal = texture(normalMap[matIndex], texcoord0).xyz;
-  if(length(tangentNormal) > 0.)
+  int normalTexture = MaterialBuffer.m[state.matIndex].normalTexture;
+  if(normalTexture > -1)
   {
-    vec3 tangent, binormal;
-    computeTangent(pos0, pos1, pos2, uv0, uv1, uv2, normal, tangent, binormal);
-    mat3 TBN           = mat3(tangent, binormal, normal);
-    tangentNormal      = normalize(tangentNormal * 2.0 - 1.0);
-    vec3 pnormal       = normalize(TBN * tangentNormal);
-    vec3 world_pnormal = normalize(vec3(MatrixBuffer.m[gl_InstanceID].worldIT * vec4(pnormal, 0.0)));
+    const vec4 tangent0  = getTangents(triangleIndex.x);
+    const vec4 tangent1  = getTangents(triangleIndex.y);
+    const vec4 tangent2  = getTangents(triangleIndex.z);
+    const vec4 tangent   = tangent0 * barycentric.x + tangent1 * barycentric.y + tangent2 * barycentric.z;
+    const vec3 bitangent = normalize(cross(normal, tangent.xyz)) * tangent.w;
 
-    const vec3 world_tangent  = normalize(vec3(MatrixBuffer.m[gl_InstanceID].worldIT * vec4(tangent, 0.0)));
-    const vec3 world_binormal = normalize(vec3(MatrixBuffer.m[gl_InstanceID].worldIT * vec4(binormal, 0.0)));
+    vec3 normalVector  = texture(texturesMap[nonuniformEXT(normalTexture)], texcoord0).xyz;
+    normalVector       = normalize(normalVector * 2.0 - 1.0);
+    mat3 TBN           = mat3(tangent.xyz, bitangent, normal);
+    vec3 pnormal       = normalize(TBN * normalVector);
+    vec3 world_pnormal = normalize(vec3(pnormal * gl_WorldToObjectNV));
 
-    state.nrm      = world_pnormal;
-    state.tangent  = world_tangent;
-    state.binormal = world_binormal;
+    state.normal    = world_pnormal;
+    state.tangent   = tangent.xyz;
+    state.bitangent = bitangent.xyz;
   }
 
 
   // Move normal to same side as geometric normal
-  if(dot(state.nrm, state.geo_nrm) <= 0)
+  if(dot(state.normal, state.geom_normal) <= 0)
   {
-    state.nrm *= -1.0f;
+    state.normal *= -1.0f;
   }
-
 
   return state;
 }
@@ -238,7 +211,7 @@ ShadingState getShadingState()
 //
 // This fragment shader defines a reference implementation for Physically Based Shading of
 // a microfacet surface material defined by a glTF model.
-// See https://github.com/KhronosGroup/glTF-Sample-Viewer/blob/master/src/shaders/metallic-roughness.frag
+// See https://github.com/KhronosGroup/glTF-Sample-Viewer/blob/master/src/shaders/pbr.frag
 //
 // References:
 // [1] Real Shading in Unreal Engine 4
@@ -342,6 +315,7 @@ AngularInfo getAngularInfo(vec3 pointToLight, vec3 normal, vec3 view)
   return AngularInfo(NdotL, NdotV, NdotH, LdotH, VdotH, vec3(0, 0, 0));
 }
 
+// Return shading value
 vec3 getPointShade(vec3 pointToLight, MaterialInfo materialInfo, vec3 normal, vec3 view)
 {
   AngularInfo angularInfo = getAngularInfo(pointToLight, normal, view);
@@ -365,109 +339,71 @@ vec3 getPointShade(vec3 pointToLight, MaterialInfo materialInfo, vec3 normal, ve
   return vec3(0.0, 0.0, 0.0);
 }
 
-// https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_lights_punctual/README.md#range-property
-float getRangeAttenuation(float range, float distance)
+
+// Get a normal on the microfacet
+vec3 getGGXMicrofacet(float roughness, vec3 normal)
 {
-  if(range < 0.0)
+  float e0 = rnd(payload.seed);
+  float e1 = rnd(payload.seed);
+
+  vec3 t, b;
+  createCoordinateSystem(normal, t, b);
+
+  // GGX NDF sampling
+  float a2        = roughness * roughness;
+  float cosThetaH = sqrt(max(0.0f, (1.0 - e0) / ((a2 - 1.0) * e0 + 1)));
+  float sinThetaH = sqrt(max(0.0f, 1.0f - cosThetaH * cosThetaH));
+  float phiH      = e1 * M_PI * 2.0f;
+
+  // Get our GGX NDF sample (i.e., the half vector)
+  return t * (sinThetaH * cos(phiH)) + b * (sinThetaH * sin(phiH)) + normal * cosThetaH;
+}
+
+
+// Returning the reflection direction and the reflectance weight.
+void getSampling(MaterialInfo materialInfo, vec3 N, vec3 V, out vec3 reflDir, out vec3 reflectance)
+{
+  // Randomly sample the NDF to get a microfacet in our BRDF to reflect off of
+  vec3 H = getGGXMicrofacet(materialInfo.perceptualRoughness, N);
+
+  // Compute the outgoing direction based on this (perfectly reflective) microfacet
+  vec3 L  = normalize(2.f * dot(V, H) * H - V);
+  reflDir = L;
+
+  // Compute some dot products needed for shading
+  AngularInfo angularInfo;
+  angularInfo.NdotL = clamp(dot(N, L), 0.05, 1);
+  angularInfo.NdotH = dot(N, H);
+  angularInfo.NdotV = dot(N, V);
+  angularInfo.VdotH = dot(V, H);
+
+  if(angularInfo.NdotL > 0.0 || angularInfo.NdotV > 0.0)
   {
-    // negative range means unlimited
-    return 1.0;
+    // Calculate the shading terms for the microfacet specular shading model
+    vec3  F   = specularReflection(materialInfo, angularInfo);
+    float Vis = visibilityOcclusion(materialInfo, angularInfo);
+    float G   = 4 * Vis * angularInfo.NdotL * angularInfo.NdotV;
+
+    float weight = abs(angularInfo.VdotH) / (angularInfo.NdotV * angularInfo.NdotH);
+
+    reflectance = G * F * weight;
   }
-  return max(min(1.0 - pow(distance / range, 4.0), 1.0), 0.0) / pow(distance, 2.0);
 }
 
-// https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_lights_punctual/README.md#inner-and-outer-cone-angles
-float getSpotAttenuation(vec3 pointToLight, vec3 spotDirection, float outerConeCos, float innerConeCos)
+
+// selects one light source randomly, currently, only IBL is supported
+vec3 sample_lights(out vec3 to_light, out float pdf, inout uint seed)
 {
-  float actualCos = dot(normalize(spotDirection), normalize(-pointToLight));
-  if(actualCos > outerConeCos)
-  {
-    if(actualCos < innerConeCos)
-    {
-      return smoothstep(outerConeCos, innerConeCos, actualCos);
-    }
-    return 1.0;
-  }
-  return 0.0;
-}
 
-vec3 applyDirectionalLight(Light light, MaterialInfo materialInfo, vec3 normal, vec3 view)
-{
-  vec3 pointToLight = -light.direction;
-  vec3 shade        = getPointShade(pointToLight, materialInfo, normal, view);
-  return light.intensity * light.color * shade;
-}
+  // light from the environment
+  vec3 radiance = environment_sample(  // (see common.hlsl)
+      environmentTexture,              // assuming lat long map
+      environmentSamplingData,         // importance sampling data of the environment map
+      seed, to_light, pdf);
 
-vec3 applyPointLight(ShadingState state, Light light, MaterialInfo materialInfo, vec3 normal, vec3 view)
-{
-  vec3  pointToLight = light.position - state.pos;
-  float distance     = length(pointToLight);
-  float attenuation  = getRangeAttenuation(light.range, distance);
-  vec3  shade        = getPointShade(pointToLight, materialInfo, normal, view);
-  return attenuation * light.intensity * light.color * shade;
-}
+  radiance *= pushC.environmentIntensityFactor;
 
-vec3 applySpotLight(ShadingState state, Light light, MaterialInfo materialInfo, vec3 normal, vec3 view)
-{
-  vec3  pointToLight     = light.position - state.pos;
-  float distance         = length(pointToLight);
-  float rangeAttenuation = getRangeAttenuation(light.range, distance);
-  float spotAttenuation  = getSpotAttenuation(pointToLight, light.direction, light.outerConeCos, light.innerConeCos);
-  vec3  shade            = getPointShade(pointToLight, materialInfo, normal, view);
-  return rangeAttenuation * spotAttenuation * light.intensity * light.color * shade;
-}
-
-//---------------------------------------------------------------------------------------------------------
-// Calculation of the lighting contribution from an optional Image Based Light source.
-// Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
-// See our README.md on Environment Maps [3] for additional discussion.
-vec3 getIBLContribution(MaterialInfo materialInfo, vec3 n, vec3 v, vec3 origin)
-{
-  vec3  to_light;
-  float pdf;
-
-  // sampling light from the environment
-  vec3 radiance = environment_sample(  // (see sampling.glsl)
-      samplerEnv,                      // assuming lat long map
-      env_accel_tex,                   // importance sampling data of the environment map
-      prd.seed, to_light, pdf);
-
-  radiance *= hdrMultiplier;
-  const float cos_theta = dot(to_light, n);
-  if((cos_theta > 0.0f) && pdf != 0.0f)
-  {
-    // Shoot shadow ray towar the light
-    prdIsInShadow = true;
-
-    uint rayFlags = gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV;
-    traceNV(topLevelAS,  // acceleration structure
-            rayFlags,    // rayFlags
-            0xFF,        // cullMask
-            0,           // sbtRecordOffset
-            0,           // sbtRecordStride
-            1,           // missIndex
-            origin,      // ray origin
-            0.0,         // ray min range
-            to_light,    // ray direction
-            100000.0,    // ray max range
-            2            // payload layout(location = 2)
-    );
-
-    // Hit an object, no light contribution
-    if(prdIsInShadow)
-      return vec3(0, 0, 0);
-
-    // Shading contribution
-    vec3 shade = getPointShade(to_light, materialInfo, n, v);
-
-    // Adding light contribution
-    vec3 radiance_over_pdf = radiance / pdf;
-    return radiance_over_pdf * shade;
-  }
-  else
-  {
-    return vec3(0, 0, 0);
-  }
+  return radiance / pdf;
 }
 
 
@@ -491,28 +427,42 @@ void main()
 
 
   // The albedo may be defined from a base texture or a flat color
-  baseColor = SRGBtoLINEAR(texture(albedoMap[state.matIndex], state.texcoord0), 2.2) * material.baseColorFactor;
+  baseColor = material.pbrBaseColorFactor;
+  if(material.pbrBaseColorTexture > -1)
+    baseColor *= SRGBtoLINEAR(texture(texturesMap[nonuniformEXT(material.pbrBaseColorTexture)], state.texcoord0), 2.2);
 
   if(material.shadingModel == MATERIAL_METALLICROUGHNESS)
   {
+    perceptualRoughness = material.pbrRoughnessFactor;
+    metallic            = material.pbrMetallicFactor;
+
     // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
     // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-    vec4 mrSample       = texture(metallicRoughness[state.matIndex], state.texcoord0);
-    perceptualRoughness = mrSample.g * material.roughnessFactor;
-    metallic            = mrSample.b * material.metallicFactor;
+    if(material.pbrMetallicRoughnessTexture > -1)
+    {
+      vec4 mrSample = texture(texturesMap[nonuniformEXT(material.pbrMetallicRoughnessTexture)], state.texcoord0);
+      perceptualRoughness *= mrSample.g;
+      metallic *= mrSample.b;
+    }
 
     diffuseColor  = baseColor.rgb * (vec3(1.0) - f0) * (1.0 - metallic);
     specularColor = mix(f0, baseColor.rgb, metallic);
   }
   else if(material.shadingModel == MATERIAL_SPECULARGLOSSINESS)
   {
-    f0                  = material.specularFactor;
-    perceptualRoughness = 1.0 - material.glossinessFactor;
+    f0                  = material.khrSpecularFactor * 0.08;
+    perceptualRoughness = 1.0 - material.khrGlossinessFactor;
+    perceptualRoughness = 1.0 - material.khrGlossinessFactor;
 
     specularColor                  = f0;  // f0 = specular
     float oneMinusSpecularStrength = 1.0 - max(max(f0.r, f0.g), f0.b);
-    diffuseColor                   = baseColor.rgb * oneMinusSpecularStrength;
-    metallic                       = solveMetallic(baseColor.rgb, specularColor, oneMinusSpecularStrength);
+
+    baseColor = material.khrDiffuseFactor;
+    if(material.khrDiffuseTexture > -1)
+      baseColor *= SRGBtoLINEAR(texture(texturesMap[nonuniformEXT(material.khrDiffuseTexture)], state.texcoord0), 2.2);
+
+    diffuseColor = baseColor.rgb * oneMinusSpecularStrength;
+    metallic     = solveMetallic(baseColor.rgb, specularColor, oneMinusSpecularStrength);
   }
 
 
@@ -534,63 +484,114 @@ void main()
                                            specularEnvironmentR90, specularColor);
 
 
-  vec3 color  = vec3(0.0, 0.0, 0.0);
-  vec3 normal = state.nrm;
-  vec3 view   = normalize(gl_WorldRayOriginNV - state.pos);
+  vec3 contribution = vec3(0.0, 0.0, 0.0);
+  vec3 viewDir      = normalize(gl_WorldRayOriginNV - state.pos);
 
   // Calculate lighting contribution from image based lighting source (IBL)
-  vec3 origin = offsetRay(state.pos, state.geo_nrm);
-  color += getIBLContribution(materialInfo, normal, view, origin);
+  vec3  to_light;
+  float pdf;
+  vec3  radiance_over_pdf = sample_lights(to_light, pdf, payload.seed);
+
+  if(dot(to_light, state.geom_normal) > 0)
+  {
+    // Shading contribution
+    vec3 bsdf_color = getPointShade(to_light, materialInfo, state.normal, viewDir);
+    contribution += bsdf_color * payload.weight * radiance_over_pdf;
+  }
 
   // Ambient occulsion
   float ao = 1.0;
-  ao       = texture(occlusionMap[state.matIndex], state.texcoord0).r;
-  color    = mix(color, color * ao, 1.0 /*u_OcclusionStrength*/);
+  if(material.occlusionTexture > -1)
+    ao *= texture(texturesMap[nonuniformEXT(material.occlusionTexture)], state.texcoord0).r * material.occlusionTextureStrength;
+  contribution = mix(contribution, contribution * ao, 1.0 /*u_OcclusionStrength*/);
 
   // Emissive term
-  vec3 emissive = vec3(0);
-  emissive = SRGBtoLINEAR(texture(emissiveMap[state.matIndex], state.texcoord0), 2.2).rgb * material.emissiveFactor * 10.0f;
-  color += emissive;
+  vec3 emissive = material.emissiveFactor;
+  if(material.emissiveTexture > -1)
+    emissive *= SRGBtoLINEAR(texture(texturesMap[nonuniformEXT(material.emissiveTexture)], state.texcoord0), 2.2).rgb;
+  contribution += emissive;
+
 
   // Result Color
-  prd.result += color * prd.importance * baseColor.a;
-
-  // For the next Trace
-  vec3 rayDir;
-
+  if(ubo.s.debugMode == 0)
   {
-    float NdotV           = clamp(dot(normal, view), 0.0, 1.0);
-    vec3  reflection      = normalize(reflect(-view, normal));
-    vec2  brdfSamplePoint = clamp(vec2(NdotV, materialInfo.perceptualRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
-    vec2  brdf = texture(samplerBRDFLUT, brdfSamplePoint).rg;  // retrieve a scale and bias to F0. See [1], Figure 3
+    // New Ray  (origin)
+    payload.rayOrigin = offsetRay(state.pos, state.geom_normal);
 
-    prd.importance *= metallic * (materialInfo.specularColor * brdf.x + brdf.y);
-    prd.roughness = perceptualRoughness;
-
-    origin = offsetRay(state.pos, state.geo_nrm);
-    rayDir = reflection;
+    // New direction and reflectance
+    vec3 reflectance = vec3(0);
+    vec3 rayDir;
+    getSampling(materialInfo, state.normal, viewDir, rayDir, reflectance);
+    payload.rayDir = rayDir;
+    payload.weight *= reflectance;
+  }
+  else
+  {
+    payload.flags  = FLAG_DONE;
+    payload.weight = vec3(1.0);
+    switch(ubo.s.debugMode)
+    {
+      case 1:
+        payload.contribution = vec3(metallic);
+        return;
+      case 2:
+        payload.contribution = (state.normal + vec3(1)) * .5;
+        return;
+      case 3:
+        payload.contribution = baseColor.xyz;
+        return;
+      case 4:
+        payload.contribution = vec3(ao);
+        return;
+      case 5:
+        payload.contribution = emissive;
+        return;
+      case 6:
+        payload.contribution = f0;
+        return;
+      case 7:
+        payload.contribution = vec3(baseColor.a);
+        return;
+      case 8:
+        payload.contribution = vec3(perceptualRoughness);
+        return;
+      case 9:
+        payload.contribution = vec3(state.texcoord0, 1);
+        return;
+      case 10:
+        payload.contribution = vec3(state.tangent + vec3(1)) * .5;
+        return;
+    };
   }
 
-  // Incrementing the depth
-  prd.depth += 1;
 
-  bool traceContinue = (prd.depth < depth) && (length(prd.importance) > 0.01);
-  if(traceContinue)
-  {
-    traceNV(topLevelAS,         // acceleration structure
-            gl_RayFlagsNoneNV,  // rayFlags
-            0xFF,               // cullMask
-            0,                  // sbtRecordOffset
-            0,                  // sbtRecordStride
-            0,                  // missIndex
-            origin,             // ray origin
-            0.0,                // ray min range
-            rayDir,             // ray direction
-            100000.0,           // ray max range
-            0                   // payload
-    );
-  }
+  // Add contribution from next event estimation if not shadowed
+  //---------------------------------------------------------------------------------------------
 
-  // Back to current depth
-  prd.depth -= 1;
+  // cast a shadow ray; assuming light is always outside
+  vec3 origin    = offsetRay(state.pos, state.geom_normal);
+  vec3 direction = normalize(to_light);
+
+  // prepare the ray and payload but trace at the end to reduce the amount of data that has
+  // to be recovered after coming back from the shadow trace
+  shadow_payload.isHit = true;
+  shadow_payload.seed  = 0;
+  uint rayFlags        = gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV;
+
+  traceNV(topLevelAS,  // acceleration structure
+          rayFlags,    // rayFlags
+          0xFF,        // cullMask
+          0,           // sbtRecordOffset
+          0,           // sbtRecordStride
+          1,           // missIndex
+          origin,      // ray origin
+          0.01,        // ray min range
+          direction,   // ray direction
+          1000000.0,   // ray max range
+          1            // payload layout(location = 1)
+  );
+
+  // add to ray contribution from next event estiation
+  if(!shadow_payload.isHit)
+    payload.contribution += contribution;
 }

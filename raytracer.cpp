@@ -58,7 +58,7 @@ const nvvk::Texture& Raytracer::outputImage() const
   return m_raytracingOutput;
 }
 
-const int Raytracer::maxFrames() const
+int Raytracer::maxFrames() const
 {
   return m_maxFrames;
 }
@@ -72,6 +72,7 @@ void Raytracer::destroy()
   m_device.destroy(m_rtPipeline);
   m_device.destroy(m_rtPipelineLayout);
   m_alloc->destroy(m_rtSBTBuffer);
+  m_alloc->destroy(m_rtPrimLookup);
 }
 
 void Raytracer::createOutputImage(vk::Extent2D size)
@@ -101,9 +102,10 @@ void Raytracer::createDescriptorSet()
   using vkDS = vk::DescriptorSetLayoutBinding;
   using vkDT = vk::DescriptorType;
   using vkSS = vk::ShaderStageFlagBits;
-
+  m_binding.clear();
   m_binding.addBinding(vkDS(0, vkDT::eAccelerationStructureNV, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));
-  m_binding.addBinding(vkDS(1, vkDT::eStorageImage, 1, vkSS::eRaygenNV));  // Output image
+  m_binding.addBinding(vkDS(1, vkDT::eStorageImage, 1, vkSS::eRaygenNV));                         // Output image
+  m_binding.addBinding(vkDS(2, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // Primitive info
 
   m_rtDescPool      = m_binding.createPool(m_device);
   m_rtDescSetLayout = m_binding.createLayout(m_device);
@@ -111,11 +113,13 @@ void Raytracer::createDescriptorSet()
 
   vk::AccelerationStructureNV                   tlas = m_rtBuilder.getAccelerationStructure();
   vk::WriteDescriptorSetAccelerationStructureNV descAsInfo{1, &tlas};
-  vk::DescriptorImageInfo imageInfo{{}, m_raytracingOutput.descriptor.imageView, vk::ImageLayout::eGeneral};
+  vk::DescriptorImageInfo  imageInfo{{}, m_raytracingOutput.descriptor.imageView, vk::ImageLayout::eGeneral};
+  vk::DescriptorBufferInfo primitiveInfoDesc{m_rtPrimLookup.buffer, 0, VK_WHOLE_SIZE};
 
   std::vector<vk::WriteDescriptorSet> writes;
   writes.emplace_back(m_binding.makeWrite(m_rtDescSet, 0, &descAsInfo));
   writes.emplace_back(m_binding.makeWrite(m_rtDescSet, 1, &imageInfo));
+  writes.emplace_back(m_binding.makeWrite(m_rtDescSet, 2, &primitiveInfoDesc));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
   updateDescriptorSet();
@@ -133,7 +137,7 @@ void Raytracer::updateDescriptorSet()
   }
 }
 
-void Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout, const vk::DescriptorSetLayout& matDescSetLayout)
+void Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout)
 {
   std::vector<std::string> paths = defaultSearchPaths;
   vk::ShaderModule raygenSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/raytrace.rgen.spv", true, paths));
@@ -174,16 +178,14 @@ void Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout
   vk::PushConstantRange pushConstant{vk::ShaderStageFlagBits::eRaygenNV | vk::ShaderStageFlagBits::eClosestHitNV, 0,
                                      sizeof(PushConstant)};
 
-  // All 3 descriptors
-  std::vector<vk::DescriptorSetLayout> allLayouts = {m_rtDescSetLayout, sceneDescSetLayout, matDescSetLayout};
+  // All 2 descriptors
+  std::vector<vk::DescriptorSetLayout> allLayouts = {m_rtDescSetLayout, sceneDescSetLayout};
   vk::PipelineLayoutCreateInfo         pipelineLayoutCreateInfo;
   pipelineLayoutCreateInfo.setSetLayoutCount(static_cast<uint32_t>(allLayouts.size()));
   pipelineLayoutCreateInfo.setPSetLayouts(allLayouts.data());
   pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
   pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstant);
   m_rtPipelineLayout = m_device.createPipelineLayout(pipelineLayoutCreateInfo);
-  LOGI("createPipelineLayout - Done\n");
-
 
   // Assemble the shader stages and recursion depth info into the raytracing pipeline
   vk::RayTracingPipelineCreateInfoNV rayPipelineInfo;
@@ -193,9 +195,7 @@ void Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout
   rayPipelineInfo.setPGroups(m_groups.data());
   rayPipelineInfo.setMaxRecursionDepth(10);
   rayPipelineInfo.setLayout(m_rtPipelineLayout);
-  LOGI("createRayTracingPipelineNV \n");
   m_rtPipeline = m_device.createRayTracingPipelineNV({}, rayPipelineInfo);
-  LOGI("createRayTracingPipelineNV - Done\n");
 
   m_device.destroyShaderModule(raygenSM);
   m_device.destroyShaderModule(missSM);
@@ -204,18 +204,23 @@ void Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout
   m_device.destroyShaderModule(rahitSM);
 }
 
+//--------------------------------------------------------------------------------------------------
+//
+//
 void Raytracer::createShadingBindingTable()
 {
-  auto     groupCount      = static_cast<uint32_t>(m_groups.size());  // 3 shaders: raygen, miss, chit
-  uint32_t groupHandleSize = m_rtProperties.shaderGroupHandleSize;    // Size of a program identifier
+  auto     groupCount      = static_cast<uint32_t>(m_groups.size());   // 3 shaders: raygen, miss, chit
+  uint32_t groupHandleSize = m_rtProperties.shaderGroupHandleSize;     // Size of a program identifier
+  uint32_t baseAligment    = m_rtProperties.shaderGroupBaseAlignment;  // Size of a program identifier
+
 
   // Fetch all the shader handles used in the pipeline, so that they can be written in the SBT
-  uint32_t             sbtSize = groupCount * groupHandleSize;
+  uint32_t             sbtSize = groupCount * baseAligment;
   std::vector<uint8_t> shaderHandleStorage(sbtSize);
   m_device.getRayTracingShaderGroupHandlesNV(m_rtPipeline, 0, groupCount, sbtSize, shaderHandleStorage.data());
 
   m_rtSBTBuffer = m_alloc->createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
-                                       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+                                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
   m_debug.setObjectName(m_rtSBTBuffer.buffer, std::string("SBT").c_str());
 
   // Write the handles in the SBT
@@ -224,19 +229,21 @@ void Raytracer::createShadingBindingTable()
   for(uint32_t g = 0; g < groupCount; g++)
   {
     memcpy(pData, shaderHandleStorage.data() + g * groupHandleSize, groupHandleSize);  // raygen
-    pData += groupHandleSize;
+    pData += baseAligment;
   }
   m_alloc->unmap(m_rtSBTBuffer);
 }
 
-void Raytracer::run(const vk::CommandBuffer& cmdBuf, const vk::DescriptorSet& sceneDescSet, const vk::DescriptorSet& matDescSet, int frame /*= 0*/)
+//--------------------------------------------------------------------------------------------------
+//
+//
+void Raytracer::run(const vk::CommandBuffer& cmdBuf, const vk::DescriptorSet& sceneDescSet, int frame /*= 0*/)
 {
   m_pushC.frame = frame;
 
-  uint32_t progSize = m_rtProperties.shaderGroupHandleSize;  // Size of a program identifier
+  uint32_t progSize = m_rtProperties.shaderGroupBaseAlignment;  // Size of a program identifier
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingNV, m_rtPipeline);
-  cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingNV, m_rtPipelineLayout, 0,
-                            {m_rtDescSet, sceneDescSet, matDescSet}, {});
+  cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingNV, m_rtPipelineLayout, 0, {m_rtDescSet, sceneDescSet}, {});
   cmdBuf.pushConstants<PushConstant>(m_rtPipelineLayout,
                                      vk::ShaderStageFlagBits::eRaygenNV | vk::ShaderStageFlagBits::eClosestHitNV, 0, m_pushC);
 
@@ -257,7 +264,7 @@ void Raytracer::run(const vk::CommandBuffer& cmdBuf, const vk::DescriptorSet& sc
 bool Raytracer::uiSetup()
 {
   bool modified = false;
-  if(ImGui::CollapsingHeader("Raytracing"))
+  if(ImGui::CollapsingHeader("Ray Tracing"))
   {
     modified = ImGui::SliderInt("Max Ray Depth ", &m_pushC.depth, 1, 10);
     modified = ImGui::SliderInt("Samples Per Frame", &m_pushC.samples, 1, 100) || modified;

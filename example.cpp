@@ -33,204 +33,175 @@
 #include <vulkan/vulkan.hpp>
 
 #include "example.hpp"
-#include <nvvk/descriptorsets_vk.hpp>
-#include <nvvk/pipeline_vk.hpp>
-#include <nvvk/profiler_vk.hpp>
-#include <nvvk/renderpasses_vk.hpp>
-
+#include "imgui/imgui_orient.h"
+#include "imgui_impl_glfw.h"
+#include "nvh/fileoperations.hpp"
+#include "nvvk/commands_vk.hpp"
+#include "nvvk/descriptorsets_vk.hpp"
+#include "nvvk/pipeline_vk.hpp"
+#include "nvvk/renderpasses_vk.hpp"
+#include "shaders/binding.h"
 
 // Define these only in *one* .cc file.
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 // #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
+#include "nvmath/nvmath_types.h"
 #include <fileformats/tiny_gltf.h>
 
-#include "imgui_impl_glfw.h"
-#include "nvh/fileoperations.hpp"
-#include "nvvk/commands_vk.hpp"
-#include "shaders/binding.h"
-#include <imgui/imgui_orient.h>
 
 extern std::vector<std::string> defaultSearchPaths;
 
-nvvk::ProfilerVK g_profiler;
-struct Stats
-{
-  double loadTime{0};
-  double sceneTime{0};
-  double recordTime{0};
-} s_stats;
 
-using vkDT = vk::DescriptorType;
-using vkSS = vk::ShaderStageFlagBits;
-using vkCB = vk::CommandBufferUsageFlagBits;
-using vkBU = vk::BufferUsageFlagBits;
-using vkMP = vk::MemoryPropertyFlagBits;
-using vkIU = vk::ImageUsageFlagBits;
-using vkDS = vk::DescriptorSetLayoutBinding;
+void VkRtExample::setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t graphicsQueueIndex)
+{
+  AppBase::setup(instance, device, physicalDevice, graphicsQueueIndex);
+  m_debug.setup(device);
+
+#ifdef NVVK_ALLOC_DMA
+  m_memAllocator.init(device, physicalDevice);
+  m_alloc.init(device, physicalDevice, &m_memAllocator);
+#elif defined(NVVK_ALLOC_DEDICATED)
+  m_alloc.init(device, physicalDevice);
+#endif
+
+  m_raytracer.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
+  m_rayPicker.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
+  m_tonemapper.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
+  m_skydome.setup(device, physicalDevice, graphicsQueueIndex, &m_alloc);
+}
 
 //--------------------------------------------------------------------------------------------------
 // Overridden function that is called after the base class create()
 //
-void VkRtExample::initExample()
+void VkRtExample::loadScene(const std::string& filename)
 {
-  g_profiler.init(m_device, m_physicalDevice);
-  g_profiler.setAveragingSize(5);
-
   // Loading the glTF file, it will allocate 3 buffers: vertex, index and matrices
-  tinygltf::Model    gltfModel;
-  tinygltf::TinyGLTF gltfContext;
+  tinygltf::Model    tmodel;
+  tinygltf::TinyGLTF tcontext;
   std::string        warn, error;
   bool               fileLoaded = false;
+  MilliTimer         timer;
   {
-    s_stats.loadTime = -g_profiler.getMicroSeconds();
-    fileLoaded       = gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warn, m_filename);
+    LOGI("Loading glTF: %s\n", filename.c_str());
+
+    fileLoaded = tcontext.LoadASCIIFromFile(&tmodel, &error, &warn, filename);
     if(!warn.empty())
     {
-      LOGE("Warning loading %s: %s", m_filename.c_str(), warn.c_str());
+      LOGE("Warning loading %s: %s", filename.c_str(), warn.c_str());
     }
     if(!error.empty())
     {
-      LOGE("Error loading %s: %s", m_filename.c_str(), error.c_str());
+      LOGE("Error loading %s: %s", filename.c_str(), error.c_str());
     }
     assert(fileLoaded && error.empty() && error.c_str());
-    s_stats.loadTime += g_profiler.getMicroSeconds();
+    LOGI(" --> (%5.3f ms)\n", timer.elapse());
   }
-
-  s_stats.sceneTime = -g_profiler.getMicroSeconds();
 
   // From tinyGLTF to our glTF representation
   {
-    m_gltfScene.getMaterials(gltfModel);
-    m_vertices.attributes["NORMAL"]     = {0, 1, 0};  // Attributes we are interested in
-    m_vertices.attributes["TEXCOORD_0"] = {0, 0};
-    m_gltfScene.loadMeshes(gltfModel, m_indices, m_vertices);
-    m_gltfScene.loadNodes(gltfModel);
-    m_gltfScene.computeSceneDimensions();
-    createEmptyTexture();
-    loadImages(gltfModel);
+    LOGI("Importing Scene\n");
+    m_gltfScene.importMaterials(tmodel);
+    m_gltfScene.importDrawableNodes(tmodel, nvh::GltfAttributes::Normal | nvh::GltfAttributes::Texcoord_0
+                                                | nvh::GltfAttributes::Tangent);
+    m_sceneStats = m_gltfScene.getStatistics(tmodel);
+    LOGI(" --> (%5.3f ms)\n", timer.elapse());
   }
 
-  // Set the camera as to see the model
-  fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max);
+  // Set the camera to see the scene
+  if(m_gltfScene.m_cameras.empty())
+    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max);
+  else
+  {
+    nvmath::vec3f eye;
+    m_gltfScene.m_cameras[0].worldMatrix.get_translation(eye);
+    float len = nvmath::length(m_gltfScene.m_dimensions.center - eye);
+    CameraManip.setMatrix(m_gltfScene.m_cameras[0].worldMatrix, true, len);
+    CameraManip.setFov(rad2deg(m_gltfScene.m_cameras[0].cam.perspective.yfov));
+  }
 
-  m_skydome.loadEnvironment(m_hdrFilename);
 
-  s_stats.sceneTime += g_profiler.getMicroSeconds();
-
+  {
+    LOGI("Importing %d images\n", tmodel.images.size());
+    importImages(tmodel);
+    LOGI(" --> (%5.3f ms)\n", timer.elapse());
+  }
 
   // Lights
   m_sceneUbo.nbLights           = 1;
   m_sceneUbo.lights[0].position = nvmath::vec4f(150, 80, -150, 1);
   m_sceneUbo.lights[0].color    = nvmath::vec4f(1, 1, 1, 10000);
-  m_sceneUbo.lights[1].position = nvmath::vec4f(-10, 15, 10, 1);
-  m_sceneUbo.lights[1].color    = nvmath::vec4f(1, 1, 1, 1000);
 
-  LOGI("prepareUniformBuffers\n");
-  prepareUniformBuffers();
-  LOGI("createDescriptorFinal\n");
-  createDescriptorFinal();
-  LOGI("createDescriptorMaterial\n");
-  createDescriptorMaterial();
-  LOGI("createPipeline\n");
-  createPipeline();  // How the quad will be rendered
+  // Create buffers with all scene information: vertex, normal, material, ...
+  createSceneBuffers();
+  createSceneDescriptors();
+
+  // Using the output of the tonemapper to display
+  updateDescriptor(m_tonemapper.getOutput().descriptor);
 
   // Raytracing
   {
-    std::vector<uint32_t>                            blassOffset;
-    std::vector<std::vector<VkGeometryNV>>           blass;
-    std::vector<nvvk::RaytracingBuilderNV::Instance> rayInst;
-    m_primitiveOffsets.reserve(m_gltfScene.m_linearNodes.size());
+    LOGI("Creating BLAS and TLAS\n");
 
     // BLAS - Storing each primitive in a geometry
-    LOGI("Preparing geometry for Blas\n");
-    uint32_t blassID = 0;
-    for(auto& mesh : m_gltfScene.m_linearMeshes)
+    std::vector<std::vector<VkGeometryNV>> blass;
+    std::vector<RtPrimitiveLookup>         primLookup;
+    for(auto& primMesh : m_gltfScene.m_primMeshes)
     {
-      blassOffset.push_back(blassID);  // use by the TLAS to find the BLASS ID from the mesh ID
+      auto geo = primitiveToGeometry(primMesh);
+      blass.push_back({geo});
 
-      for(auto& primitive : mesh->m_primitives)
-      {
-        ++blassID;
-        auto geo = primitiveToGeometry(primitive);
-        blass.push_back({geo});
-      }
+      // The following is use to find the primitive mesh information in the CHIT
+      primLookup.push_back({primMesh.firstIndex, primMesh.vertexOffset, primMesh.materialIndex});
     }
-
-    // TLASS - Top level for each valid mesh
-    LOGI("Preparing Tlas\n");
-    uint32_t instID = 0;
-    for(auto& node : m_gltfScene.m_linearNodes)
-    {
-      if(node->m_mesh != ~0u)
-      {
-        nvvk::RaytracingBuilderNV::Instance inst;
-        inst.transform = node->worldMatrix();
-
-        // Same transform for each primitive of the mesh
-        int primID = 0;
-        for(auto& primitive : m_gltfScene.m_linearMeshes[node->m_mesh]->m_primitives)
-        {
-          inst.instanceId = uint32_t(instID++);  // gl_InstanceID
-          inst.blasId     = blassOffset[node->m_mesh] + primID++;
-          rayInst.emplace_back(inst);
-          // The following is use to find the geometry information in the CHIT
-          m_primitiveOffsets.push_back({primitive.m_firstIndex, primitive.m_vertexOffset, primitive.m_materialIndex});
-        }
-      }
-    }
-
-    // Uploading the geometry information
-    {
-      nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
-      m_primitiveInfoBuffer = m_alloc.createBuffer(cmdBuf, m_primitiveOffsets, vk::BufferUsageFlagBits::eStorageBuffer);
-      m_debug.setObjectName(m_primitiveInfoBuffer.buffer, "PrimitiveInfo");
-    }
-    m_alloc.finalizeAndReleaseStaging();
-
-    LOGI("Creating Blas\n");
     m_raytracer.builder().buildBlas(blass);
-    LOGI("Creating Tlas\n");
+    m_raytracer.setPrimitiveLookup(primLookup);
+
+    // TLAS - Top level for each valid mesh
+    std::vector<nvvk::RaytracingBuilderNV::Instance> rayInst;
+    uint32_t                                         instID = 0;
+    for(auto& node : m_gltfScene.m_nodes)
+    {
+      nvvk::RaytracingBuilderNV::Instance inst;
+      inst.transform  = node.worldMatrix;
+      inst.instanceId = node.primMesh;  // gl_InstanceCustomIndexNV
+      inst.blasId     = node.primMesh;
+      rayInst.emplace_back(inst);
+
+      auto& mesh = m_gltfScene.m_primMeshes[node.primMesh];
+    }
     m_raytracer.builder().buildTlas(rayInst);
+
     m_raytracer.createOutputImage(m_size);
-    LOGI("Creating Descriptor\n");
-    createDescriptorRaytrace();
     m_raytracer.createDescriptorSet();
-    LOGI("Creating raytrace pipeline\n");
-    m_raytracer.createPipeline(m_descSetLayout[eRaytrace], m_descSetLayout[eMaterial]);
-    LOGI("Creating raytrace SBT\n");
+    m_raytracer.createPipeline(m_descSetLayout[eScene]);
     m_raytracer.createShadingBindingTable();
+
+    m_alloc.finalizeAndReleaseStaging();
+    LOGI(" --> (%5.3f ms)\n", timer.elapse());
   }
 
   // Using -SPACE- to pick an object
   vk::DescriptorBufferInfo sceneDesc{m_sceneBuffer.buffer, 0, VK_WHOLE_SIZE};
   m_rayPicker.initialize(m_raytracer.builder().getAccelerationStructure(), sceneDesc);
-  // Post-process tonemapper
-  m_tonemapper.initialize(m_size);
-
-  // Using the output of the tonemapper to display
-  updateDescriptor(m_tonemapper.getOutput().descriptor);
-
-  // Other elements
-  m_axis.init(m_device, m_renderPass, 0, 40.f);
 }
 
 
 //--------------------------------------------------------------------------------------------------
-// Converting a GLTF primitive in the Raytracing Geometry used for the BLASS
+// Converting a GLTF primitive to VkGeometryNV used to create a BLAS
 //
-vk::GeometryNV VkRtExample::primitiveToGeometry(const nvh::gltf::Primitive& prim)
+vk::GeometryNV VkRtExample::primitiveToGeometry(const nvh::GltfPrimMesh& prim)
 {
   vk::GeometryTrianglesNV triangles;
   triangles.setVertexData(m_vertexBuffer.buffer);
-  triangles.setVertexOffset(prim.m_vertexOffset * sizeof(nvmath::vec3f));
-  triangles.setVertexCount(/*prim.m_indexCount);*/ static_cast<uint32_t>(m_vertices.position.size()));
+  triangles.setVertexOffset(prim.vertexOffset * sizeof(nvmath::vec3f));
+  triangles.setVertexCount(prim.vertexCount);
   triangles.setVertexStride(sizeof(nvmath::vec3f));
-  triangles.setVertexFormat(vk::Format::eR32G32B32Sfloat);  // 3xfloat32 for vertices
+  triangles.setVertexFormat(vk::Format::eR32G32B32Sfloat);
   triangles.setIndexData(m_indexBuffer.buffer);
-  triangles.setIndexOffset(prim.m_firstIndex * sizeof(uint32_t));
-  triangles.setIndexCount(prim.m_indexCount);
+  triangles.setIndexOffset(prim.firstIndex * sizeof(uint32_t));
+  triangles.setIndexCount(prim.indexCount);
   triangles.setIndexType(vk::IndexType::eUint32);  // 32-bit indices
   vk::GeometryDataNV geoData;
   geoData.setTriangles(triangles);
@@ -252,17 +223,13 @@ void VkRtExample::destroy()
   m_alloc.destroy(m_vertexBuffer);
   m_alloc.destroy(m_normalBuffer);
   m_alloc.destroy(m_uvBuffer);
+  m_alloc.destroy(m_tangentBuffer);
   m_alloc.destroy(m_indexBuffer);
-  m_alloc.destroy(m_matrixBuffer);
   m_alloc.destroy(m_materialBuffer);
-  m_alloc.destroy(m_primitiveInfoBuffer);
   m_alloc.destroy(m_sceneBuffer);
-
-  g_profiler.deinit();
 
   m_device.destroyRenderPass(m_renderPassUI);
   m_renderPassUI = vk::RenderPass();
-
 
   m_device.destroyPipeline(m_pipeline);
   m_device.destroyPipelineLayout(m_pipelineLayout);
@@ -275,8 +242,6 @@ void VkRtExample::destroy()
   {
     m_alloc.destroy(t);
   }
-  m_alloc.destroy(m_emptyTexture[0]);
-  m_alloc.destroy(m_emptyTexture[1]);
 
   m_rayPicker.destroy();
   m_axis.deinit();
@@ -286,7 +251,7 @@ void VkRtExample::destroy()
 
   m_alloc.deinit();
 #ifdef NVVK_ALLOC_DMA
-  m_dmaAllocator.deinit();
+  m_memAllocator.deinit();
 #endif  // NVVK_ALLOC_DMA
 
 
@@ -300,8 +265,6 @@ void VkRtExample::destroy()
 void VkRtExample::display()
 {
   updateFrame();
-
-  g_profiler.beginFrame();
   drawUI();
 
   // render the scene
@@ -317,13 +280,11 @@ void VkRtExample::display()
   clearValues[1].setDepthStencil({1.0f, 0});
 
   {
-    auto scope = g_profiler.timeRecurring("frame", cmdBuf);
-
     // Raytracing
     if(m_frameNumber < m_raytracer.maxFrames())
     {
       auto dgbLabel = m_debug.scopeLabel(cmdBuf, "raytracing");
-      m_raytracer.run(cmdBuf, m_descSet[eRaytrace], m_descSet[eMaterial], m_frameNumber);
+      m_raytracer.run(cmdBuf, m_descSet[eScene], m_frameNumber);
     }
 
     // Apply tonemapper, its output is set in the descriptor set
@@ -360,7 +321,6 @@ void VkRtExample::display()
     // Rendering axis in same render pass
     {
       auto dgbLabel = m_debug.scopeLabel(cmdBuf, "Axes");
-
       m_axis.display(cmdBuf, CameraManip.getMatrix(), m_size);
     }
     cmdBuf.endRenderPass();
@@ -370,8 +330,6 @@ void VkRtExample::display()
   // End of the frame and present the one which is ready
   cmdBuf.end();
   submitFrame();
-
-  g_profiler.endFrame();
 }
 
 
@@ -404,49 +362,23 @@ void VkRtExample::resetFrame()
 // Creating the Uniform Buffers, only for the scene camera matrices
 // The one holding all all matrices of the scene nodes was created in glTF.load()
 //
-void VkRtExample::prepareUniformBuffers()
+void VkRtExample::createSceneBuffers()
 {
   {
     nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
     m_sceneBuffer = m_alloc.createBuffer(cmdBuf, sizeof(SceneUBO), nullptr, vkBU::eUniformBuffer);
 
     // Creating the GPU buffer of the vertices
-    m_vertexBuffer = m_alloc.createBuffer(cmdBuf, m_vertices.position, vkBU::eVertexBuffer | vkBU::eStorageBuffer);
-    m_normalBuffer = m_alloc.createBuffer(cmdBuf, m_vertices.attributes["NORMAL"], vkBU::eVertexBuffer | vkBU::eStorageBuffer);
-    m_uvBuffer = m_alloc.createBuffer(cmdBuf, m_vertices.attributes["TEXCOORD_0"], vkBU::eVertexBuffer | vkBU::eStorageBuffer);
+    m_vertexBuffer = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_positions, vkBU::eVertexBuffer | vkBU::eStorageBuffer);
+    m_normalBuffer = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_normals, vkBU::eVertexBuffer | vkBU::eStorageBuffer);
+    m_uvBuffer     = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_texcoords0, vkBU::eVertexBuffer | vkBU::eStorageBuffer);
+    m_tangentBuffer = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_tangents, vkBU::eVertexBuffer | vkBU::eStorageBuffer);
 
     // Creating the GPU buffer of the indices
-    m_indexBuffer = m_alloc.createBuffer(cmdBuf, m_indices, vkBU::eIndexBuffer | vkBU::eStorageBuffer);
-
-    // Adding all node matrices of the scene in a single buffer (mesh primitives are duplicated)
-    std::vector<nvh::gltf::NodeMatrices> allMatrices;
-    allMatrices.reserve(m_gltfScene.m_linearNodes.size());
-    for(auto& node : m_gltfScene.m_linearNodes)
-    {
-      if(node->m_mesh != ~0u)
-      {
-        nvh::gltf::NodeMatrices nm;
-        nm.world   = node->worldMatrix();
-        nm.worldIT = nm.world;
-        nm.worldIT = nvmath::transpose(nvmath::invert(nm.worldIT));
-        auto& mesh = m_gltfScene.m_linearMeshes[node->m_mesh];
-        for(size_t i = 0; i < mesh->m_primitives.size(); ++i)
-        {
-          allMatrices.push_back(nm);
-        }
-      }
-    }
-    m_matrixBuffer = m_alloc.createBuffer(cmdBuf, allMatrices, vkBU::eStorageBuffer);
-
+    m_indexBuffer = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_indices, vkBU::eIndexBuffer | vkBU::eStorageBuffer);
 
     // Materials - Storing all material colors and information
-    std::vector<nvh::gltf::Material::PushC> allMaterials;
-    allMaterials.reserve(m_gltfScene.m_materials.size());
-    for(const auto& mat : m_gltfScene.m_materials)
-    {
-      allMaterials.push_back(mat.m_mat);
-    }
-    m_materialBuffer = m_alloc.createBuffer(cmdBuf, allMaterials, vkBU::eStorageBuffer);
+    m_materialBuffer = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_materials, vkBU::eStorageBuffer);
   }
   m_alloc.finalizeAndReleaseStaging();
 
@@ -454,15 +386,16 @@ void VkRtExample::prepareUniformBuffers()
   m_debug.setObjectName(m_vertexBuffer.buffer, "Vertex");
   m_debug.setObjectName(m_indexBuffer.buffer, "Index");
   m_debug.setObjectName(m_uvBuffer.buffer, "UV");
+  m_debug.setObjectName(m_tangentBuffer.buffer, "Tangent");
   m_debug.setObjectName(m_normalBuffer.buffer, "Normal");
-  m_debug.setObjectName(m_matrixBuffer.buffer, "Matrix");
   m_debug.setObjectName(m_materialBuffer.buffer, "Material");
 }
 
 //--------------------------------------------------------------------------------------------------
 // The pipeline is how things are rendered, which shaders, type of primitives, depth test and more
+// This one is for displaying the ray traced image on a quad
 //
-void VkRtExample::createPipeline()
+void VkRtExample::createFinalPipeline()
 {
   std::vector<std::string> paths = defaultSearchPaths;
 
@@ -487,6 +420,7 @@ void VkRtExample::createPipeline()
 //
 void VkRtExample::createDescriptorFinal()
 {
+  m_descSetLayoutBind[eFinal].clear();
   m_descSetLayoutBind[eFinal].addBinding(vkDS(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
   m_descSetLayout[eFinal] = m_descSetLayoutBind[eFinal].createLayout(m_device);
   m_descPool[eFinal]      = m_descSetLayoutBind[eFinal].createPool(m_device);
@@ -494,117 +428,66 @@ void VkRtExample::createDescriptorFinal()
 }
 
 //--------------------------------------------------------------------------------------------------
-// Create all descriptors for the Material (set 2)
-// - to find the textures in the closest hit shader
-//
-void VkRtExample::createDescriptorMaterial()
-{
-  uint32_t nbMat = static_cast<uint32_t>(m_gltfScene.m_materials.size());
-  uint32_t nbTxt = nbMat;
-
-  m_descSetLayoutBind[eMaterial].addBinding(
-      vkDS(0, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // albedo
-  m_descSetLayoutBind[eMaterial].addBinding(vkDS(1, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // normal
-  m_descSetLayoutBind[eMaterial].addBinding(vkDS(2, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // occlusion
-  m_descSetLayoutBind[eMaterial].addBinding(vkDS(3, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // metallic/roughness
-  m_descSetLayoutBind[eMaterial].addBinding(vkDS(4, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitNV));  // emission
-
-  m_descSetLayout[eMaterial] = m_descSetLayoutBind[eMaterial].createLayout(m_device);
-  m_descPool[eMaterial]      = m_descSetLayoutBind[eMaterial].createPool(m_device, nbMat);
-  m_descSet[eMaterial]       = nvvk::allocateDescriptorSet(m_device, m_descPool[eMaterial], m_descSetLayout[eMaterial]);
-
-
-  // The layout of the descriptor is done, but we have to allocate a descriptor from this template
-  // a set the pBufferInfo to the buffer descriptor that was previously allocated (see prepareUniformBuffers)
-  std::vector<vk::WriteDescriptorSet>  writes;
-  std::vector<vk::DescriptorImageInfo> idBaseColor(nbMat);
-  std::vector<vk::DescriptorImageInfo> idNormal(nbMat);
-  std::vector<vk::DescriptorImageInfo> idOcclusion(nbMat);
-  std::vector<vk::DescriptorImageInfo> idMetallic(nbMat);
-  std::vector<vk::DescriptorImageInfo> idEmissive(nbMat);
-
-  uint32_t matId = 0;
-  for(auto& material : m_gltfScene.m_materials)
-  {
-    idBaseColor[matId] = (material.m_baseColorTexture ?
-                              static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_baseColorTexture)) :
-                              m_emptyTexture[1].descriptor);
-    idNormal[matId]    = (material.m_normalTexture ?
-                           static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_normalTexture)) :
-                           m_emptyTexture[0].descriptor);
-    idOcclusion[matId] = (material.m_occlusionTexture ?
-                              static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_occlusionTexture)) :
-                              m_emptyTexture[1].descriptor);
-    idMetallic[matId]  = (material.m_metallicRoughnessTexture ?
-                             static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_metallicRoughnessTexture)) :
-                             m_emptyTexture[1].descriptor);
-    idEmissive[matId]  = (material.m_emissiveTexture ?
-                             static_cast<VkDescriptorImageInfo>(m_gltfScene.getDescriptor(material.m_emissiveTexture)) :
-                             m_emptyTexture[0].descriptor);
-
-    const auto& descSet = m_descSet[eMaterial];
-    writes.emplace_back(descSet, 0, matId, 1, vkDT::eCombinedImageSampler, &idBaseColor[matId]);
-    writes.emplace_back(descSet, 1, matId, 1, vkDT::eCombinedImageSampler, &idNormal[matId]);
-    writes.emplace_back(descSet, 2, matId, 1, vkDT::eCombinedImageSampler, &idOcclusion[matId]);
-    writes.emplace_back(descSet, 3, matId, 1, vkDT::eCombinedImageSampler, &idMetallic[matId]);
-    writes.emplace_back(descSet, 4, matId, 1, vkDT::eCombinedImageSampler, &idEmissive[matId]);
-
-    ++matId;
-  }
-
-  m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-}
-
-//--------------------------------------------------------------------------------------------------
 // Creates all descriptors for raytracing (set 1)
 //
-void VkRtExample::createDescriptorRaytrace()
+void VkRtExample::createSceneDescriptors()
 {
   using vkDSLB = vk::DescriptorSetLayoutBinding;
+  m_descSetLayoutBind[eScene].clear();
 
-  auto& bind = m_descSetLayoutBind[eRaytrace];
-  bind.addBinding(vkDSLB(B_SCENE, vkDT::eUniformBuffer, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));  // Scene, camera
-  bind.addBinding(vkDSLB(B_PRIM_INFO, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // Primitive info
-  bind.addBinding(vkDSLB(B_VERTICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // Vertices
-  bind.addBinding(vkDSLB(B_INDICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));    // Indices
-  bind.addBinding(vkDSLB(B_NORMALS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV));                      // Normals
+  auto& bind = m_descSetLayoutBind[eScene];
+  bind.addBinding(vkDSLB(B_SCENE, vkDT::eUniformBuffer, 1, vkSS::eRaygenNV | vkSS::eClosestHitNV));     // Scene, camera
+  bind.addBinding(vkDSLB(B_VERTICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // Vertices
+  bind.addBinding(vkDSLB(B_INDICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // Indices
+  bind.addBinding(vkDSLB(B_NORMALS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV));                     // Normals
   bind.addBinding(vkDSLB(B_TEXCOORDS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // UVs
-  bind.addBinding(vkDSLB(B_MATRICES, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV));                     // Matrix
+  bind.addBinding(vkDSLB(B_TANGENTS, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // Tangents
   bind.addBinding(vkDSLB(B_MATERIAL, vkDT::eStorageBuffer, 1, vkSS::eClosestHitNV | vkSS::eAnyHitNV));   // material
   bind.addBinding(vkDSLB(B_HDR, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV | vkSS::eMissNV));   // skydome
   bind.addBinding(vkDSLB(B_FILTER_DIFFUSE, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));        // irradiance
   bind.addBinding(vkDSLB(B_LUT_BRDF, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));              // lutBrdf
   bind.addBinding(vkDSLB(B_FILTER_GLOSSY, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV | vkSS::eMissNV));  // prefilterdEnv
   bind.addBinding(vkDSLB(B_IMPORT_SMPL, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitNV));  // importance sampling
+  auto nbTextures = static_cast<uint32_t>(m_textures.size());
+  bind.addBinding(vkDSLB(B_TEXTURES, vkDT::eCombinedImageSampler, nbTextures,
+                         vkSS::eFragment | vkSS::eClosestHitNV | vkSS::eAnyHitNV));  // all textures
 
-  m_descPool[eRaytrace]      = m_descSetLayoutBind[eRaytrace].createPool(m_device);
-  m_descSetLayout[eRaytrace] = m_descSetLayoutBind[eRaytrace].createLayout(m_device);
-  m_descSet[eRaytrace] = m_device.allocateDescriptorSets({m_descPool[eRaytrace], 1, &m_descSetLayout[eRaytrace]})[0];
+
+  m_descPool[eScene]      = m_descSetLayoutBind[eScene].createPool(m_device);
+  m_descSetLayout[eScene] = m_descSetLayoutBind[eScene].createLayout(m_device);
+  m_descSet[eScene]       = m_device.allocateDescriptorSets({m_descPool[eScene], 1, &m_descSetLayout[eScene]})[0];
 
 
   vk::DescriptorBufferInfo sceneDesc{m_sceneBuffer.buffer, 0, VK_WHOLE_SIZE};
-  vk::DescriptorBufferInfo primitiveInfoDesc{m_primitiveInfoBuffer.buffer, 0, VK_WHOLE_SIZE};
   vk::DescriptorBufferInfo vertexDesc{m_vertexBuffer.buffer, 0, VK_WHOLE_SIZE};
   vk::DescriptorBufferInfo indexDesc{m_indexBuffer.buffer, 0, VK_WHOLE_SIZE};
   vk::DescriptorBufferInfo normalDesc{m_normalBuffer.buffer, 0, VK_WHOLE_SIZE};
   vk::DescriptorBufferInfo uvDesc{m_uvBuffer.buffer, 0, VK_WHOLE_SIZE};
-  vk::DescriptorBufferInfo matrixDesc{m_matrixBuffer.buffer, 0, VK_WHOLE_SIZE};
+  vk::DescriptorBufferInfo tangentDesc{m_tangentBuffer.buffer, 0, VK_WHOLE_SIZE};
   vk::DescriptorBufferInfo materialDesc{m_materialBuffer.buffer, 0, VK_WHOLE_SIZE};
 
+  std::vector<vk::DescriptorImageInfo> dbiImages;
+  for(const auto& imageDesc : m_textures)
+    dbiImages.emplace_back(imageDesc.descriptor);
+
+
   std::vector<vk::WriteDescriptorSet> writes;
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_SCENE, &sceneDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_PRIM_INFO, &primitiveInfoDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_VERTICES, &vertexDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_INDICES, &indexDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_NORMALS, &normalDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_TEXCOORDS, &uvDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_MATRICES, &matrixDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_MATERIAL, &materialDesc));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_HDR, &m_skydome.m_textures.txtHdr.descriptor));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_FILTER_DIFFUSE, &m_skydome.m_textures.irradianceCube.descriptor));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_LUT_BRDF, &m_skydome.m_textures.lutBrdf.descriptor));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_FILTER_GLOSSY, &m_skydome.m_textures.prefilteredCube.descriptor));
-  writes.emplace_back(bind.makeWrite(m_descSet[eRaytrace], B_IMPORT_SMPL, &m_skydome.m_textures.accelImpSmpl.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_SCENE, &sceneDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_VERTICES, &vertexDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_INDICES, &indexDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_NORMALS, &normalDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_TEXCOORDS, &uvDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_TANGENTS, &tangentDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_MATERIAL, &materialDesc));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_HDR, &m_skydome.m_textures.txtHdr.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_FILTER_DIFFUSE, &m_skydome.m_textures.irradianceCube.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_LUT_BRDF, &m_skydome.m_textures.lutBrdf.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_FILTER_GLOSSY, &m_skydome.m_textures.prefilteredCube.descriptor));
+  writes.emplace_back(bind.makeWrite(m_descSet[eScene], B_IMPORT_SMPL, &m_skydome.m_textures.accelImpSmpl.descriptor));
+
+  for(int i = 0; i < dbiImages.size(); i++)
+    writes.emplace_back(m_descSet[eScene], B_TEXTURES, i, 1, vk::DescriptorType::eCombinedImageSampler, &dbiImages[i]);
+
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
@@ -616,41 +499,6 @@ void VkRtExample::updateDescriptor(const vk::DescriptorImageInfo& descriptor)
 {
   vk::WriteDescriptorSet writeDescriptorSets = m_descSetLayoutBind[eFinal].makeWrite(m_descSet[eFinal], 0, &descriptor);
   m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-// Creating an empty texture which is used for when the material as no texture. We cannot pass NULL
-//
-void VkRtExample::createEmptyTexture()
-{
-  std::vector<uint8_t> black      = {0, 0, 0, 0};
-  std::vector<uint8_t> white      = {255, 255, 255, 255};
-  VkDeviceSize         bufferSize = 4;
-  vk::Extent2D         imgSize(1, 1);
-
-  {
-    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
-    vk::SamplerCreateInfo    samplerCreateInfo;  // default values
-    vk::ImageCreateInfo      imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize);
-
-    {  // black
-      nvvk::Image               image  = m_alloc.createImage(cmdBuf, bufferSize, black.data(), imageCreateInfo);
-      vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
-      m_emptyTexture[0]              = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
-    }
-
-    {  // white
-      nvvk::Image               image  = m_alloc.createImage(cmdBuf, bufferSize, white.data(), imageCreateInfo);
-      vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
-      m_emptyTexture[1]              = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
-    }
-
-    m_debug.setObjectName(m_emptyTexture[0].image, "Black");
-    m_debug.setObjectName(m_emptyTexture[1].image, "White");
-  }
-
-  m_alloc.finalizeAndReleaseStaging();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -666,18 +514,28 @@ void VkRtExample::onResize(int w, int h)
 }
 
 //--------------------------------------------------------------------------------------------------
-// Setting which scene to load. Check arguments in main.cpp
 //
-void VkRtExample::setScene(const std::string& filename)
+//
+void VkRtExample::loadEnvironmentHdr(const std::string& hdrFilename)
 {
-  m_filename = filename;
+  MilliTimer timer;
+  LOGI("Loading HDR and converting %s\n", hdrFilename.c_str());
+  m_skydome.loadEnvironment(hdrFilename);
+  LOGI(" --> (%5.3f ms)\n", timer.elapse());
+
+  m_raytracer.m_pushC.fireflyClampThreshold = m_skydome.getIntegral() * 4.f;  //magic
 }
 
-void VkRtExample::setEnvironmentHdr(const std::string& hdrFilename)
+
+void VkRtExample::createTonemapper()
 {
-  m_hdrFilename = hdrFilename;
+  m_tonemapper.initialize(m_size);
 }
 
+void VkRtExample::createAxis()
+{
+  m_axis.init(m_device, m_renderPass, 0, 40.f);
+}
 
 //--------------------------------------------------------------------------------------------------
 // Called at each frame to update the camera matrix
@@ -706,32 +564,21 @@ void VkRtExample::createRenderPass()
   m_renderPassUI = nvvk::createRenderPass(m_device, {getColorFormat()}, m_depthFormat, 1, false, false);
 }
 
-//--------------------------------------------------------------------------------------------------
-// Overload callback when a key gets hit
-// - Pressing 'F' to move the camera to see the scene bounding box
-//
-void VkRtExample::onKeyboardChar(unsigned char key)
+// Formating with local number representation (1,000,000.23 or 1.000.000,23)
+template <class T>
+std::string FormatNumbers(T value)
 {
-  AppBase::onKeyboardChar(key);
-
-  if(key == 'f')
-  {
-    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false);
-  }
-
-  if(key == ' ')
-  {
-  }
+  std::stringstream ss;
+  ss.imbue(std::locale(""));
+  ss << std::fixed << value;
+  return ss.str();
 }
-
 
 //--------------------------------------------------------------------------------------------------
 // IMGUI UI display
 //
 void VkRtExample::drawUI()
 {
-  static int e = m_upVector;
-
   // Update imgui configuration
   ImGui_ImplGlfw_NewFrame();
 
@@ -739,89 +586,54 @@ void VkRtExample::drawUI()
   ImGui::SetNextWindowBgAlpha(0.8);
   ImGui::SetNextWindowSize(ImVec2(450, 0), ImGuiCond_FirstUseEver);
 
-  ImGui::Begin("Hello, Vulkan!", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-  ImGui::Text("%s", m_physicalDevice.getProperties().deviceName);
+  ImGui::Begin("Ray Tracing Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+  ImGui::Text("%s", &m_physicalDevice.getProperties().deviceName[0]);
 
-  if(ImGui::CollapsingHeader("Camera Up Vector"))
+  bool changed{false};
+
+  if(ImGui::CollapsingHeader("Camera"))
   {
-
-    ImGui::RadioButton("X", &e, 0);
-    ImGui::SameLine();
-    ImGui::RadioButton("Y", &e, 1);
-    ImGui::SameLine();
-    ImGui::RadioButton("Z", &e, 2);
-    if(e != m_upVector)
-    {
-      nvmath::vec3f eye, center, up;
-      CameraManip.getLookat(eye, center, up);
-      CameraManip.setLookat(eye, center, nvmath::vec3f(e == 0, e == 1, e == 2));
-      m_upVector = e;
-    }
+    nvmath::vec3f eye, center, up;
+    CameraManip.getLookat(eye, center, up);
+    changed |= ImGui::DragFloat3("Position", &eye.x);
+    changed |= ImGui::DragFloat3("Center", &center.x);
+    changed |= ImGui::DragFloat3("Up", &up.x, .1f, 0.0f, 1.0f);
+    float fov(CameraManip.getFov());
+    if(ImGui::SliderFloat("FOV", &fov, 1, 150))
+      CameraManip.setFov(fov);
+    if(changed)
+      CameraManip.setLookat(eye, center, up);
   }
-  bool modified = false;
-  modified |= uiLights();
-  modified |= m_raytracer.uiSetup();
+
+  //  modified |= uiLights();
+  changed |= m_raytracer.uiSetup();
   m_tonemapper.uiSetup();
 
-  if(modified)
+  if(ImGui::CollapsingHeader("Debug"))
+  {
+    static const char* dbgItem[] = {"None", "Metallic", "Normal",    "Base Color", "Occlusion", "Emissive",
+                                    "F0",   "Alpha",    "Roughness", "UV",         "Tangent"};
+    changed |= ImGui::Combo("Debug Mode", &m_sceneUbo.debugMode, dbgItem, 11);
+  }
+
+  if(changed)
   {
     resetFrame();
   }
 
-  if(ImGui::CollapsingHeader("Debug"))
-  {
-    static const char* dbgItem[] = {"None",     "Metallic", "Normal", "Base Color", "Occlusion",
-                                    "Emissive", "F0",       "Alpha",  "Roughness"};
-    // ImGui::Combo("Debug Mode", &m_sceneUbo.materialMode, dbgItem, 9);
-  }
-
-  // Adding performance
-  static float  valuesFPS[90] = {0};
-  static float  valuesRnd[90] = {0};
-  static float  valueMax      = 0;
-  static float  valueMSMax    = 0;
-  static int    values_offset = 0;
-  static int    nbFrames      = 0;
-  static double perfTime      = g_profiler.getMicroSeconds();
-
-  nbFrames++;
-  double diffTime = g_profiler.getMicroSeconds() - perfTime;
-  if(diffTime > 50000)
-  {
-    double frameCpu, frameGpu;
-    g_profiler.getAveragedValues("frame", frameCpu, frameGpu);
-    double curTime = perfTime = g_profiler.getMicroSeconds();
-    valuesFPS[values_offset]  = nbFrames / diffTime * 1000000.0f;  // to seconds
-    valuesRnd[values_offset]  = frameGpu / 1000.0;                 // to milliseconds
-    valueMax                  = std::min(std::max(valueMax, valuesFPS[values_offset]), 1000.0f);
-    valueMSMax                = std::max(valueMSMax, valuesRnd[values_offset]);
-    values_offset             = (values_offset + 1) % IM_ARRAYSIZE(valuesFPS);
-    nbFrames                  = 0;
-  }
-
-  if(ImGui::CollapsingHeader("Performance"))
-  {
-    char strbuf[80];
-    int  last = (values_offset - 1) % IM_ARRAYSIZE(valuesFPS);
-    sprintf(strbuf, "Render\n%3.2fms", valuesRnd[last]);
-    ImGui::PlotLines(strbuf, valuesRnd, IM_ARRAYSIZE(valuesFPS), values_offset, nullptr, 0.0f, valueMSMax, ImVec2(0, 80));
-    sprintf(strbuf, "FPS\n%3.1f", valuesFPS[last]);
-    ImGui::PlotLines(strbuf, valuesFPS, IM_ARRAYSIZE(valuesFPS), values_offset, nullptr, 0.0f, valueMax, ImVec2(0, 80));
-    if(ImGui::TreeNode("Extra"))
-    {
-      ImGui::Text("Scene loading time:     %3.2f ms", s_stats.loadTime);
-      ImGui::Text("Scene preparation time: %3.2f ms", s_stats.sceneTime);
-      ImGui::Text("Scene recording time:   %3.2f ms", s_stats.recordTime);
-      ImGui::TreePop();
-    }
-  }
-
   if(ImGui::CollapsingHeader("Statistics"))
   {
-    ImGui::Text("Nb instances  : %zu", m_gltfScene.m_linearNodes.size());
-    ImGui::Text("Nb meshes     : %zu", m_gltfScene.m_linearMeshes.size());
-    ImGui::Text("Nb materials  : %zu", m_gltfScene.m_materials.size());
-    ImGui::Text("Nb triangles  : %zu", m_indices.size() / 3);
+    ImGui::Text("Camera      : %d", m_sceneStats.nbCameras);
+    ImGui::Text("Images      : %d", m_sceneStats.nbImages);
+    ImGui::Text("Textures    : %d", m_sceneStats.nbTextures);
+    ImGui::Text("Materials   : %d", m_sceneStats.nbMaterials);
+    ImGui::Text("Samplers    : %d", m_sceneStats.nbSamplers);
+    ImGui::Text("Nodes       : %d", m_sceneStats.nbNodes);
+    ImGui::Text("Meshes      : %d", m_sceneStats.nbMeshes);
+    ImGui::Text("Lights      : %d", m_sceneStats.nbLights);
+    ImGui::Text("Unique Tri  : %s", FormatNumbers(m_sceneStats.nbUniqueTriangles).c_str());
+    ImGui::Text("Total Tri   : %s", FormatNumbers(m_sceneStats.nbTriangles).c_str());
+    ImGui::Text("Image memory (bytes) : %s", FormatNumbers(m_sceneStats.imageMem).c_str());
   }
 
   AppBase::uiDisplayHelp();
@@ -859,8 +671,18 @@ bool VkRtExample::uiLights()
 //--------------------------------------------------------------------------------------------------
 // Convert all images to textures
 //
-void VkRtExample::loadImages(tinygltf::Model& gltfModel)
+void VkRtExample::importImages(tinygltf::Model& gltfModel)
 {
+  if(gltfModel.images.empty())
+  {
+    // Make dummy image(1,1), needed as we cannot have an empty array
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
+    std::array<uint8_t, 4>   white = {255, 255, 255, 255};
+    m_textures.emplace_back(m_alloc.createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(vk::Extent2D{1, 1}), {}));
+    m_debug.setObjectName(m_textures[0].image, "dummy");
+    return;
+  }
+
   m_textures.resize(gltfModel.images.size());
 
   vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
@@ -883,12 +705,26 @@ void VkRtExample::loadImages(tinygltf::Model& gltfModel)
     vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
     m_textures[i]                  = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
 
-    m_gltfScene.m_textureDescriptors[i] = m_textures[i].descriptor;
     m_debug.setObjectName(m_textures[i].image, std::string("Txt" + std::to_string(i)).c_str());
   }
   sc.submitAndWait(cmdBuf);
   m_alloc.finalizeAndReleaseStaging();
 }
+
+//--------------------------------------------------------------------------------------------------
+// Overload callback when a key gets hit
+// - Pressing 'F' to move the camera to see the scene bounding box
+//
+void VkRtExample::onKeyboardChar(unsigned char key)
+{
+  AppBase::onKeyboardChar(key);
+
+  if(key == 'f')
+  {
+    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false);
+  }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 // Overload keyboard hit
@@ -899,14 +735,24 @@ void VkRtExample::loadImages(tinygltf::Model& gltfModel)
 void VkRtExample::onKeyboard(int key, int scancode, int action, int mods)
 {
   nvvk::AppBase::onKeyboard(key, scancode, action, mods);
+  if(action == GLFW_RELEASE)
+    return;
 
   if(key == GLFW_KEY_HOME)
   {
     // Set the camera as to see the model
-    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false);
+    if(m_gltfScene.m_cameras.empty())
+      fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false);
+    else
+    {
+      nvmath::vec3f eye;
+      m_gltfScene.m_cameras[0].worldMatrix.get_translation(eye);
+      float len = nvmath::length(m_gltfScene.m_dimensions.center - eye);
+      CameraManip.setMatrix(m_gltfScene.m_cameras[0].worldMatrix, false, len);
+    }
   }
 
-  if(key == GLFW_KEY_SPACE && action == 1)
+  if(key == GLFW_KEY_SPACE)
   {
     double x, y;
     glfwGetCursorPos(m_window, &x, &y);
@@ -928,11 +774,10 @@ void VkRtExample::onKeyboard(int key, int scancode, int action, int mods)
     }
 
     std::stringstream o;
-    LOGI("\n Instance:  %d", pr.intanceID);
-    LOGI("\n Primitive: %d", pr.primitiveID);
+    LOGI("\n Node:  %d", pr.intanceID);
+    LOGI("\n PrimMesh:  %d", pr.intanceCustomID);
+    LOGI("\n Triangle: %d", pr.primitiveID);
     LOGI("\n Distance:  %f", nvmath::length(pr.worldPos - m_sceneUbo.cameraPosition));
-    uint  indexOffset = m_primitiveOffsets[pr.intanceID].indexOffset + (3 * pr.primitiveID);
-    ivec3 ind         = ivec3(m_indices[indexOffset + 0], m_indices[indexOffset + 1], m_indices[indexOffset + 2]);
     LOGI("\n Position: %f, %f, %f \n", pr.worldPos.x, pr.worldPos.y, pr.worldPos.z);
 
     // Set the interest position
@@ -940,4 +785,37 @@ void VkRtExample::onKeyboard(int key, int scancode, int action, int mods)
     CameraManip.getLookat(eye, center, up);
     CameraManip.setLookat(eye, pr.worldPos, up, false);
   }
+}
+
+//--------------------------------------------------------------------------------------------------
+// Drag and dropping a glTF file
+//
+void VkRtExample::onFileDrop(const char* filename)
+{
+  m_device.waitIdle();
+
+  // Destroy all allocation: buffers, images
+  m_gltfScene.destroy();
+  m_alloc.destroy(m_vertexBuffer);
+  m_alloc.destroy(m_normalBuffer);
+  m_alloc.destroy(m_uvBuffer);
+  m_alloc.destroy(m_tangentBuffer);
+  m_alloc.destroy(m_indexBuffer);
+  m_alloc.destroy(m_materialBuffer);
+  //  m_alloc.destroy(m_primitiveInfoBuffer);
+  m_alloc.destroy(m_sceneBuffer);
+  for(auto& t : m_textures)
+    m_alloc.destroy(t);
+  m_textures.clear();
+
+  // Destroy descriptor layout, number of images might change
+  m_device.destroy(m_descSetLayout[eScene]);
+  m_device.destroy(m_descPool[eScene]);
+
+  // Destroy Raytracer data: blas, tlas, descriptorsets
+  m_rayPicker.destroy();
+  m_raytracer.destroy();
+
+  loadScene(filename);
+  resetFrame();
 }
