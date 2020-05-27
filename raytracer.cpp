@@ -211,11 +211,11 @@ void Raytracer::createShadingBindingTable()
 {
   auto     groupCount      = static_cast<uint32_t>(m_groups.size());   // 3 shaders: raygen, miss, chit
   uint32_t groupHandleSize = m_rtProperties.shaderGroupHandleSize;     // Size of a program identifier
-  uint32_t baseAligment    = m_rtProperties.shaderGroupBaseAlignment;  // Size of a program identifier
+  uint32_t baseAlignment   = m_rtProperties.shaderGroupBaseAlignment;  // Size of a program identifier
 
 
   // Fetch all the shader handles used in the pipeline, so that they can be written in the SBT
-  uint32_t             sbtSize = groupCount * baseAligment;
+  uint32_t             sbtSize = groupCount * baseAlignment;
   std::vector<uint8_t> shaderHandleStorage(sbtSize);
   m_device.getRayTracingShaderGroupHandlesNV(m_rtPipeline, 0, groupCount, sbtSize, shaderHandleStorage.data());
 
@@ -229,7 +229,7 @@ void Raytracer::createShadingBindingTable()
   for(uint32_t g = 0; g < groupCount; g++)
   {
     memcpy(pData, shaderHandleStorage.data() + g * groupHandleSize, groupHandleSize);  // raygen
-    pData += baseAligment;
+    pData += baseAlignment;
   }
   m_alloc->unmap(m_rtSBTBuffer);
 }
