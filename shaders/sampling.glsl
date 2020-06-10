@@ -1,21 +1,21 @@
 //! #version 430
 
-/*
- * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
- *
- * NVIDIA CORPORATION and its licensors retain all intellectual property
- * and proprietary rights in and to this software, related documentation
- * and any modifications thereto.  Any use, reproduction, disclosure or
- * distribution of this software and related documentation without an express
- * license agreement from NVIDIA CORPORATION is strictly prohibited.
- */
+//
+// Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+//
+// NVIDIA CORPORATION and its licensors retain all intellectual property
+// and proprietary rights in and to this software, related documentation
+// and any modifications thereto.  Any use, reproduction, disclosure or
+// distribution of this software and related documentation without an express
+// license agreement from NVIDIA CORPORATION is strictly prohibited.
+//
 
-#ifndef M_PIf
-#define M_PIf 3.14159265358979323846f
-#endif
 
-const float ONE_OVER_PI = 0.3183099;
-const float PI          = 3.141592653589;
+const float M_PI   = 3.14159265358979323846;   // pi
+const float M_PI_2 = 1.57079632679489661923;   // pi/2
+const float M_PI_4 = 0.785398163397448309616;  // pi/4
+const float M_1_PI = 0.318309886183790671538;  // 1/pi
+const float M_2_PI = 0.636619772367581343076;  // 2/pi
 
 //-------------------------------------------------------------------------------------------------
 // random number generator based on the Optix SDK
@@ -56,6 +56,12 @@ uint lcg2(inout uint prev)
 float rnd(inout uint prev)
 {
   return (float(lcg(prev)) / float(0x01000000));
+}
+
+
+vec2 rnd2(inout uint prev)
+{
+  return vec2(rnd(prev), rnd(prev));
 }
 
 
@@ -179,51 +185,10 @@ vec2 get_spherical_uv(vec3 v)
   float gamma = asin(-v.y);
   float theta = atan(v.z, v.x);
 
-  vec2 uv = vec2(theta * ONE_OVER_PI * 0.5, gamma * ONE_OVER_PI) + 0.5;
+  vec2 uv = vec2(theta * M_1_PI * 0.5, gamma * M_1_PI) + 0.5;
   return uv;
 }
 
-
-// Sampling hemisphere around +Z
-void cosine_sample_hemisphere(const float u1, const float u2, out vec3 p)
-{
-  // Uniformly sample disk.
-  const float r   = sqrt(u1);
-  const float phi = 2.0f * M_PIf * u2;
-  p.x             = r * cos(phi);
-  p.y             = r * sin(phi);
-
-  // Project up to hemisphere.
-  p.z = sqrt(max(0.0f, 1.0f - p.x * p.x - p.y * p.y));
-}
-
-// Sampling hemisphere around +Z within a cone (angle)
-void cosineMaxSampleHemisphere(const float r1, const float r2, const float angle, out vec3 d)
-{
-  float cosAngle = cos(angle);
-  float phi      = 2.0f * M_PIf * r1;
-  float r        = sqrt(1.0 - ((1.0 - r2 * (1.0 - cosAngle)) * (1.0 - r2 * (1.0 - cosAngle))));
-  d.x            = cos(phi) * r;
-  d.y            = sin(phi) * r;
-  d.z            = 1.0 - r2 * (1.0 - cosAngle);
-}
-
-
-// Transform P to the domaine made by N-T-B
-void inverse_transform(inout vec3 p, in vec3 normal, in vec3 tangent, in vec3 binormal)
-{
-  p = p.x * tangent + p.y * binormal + p.z * normal;
-}
-
-// Return the basis from the incoming normal: x=tangent, y=binormal, z=normal
-void compute_default_basis(const vec3 normal, out vec3 x, out vec3 y, out vec3 z)
-{
-  // ZAP's default coordinate system for compatibility
-  z              = normal;
-  const float yz = -z.y * z.z;
-  y = normalize(((abs(z.z) > 0.99999f) ? vec3(-z.x * z.y, 1.0f - z.y * z.y, yz) : vec3(-z.x * z.z, yz, 1.0f - z.z * z.z)));
-  x = cross(y, z);
-}
 
 // Randomly sampling around +Z
 vec3 samplingHemisphere(inout uint seed, in vec3 x, in vec3 y, in vec3 z)
@@ -232,13 +197,11 @@ vec3 samplingHemisphere(inout uint seed, in vec3 x, in vec3 y, in vec3 z)
   float r2 = rnd(seed);
   float sq = sqrt(1.0 - r2);
 
-  vec3 direction = vec3(cos(2 * M_PIf * r1) * sq, sin(2 * M_PIf * r1) * sq, sqrt(r2));
+  vec3 direction = vec3(cos(2 * M_PI * r1) * sq, sin(2 * M_PI * r1) * sq, sqrt(r2));
   direction      = direction.x * x + direction.y * y + direction.z * z;
-  seed++;
 
   return direction;
 }
-
 
 // Return the tangent and binormal from the incoming normal
 void createCoordinateSystem(in vec3 N, out vec3 Nt, out vec3 Nb)
@@ -248,20 +211,4 @@ void createCoordinateSystem(in vec3 N, out vec3 Nt, out vec3 Nb)
   else
     Nt = vec3(0, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z);
   Nb = cross(N, Nt);
-}
-
-
-// Uv range: [0, 1]
-vec3 toPolar(in vec2 uv)
-{
-  float theta = 2.0 * PI * uv.x + -PI / 2.0;
-  float phi   = PI * uv.y;
-
-  vec3 n;
-  n.x = cos(theta) * sin(phi);
-  n.y = sin(theta) * sin(phi);
-  n.z = cos(phi);
-
-  //n = normalize(n);
-  return n;
 }

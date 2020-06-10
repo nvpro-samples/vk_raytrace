@@ -8,8 +8,6 @@
 #include "sampling.glsl"
 #include "share.h"
 
-const float M_PI             = 3.14159265359;
-const float M_2PI            = 6.28318530718;
 const float c_MinReflectance = 0.04;
 
 // Payload information of the ray returning: 0 hit, 2 shadow
@@ -18,10 +16,12 @@ layout(location = 1) rayPayloadNV ShadowHitInfo shadow_payload;
 
 layout(push_constant) uniform Constants
 {
-  int   frame;
-  int   rayDepth;
-  int   samples;
+  int   frame;         // Current frame
+  int   maxDepth;      // Trace depth
+  float maxRayLenght;  // Trace depth
+  int   samples;       // Number of samples per pixel
   float environmentIntensityFactor;
+  float fireflyClampThreshold;
 }
 pushC;
 
@@ -48,6 +48,9 @@ layout(set = 1, binding = B_IMPORT_SMPL) uniform sampler2D environmentSamplingDa
 layout(set = 1, binding = B_TEXTURES) uniform sampler2D texturesMap[]; // all textures
 
 // clang-format on
+
+
+#define GGX_MIN_ROUGHNESS 0.0001f
 
 
 // Return the vertex position
@@ -340,54 +343,43 @@ vec3 getPointShade(vec3 pointToLight, MaterialInfo materialInfo, vec3 normal, ve
 }
 
 
-// Get a normal on the microfacet
-vec3 getGGXMicrofacet(float roughness, vec3 normal)
+// Utility function to get a vector perpendicular to an input vector
+//    (from "Efficient Construction of Perpendicular Vectors Without Branching")
+vec3 getPerpendicularStark(vec3 u)
 {
-  float e0 = rnd(payload.seed);
-  float e1 = rnd(payload.seed);
-
-  vec3 t, b;
-  createCoordinateSystem(normal, t, b);
-
-  // GGX NDF sampling
-  float a2        = roughness * roughness;
-  float cosThetaH = sqrt(max(0.0f, (1.0 - e0) / ((a2 - 1.0) * e0 + 1)));
-  float sinThetaH = sqrt(max(0.0f, 1.0f - cosThetaH * cosThetaH));
-  float phiH      = e1 * M_PI * 2.0f;
-
-  // Get our GGX NDF sample (i.e., the half vector)
-  return t * (sinThetaH * cos(phiH)) + b * (sinThetaH * sin(phiH)) + normal * cosThetaH;
+  vec3 a  = abs(u);
+  uint xm = ((a.x - a.y) < 0 && (a.x - a.z) < 0) ? 1 : 0;
+  uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;
+  uint zm = 1 ^ (xm | ym);
+  return cross(u, vec3(xm, ym, zm));
 }
 
-
-// Returning the reflection direction and the reflectance weight.
-void getSampling(MaterialInfo materialInfo, vec3 N, vec3 V, out vec3 reflDir, out vec3 reflectance)
+// Get a GGX half vector / microfacet normal, sampled according to the GGX distribution
+//    When using this function to sample, the probability density is pdf = D * NdotH / (4 * HdotV)
+//
+//    \param[in] u Uniformly distributed random numbers between 0 and 1
+//    \param[in] N Surface normal
+//    \param[in] roughness Roughness^2 of material
+//
+vec3 getGGXMicrofacet(vec2 u, vec3 N, float roughness)
 {
-  // Randomly sample the NDF to get a microfacet in our BRDF to reflect off of
-  vec3 H = getGGXMicrofacet(materialInfo.perceptualRoughness, N);
+  float a2 = roughness * roughness;
 
-  // Compute the outgoing direction based on this (perfectly reflective) microfacet
-  vec3 L  = normalize(2.f * dot(V, H) * H - V);
-  reflDir = L;
+  float phi      = 2 * M_PI * u.x;
+  float cosTheta = sqrt(max(0, (1 - u.y)) / (1 + (a2 - 1) * u.y));
+  float sinTheta = sqrt(max(0, 1 - cosTheta * cosTheta));
 
-  // Compute some dot products needed for shading
-  AngularInfo angularInfo;
-  angularInfo.NdotL = clamp(dot(N, L), 0.05, 1);
-  angularInfo.NdotH = dot(N, H);
-  angularInfo.NdotV = dot(N, V);
-  angularInfo.VdotH = dot(V, H);
+  // Tangent space H
+  vec3 tH;
+  tH.x = sinTheta * cos(phi);
+  tH.y = sinTheta * sin(phi);
+  tH.z = cosTheta;
 
-  if(angularInfo.NdotL > 0.0 || angularInfo.NdotV > 0.0)
-  {
-    // Calculate the shading terms for the microfacet specular shading model
-    vec3  F   = specularReflection(materialInfo, angularInfo);
-    float Vis = visibilityOcclusion(materialInfo, angularInfo);
-    float G   = 4 * Vis * angularInfo.NdotL * angularInfo.NdotV;
+  vec3 T = getPerpendicularStark(N);
+  vec3 B = normalize(cross(N, T));
 
-    float weight = abs(angularInfo.VdotH) / (angularInfo.NdotV * angularInfo.NdotH);
-
-    reflectance = G * F * weight;
-  }
+  // World space H
+  return normalize(T * tH.x + B * tH.y + N * tH.z);
 }
 
 
@@ -452,7 +444,6 @@ void main()
   {
     f0                  = material.khrSpecularFactor * 0.08;
     perceptualRoughness = 1.0 - material.khrGlossinessFactor;
-    perceptualRoughness = 1.0 - material.khrGlossinessFactor;
 
     specularColor                  = f0;  // f0 = specular
     float oneMinusSpecularStrength = 1.0 - max(max(f0.r, f0.g), f0.b);
@@ -484,8 +475,9 @@ void main()
                                            specularEnvironmentR90, specularColor);
 
 
-  vec3 contribution = vec3(0.0, 0.0, 0.0);
-  vec3 viewDir      = normalize(gl_WorldRayOriginNV - state.pos);
+  payload.contribution = vec3(0.0, 0.0, 0.0);
+  vec3 contribution    = vec3(0.0, 0.0, 0.0);
+  vec3 viewDir         = normalize(gl_WorldRayOriginNV - state.pos);
 
   // Calculate lighting contribution from image based lighting source (IBL)
   vec3  to_light;
@@ -509,7 +501,7 @@ void main()
   vec3 emissive = material.emissiveFactor;
   if(material.emissiveTexture > -1)
     emissive *= SRGBtoLINEAR(texture(texturesMap[nonuniformEXT(material.emissiveTexture)], state.texcoord0), 2.2).rgb;
-  contribution += emissive;
+  payload.contribution += emissive;
 
 
   // Result Color
@@ -519,11 +511,30 @@ void main()
     payload.rayOrigin = offsetRay(state.pos, state.geom_normal);
 
     // New direction and reflectance
-    vec3 reflectance = vec3(0);
-    vec3 rayDir;
-    getSampling(materialInfo, state.normal, viewDir, rayDir, reflectance);
-    payload.rayDir = rayDir;
-    payload.weight *= reflectance;
+    vec3        reflectance = vec3(0);
+    vec3        rayDir;
+    AngularInfo angularInfo = getAngularInfo(to_light, state.normal, viewDir);
+    float       F           = specularReflection(materialInfo, angularInfo).x;
+    float       e           = rnd(payload.seed);
+    if(e > F)
+    {
+      vec3 T, B, N;
+      N = state.normal;
+      createCoordinateSystem(N, T, B);
+      // Randomly sample the hemisphere
+      payload.rayDir = samplingHemisphere(payload.seed, T, B, N);
+      payload.weight *= baseColor.rgb;
+    }
+    else
+    {
+      vec3 V = viewDir;
+      vec3 N = state.normal;
+      // Randomly sample the NDF to get a microfacet in our BRDF to reflect off
+      vec3 H = getGGXMicrofacet(rnd2(payload.seed), N, materialInfo.perceptualRoughness);
+      // Compute the outgoing direction based on this (perfectly reflective) microfacet
+      payload.rayDir = normalize(2.f * dot(V, H) * H - V);
+      payload.weight *= materialInfo.specularColor;
+    }
   }
   else
   {
@@ -578,17 +589,17 @@ void main()
   shadow_payload.seed  = 0;
   uint rayFlags        = gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV;
 
-  traceNV(topLevelAS,  // acceleration structure
-          rayFlags,    // rayFlags
-          0xFF,        // cullMask
-          0,           // sbtRecordOffset
-          0,           // sbtRecordStride
-          1,           // missIndex
-          origin,      // ray origin
-          0.01,        // ray min range
-          direction,   // ray direction
-          1000000.0,   // ray max range
-          1            // payload layout(location = 1)
+  traceNV(topLevelAS,          // acceleration structure
+          rayFlags,            // rayFlags
+          0xFF,                // cullMask
+          0,                   // sbtRecordOffset
+          0,                   // sbtRecordStride
+          1,                   // missIndex
+          origin,              // ray origin
+          0.0,                 // ray min range
+          direction,           // ray direction
+          pushC.maxRayLenght,  // ray max range
+          1                    // payload layout(location = 1)
   );
 
   // add to ray contribution from next event estiation

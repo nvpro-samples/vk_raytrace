@@ -75,13 +75,13 @@ public:
     eMaterial
   };
 
-  vk::DescriptorSet       m_descriptorSet[2];
-  vk::DescriptorSetLayout m_descriptorSetLayout[2];
-  vk::DescriptorPool      m_descriptorpool;
-  vk::Pipeline            m_pipeline;
-  vk::PipelineLayout      m_pipelineLayout;
-  vk::RenderPass          m_renderPass;
-  vk::Device              m_device;
+  std::array<vk::DescriptorSet, 2>       m_descriptorSet;
+  std::array<vk::DescriptorSetLayout, 2> m_descriptorSetLayout;
+  vk::DescriptorPool                     m_descriptorpool;
+  vk::Pipeline                           m_pipeline;
+  vk::PipelineLayout                     m_pipelineLayout;
+  vk::RenderPass                         m_renderPass;
+  vk::Device                             m_device;
 
 private:
   nvvk::Buffer m_vertices;

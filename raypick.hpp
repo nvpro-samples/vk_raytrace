@@ -198,7 +198,7 @@ public:
     rayPipelineInfo.setPGroups(m_groups.data());
     rayPipelineInfo.setMaxRecursionDepth(2);
     rayPipelineInfo.setLayout(m_pipelineLayout);
-    m_pipeline = m_device.createRayTracingPipelineNV({}, rayPipelineInfo, nullptr /*, NVVKPP_DISPATCHER*/);
+    m_pipeline = m_device.createRayTracingPipelineNV({}, rayPipelineInfo).value;
 
     m_device.destroyShaderModule(raygenSM);
     m_device.destroyShaderModule(missSM);
@@ -208,11 +208,13 @@ public:
 
   void createShadingBindingTable()
   {
-    auto     groupCount      = static_cast<uint32_t>(m_groups.size());        // 3 shaders: raygen, miss, chit
-    uint32_t groupHandleSize = m_raytracingProperties.shaderGroupHandleSize;  // Size of a program identifier
+    auto     groupCount      = static_cast<uint32_t>(m_groups.size());           // 3 shaders: raygen, miss, chit
+    uint32_t groupHandleSize = m_raytracingProperties.shaderGroupHandleSize;     // Size of a program identifier
+    uint32_t alignSize       = m_raytracingProperties.shaderGroupBaseAlignment;  // Size of a program identifier
+
 
     // Fetch all the shader handles used in the pipeline, so that they can be written in the SBT
-    uint32_t             sbtSize = groupCount * groupHandleSize;
+    uint32_t             sbtSize = groupCount * alignSize;
     std::vector<uint8_t> shaderHandleStorage(sbtSize);
     m_device.getRayTracingShaderGroupHandlesNV(m_pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data() /*, NVVKPP_DISPATCHER*/);
 
@@ -226,7 +228,7 @@ public:
     for(uint32_t g = 0; g < groupCount; g++)
     {
       memcpy(pData, shaderHandleStorage.data() + g * groupHandleSize, groupHandleSize);  // raygen
-      pData += groupHandleSize;
+      pData += alignSize;
     }
     m_alloc->unmap(m_sbtBuffer);
   }
@@ -236,7 +238,7 @@ public:
     m_pushC.pickX = x;
     m_pushC.pickY = y;
 
-    uint32_t progSize = m_raytracingProperties.shaderGroupHandleSize;  // Size of a program identifier
+    uint32_t progSize = m_raytracingProperties.shaderGroupBaseAlignment;  // Size of a program identifier
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingNV, m_pipeline);
     cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingNV, m_pipelineLayout, 0, {m_descSet}, {});
     cmdBuf.pushConstants<PushConstant>(m_pipelineLayout, vk::ShaderStageFlagBits::eRaygenNV, 0, m_pushC);

@@ -19,29 +19,18 @@ layout(set = 1, binding = B_HDR) uniform sampler2D samplerEnv;
 layout(set = 1, binding = B_FILTER_GLOSSY) uniform samplerCube prefilteredMap;
 
 
-// Return a glossy reflection
-vec3 prefilteredReflection(vec3 R, float roughness)
-{
-  int   levels = textureQueryLevels(prefilteredMap);
-  float lod    = clamp(roughness * float(levels), 0.0, float(levels));
-  return textureLod(prefilteredMap, R, lod).rgb;
-}
-
 void main()
 {
 
   vec3 radiance = vec3(0);
-//  if(prd.roughness > 0)
-//  {
-//    hitValue = prefilteredReflection(gl_WorldRayDirectionNV, prd.roughness);
-//  }
-//  else
+
+  // Not adding the contribution of the environment, this is done in CHIT
+  if(has_flag(payload.flags, FLAG_FIRST_PATH_SEGMENT))
   {
     vec2 uv  = get_spherical_uv(gl_WorldRayDirectionNV);  // See sampling.glsl
     radiance = texture(samplerEnv, uv).rgb;
   }
 
-  payload.contribution += radiance * payload.weight;
-    payload.flags =  FLAG_DONE;
-
+  payload.contribution = radiance * payload.weight;
+  payload.flags        = FLAG_DONE;
 }
