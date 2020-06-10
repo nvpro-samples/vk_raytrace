@@ -26,10 +26,11 @@ ubo;
 //------------------------------------
 layout(push_constant) uniform Constants
 {
-  int   frame;     // Current frame
-  int   maxDepth;  // Trace depth
-  int   samples;   // Number of samples per pixel
-  float hdrMultiplier;
+  int   frame;         // Current frame
+  int   maxDepth;      // Trace depth
+  float maxRayLenght;  // Trace depth
+  int   samples;       // Number of samples per pixel
+  float environmentIntensityFactor;
   float fireflyClampThreshold;
 }
 pushC;
@@ -66,17 +67,10 @@ void main()
     vec4  origin      = viewInverse * vec4(0, 0, 0, 1);
     vec4  target      = projInverse * vec4(d.x, d.y, 1, 1);
     vec4  direction   = viewInverse * vec4(normalize(target.xyz), 0);
-    float Tmin        = 0.001;
-    float Tmax        = 100000.0;
+    float Tmin        = 0.0;
+    float Tmax        = pushC.maxRayLenght;
 
     // Payload
-    //    prd.result     = vec3(0.f);
-    //    prd.importance = vec3(1.f);
-    //    prd.seed       = seed;
-    //    prd.depth      = 0;
-    //    prd.roughness  = 0;
-
-
     payload.flags        = FLAG_FIRST_PATH_SEGMENT;
     payload.rayOrigin    = origin.xyz;
     payload.rayDir       = direction.xyz;

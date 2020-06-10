@@ -275,7 +275,7 @@ void VkRtExample::display()
   // Updating the matrices of the camera
   updateCameraBuffer(cmdBuf);
 
-  vk::ClearValue clearValues[2];
+  std::array<vk::ClearValue, 2> clearValues;
   clearValues[0].setColor(std::array<float, 4>({0.1f, 0.1f, 0.4f, 0.f}));
   clearValues[1].setDepthStencil({1.0f, 0});
 
@@ -298,7 +298,8 @@ void VkRtExample::display()
     {
       auto dgbLabel = m_debug.scopeLabel(cmdBuf, "display");
 
-      vk::RenderPassBeginInfo renderPassBeginInfo = {m_renderPass, m_framebuffers[getCurFrame()], {{}, m_size}, 2, clearValues};
+      vk::RenderPassBeginInfo renderPassBeginInfo = {
+          m_renderPass, m_framebuffers[getCurFrame()], {{}, m_size}, 2, clearValues.data()};
       cmdBuf.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
       setViewport(cmdBuf);
 

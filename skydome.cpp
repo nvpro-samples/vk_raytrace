@@ -173,7 +173,7 @@ void SkydomePbr::createPipelines(const vk::DescriptorBufferInfo& sceneBufferDesc
       m_device.updateDescriptorSets(writeDescriptorSet, nullptr);
     }
 
-    m_pipelineLayout = m_device.createPipelineLayout({{}, 2, m_descriptorSetLayout});
+    m_pipelineLayout = m_device.createPipelineLayout({{}, 2, m_descriptorSetLayout.data()});
   }
 
   std::vector<std::string>                paths = defaultSearchPaths;

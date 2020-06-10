@@ -195,7 +195,7 @@ void Raytracer::createPipeline(const vk::DescriptorSetLayout& sceneDescSetLayout
   rayPipelineInfo.setPGroups(m_groups.data());
   rayPipelineInfo.setMaxRecursionDepth(10);
   rayPipelineInfo.setLayout(m_rtPipelineLayout);
-  m_rtPipeline = m_device.createRayTracingPipelineNV({}, rayPipelineInfo);
+  m_rtPipeline = m_device.createRayTracingPipelineNV({}, rayPipelineInfo).value;
 
   m_device.destroyShaderModule(raygenSM);
   m_device.destroyShaderModule(missSM);
@@ -266,10 +266,12 @@ bool Raytracer::uiSetup()
   bool modified = false;
   if(ImGui::CollapsingHeader("Ray Tracing"))
   {
-    modified = ImGui::SliderInt("Max Ray Depth ", &m_pushC.depth, 1, 10);
-    modified = ImGui::SliderInt("Samples Per Frame", &m_pushC.samples, 1, 100) || modified;
-    modified = ImGui::SliderInt("Max Iteration ", &m_maxFrames, 1, 1000) || modified;
-    modified = ImGui::SliderFloat("HDR Multiplier", &m_pushC.hdrMultiplier, 0.f, 10.f, "%.3f", 3.0f) || modified;
+    modified = false;
+    modified |= ImGui::SliderInt("Max Ray Depth ", &m_pushC.maxDepth, 1, 10);
+    modified |= ImGui::SliderFloat("Max Ray Length", &m_pushC.maxRayLenght, 1, 1000000, "%.1f", 2.f);
+    modified |= ImGui::SliderInt("Samples Per Frame", &m_pushC.samples, 1, 100);
+    modified |= ImGui::SliderInt("Max Iteration ", &m_maxFrames, 1, 1000);
+    modified |= ImGui::SliderFloat("HDR Multiplier", &m_pushC.hdrMultiplier, 0.f, 10.f, "%.3f", 3.0f);
   }
   return modified;
 }

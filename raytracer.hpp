@@ -102,8 +102,9 @@ public:
 
   struct PushConstant
   {
-    int   frame{0};    // Current frame number
-    int   depth{2};    // Max depth
+    int   frame{0};  // Current frame number
+    int   maxDepth{3};
+    float maxRayLenght{100000};
     int   samples{5};  // samples per frame
     float hdrMultiplier{1.f};
     float fireflyClampThreshold{10000.f};
