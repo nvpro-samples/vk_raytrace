@@ -46,8 +46,8 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #include "nvvk/context_vk.hpp"
 #include "nvvk/extensions_vk.hpp"
 
-int const SAMPLE_SIZE_WIDTH  = 800;
-int const SAMPLE_SIZE_HEIGHT = 600;
+int const SAMPLE_SIZE_WIDTH  = 1280;
+int const SAMPLE_SIZE_HEIGHT = 1024;
 
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths{
