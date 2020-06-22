@@ -33,6 +33,8 @@ endif()
     
 _add_project_definitions(${PROJNAME})
 
+set(CMAKE_CXX_STANDARD 17)
+
 #####################################################################################
 # additions from packages needed for this sample
 # add refs  in LIBRARIES_OPTIMIZED
