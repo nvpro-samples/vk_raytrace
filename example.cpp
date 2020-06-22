@@ -30,7 +30,10 @@
 //
 #include <iostream>
 
+#include <filesystem>
 #include <vulkan/vulkan.hpp>
+
+namespace fs = std::filesystem;
 
 #include "example.hpp"
 #include "imgui/imgui_orient.h"
@@ -109,19 +112,6 @@ void VkRtExample::loadScene(const std::string& filename)
     LOGI(" --> (%5.3f ms)\n", timer.elapse());
   }
 
-  // Set the camera to see the scene
-  if(m_gltfScene.m_cameras.empty())
-    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max);
-  else
-  {
-    nvmath::vec3f eye;
-    m_gltfScene.m_cameras[0].worldMatrix.get_translation(eye);
-    float len = nvmath::length(m_gltfScene.m_dimensions.center - eye);
-    CameraManip.setMatrix(m_gltfScene.m_cameras[0].worldMatrix, true, len);
-    CameraManip.setFov(rad2deg(m_gltfScene.m_cameras[0].cam.perspective.yfov));
-  }
-
-
   {
     LOGI("Importing %d images\n", tmodel.images.size());
     importImages(tmodel);
@@ -160,7 +150,6 @@ void VkRtExample::loadScene(const std::string& filename)
 
     // TLAS - Top level for each valid mesh
     std::vector<nvvk::RaytracingBuilderNV::Instance> rayInst;
-    uint32_t                                         instID = 0;
     for(auto& node : m_gltfScene.m_nodes)
     {
       nvvk::RaytracingBuilderNV::Instance inst;
@@ -168,8 +157,6 @@ void VkRtExample::loadScene(const std::string& filename)
       inst.instanceId = node.primMesh;  // gl_InstanceCustomIndexNV
       inst.blasId     = node.primMesh;
       rayInst.emplace_back(inst);
-
-      auto& mesh = m_gltfScene.m_primMeshes[node.primMesh];
     }
     m_raytracer.builder().buildTlas(rayInst);
 
@@ -185,6 +172,22 @@ void VkRtExample::loadScene(const std::string& filename)
   // Using -SPACE- to pick an object
   vk::DescriptorBufferInfo sceneDesc{m_sceneBuffer.buffer, 0, VK_WHOLE_SIZE};
   m_rayPicker.initialize(m_raytracer.builder().getAccelerationStructure(), sceneDesc);
+
+
+  // Set the camera to see the scene
+  if(m_gltfScene.m_cameras.empty())
+  {
+    CameraManip.setLookat({0, 0, 10}, {0, 0, 0}, {0, 1, 0});
+    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false);
+  }
+  else
+  {
+    nvmath::vec3f eye;
+    m_gltfScene.m_cameras[0].worldMatrix.get_translation(eye);
+    float len = nvmath::length(m_gltfScene.m_dimensions.center - eye);
+    CameraManip.setMatrix(m_gltfScene.m_cameras[0].worldMatrix, true, len);
+    CameraManip.setFov(rad2deg(m_gltfScene.m_cameras[0].cam.perspective.yfov));
+  }
 }
 
 
@@ -561,8 +564,9 @@ void VkRtExample::updateCameraBuffer(const vk::CommandBuffer& cmdBuffer)
 //
 void VkRtExample::createRenderPass()
 {
-  m_renderPass   = nvvk::createRenderPass(m_device, {getColorFormat()}, m_depthFormat, 1, true, true);
-  m_renderPassUI = nvvk::createRenderPass(m_device, {getColorFormat()}, m_depthFormat, 1, false, false);
+  m_renderPass = nvvk::createRenderPass(m_device, {getColorFormat()}, m_depthFormat, 1, true, true);
+  m_renderPassUI =
+      nvvk::createRenderPass(m_device, {getColorFormat()}, m_depthFormat, 1, false, false, vk::ImageLayout::ePresentSrcKHR);
 }
 
 // Formating with local number representation (1,000,000.23 or 1.000.000,23)
@@ -722,7 +726,8 @@ void VkRtExample::onKeyboardChar(unsigned char key)
 
   if(key == 'f')
   {
-    fitCamera(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false);
+    CameraManip.fit(m_gltfScene.m_dimensions.min, m_gltfScene.m_dimensions.max, false, true,
+                    m_size.width / (float)m_size.height);
   }
 }
 
@@ -793,6 +798,12 @@ void VkRtExample::onKeyboard(int key, int scancode, int action, int mods)
 //
 void VkRtExample::onFileDrop(const char* filename)
 {
+  if(fs::path(filename).extension() != ".gltf")
+  {
+    LOGE("Error: only supporting .gltf files");
+    return;
+  }
+
   m_device.waitIdle();
 
   // Destroy all allocation: buffers, images
