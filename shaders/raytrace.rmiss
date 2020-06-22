@@ -22,14 +22,8 @@ layout(set = 1, binding = B_FILTER_GLOSSY) uniform samplerCube prefilteredMap;
 void main()
 {
 
-  vec3 radiance = vec3(0);
-
-  // Not adding the contribution of the environment, this is done in CHIT
-  if(has_flag(payload.flags, FLAG_FIRST_PATH_SEGMENT))
-  {
-    vec2 uv  = get_spherical_uv(gl_WorldRayDirectionNV);  // See sampling.glsl
-    radiance = texture(samplerEnv, uv).rgb;
-  }
+  vec2 uv       = get_spherical_uv(gl_WorldRayDirectionNV);  // See sampling.glsl
+  vec3 radiance = texture(samplerEnv, uv).rgb;
 
   payload.contribution = radiance * payload.weight;
   payload.flags        = FLAG_DONE;
