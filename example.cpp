@@ -33,6 +33,7 @@
 #include <filesystem>
 #include <vulkan/vulkan.hpp>
 
+
 namespace fs = std::filesystem;
 
 #include "example.hpp"
@@ -50,8 +51,9 @@ namespace fs = std::filesystem;
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 // #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
+#include "fileformats/tiny_gltf.h"
+#include "fileformats/tiny_gltf_freeimage.h"
 #include "nvmath/nvmath_types.h"
-#include <fileformats/tiny_gltf.h>
 
 
 extern std::vector<std::string> defaultSearchPaths;
@@ -81,15 +83,18 @@ void VkRtExample::setup(const vk::Instance& instance, const vk::Device& device, 
 void VkRtExample::loadScene(const std::string& filename)
 {
   // Loading the glTF file, it will allocate 3 buffers: vertex, index and matrices
-  tinygltf::Model    tmodel;
-  tinygltf::TinyGLTF tcontext;
+  tinygltf::Model    gltfModel;
+  tinygltf::TinyGLTF tGltf;
   std::string        warn, error;
   bool               fileLoaded = false;
   MilliTimer         timer;
   {
     LOGI("Loading glTF: %s\n", filename.c_str());
 
-    fileLoaded = tcontext.LoadASCIIFromFile(&tmodel, &error, &warn, filename);
+    // Differ image loading
+    tGltf.SetImageLoader(nullptr, nullptr);
+
+    fileLoaded = tGltf.LoadASCIIFromFile(&gltfModel, &error, &warn, filename);
     if(!warn.empty())
     {
       LOGE("Warning loading %s: %s", filename.c_str(), warn.c_str());
@@ -102,19 +107,26 @@ void VkRtExample::loadScene(const std::string& filename)
     LOGI(" --> (%5.3f ms)\n", timer.elapse());
   }
 
+  {
+    // Load external images
+    LOGI("Loading all Images");
+    tinygltf::loadExternalImages(&gltfModel, filename);
+    LOGI(" --> (%5.3f ms)\n", timer.elapse());
+  }
+
   // From tinyGLTF to our glTF representation
   {
     LOGI("Importing Scene\n");
-    m_gltfScene.importMaterials(tmodel);
-    m_gltfScene.importDrawableNodes(tmodel, nvh::GltfAttributes::Normal | nvh::GltfAttributes::Texcoord_0
-                                                | nvh::GltfAttributes::Tangent);
-    m_sceneStats = m_gltfScene.getStatistics(tmodel);
+    m_gltfScene.importMaterials(gltfModel);
+    m_gltfScene.importDrawableNodes(gltfModel, nvh::GltfAttributes::Normal | nvh::GltfAttributes::Texcoord_0
+                                                   | nvh::GltfAttributes::Tangent);
+    m_sceneStats = m_gltfScene.getStatistics(gltfModel);
     LOGI(" --> (%5.3f ms)\n", timer.elapse());
   }
 
   {
-    LOGI("Importing %d images\n", tmodel.images.size());
-    importImages(tmodel);
+    LOGI("Uploading %d images to GPU\n", gltfModel.images.size());
+    importImages(gltfModel);
     LOGI(" --> (%5.3f ms)\n", timer.elapse());
   }
 
@@ -584,14 +596,13 @@ std::string FormatNumbers(T value)
 //
 void VkRtExample::drawUI()
 {
+  using GuiH = ImGuiH::Control;
+
   // Update imgui configuration
   ImGui_ImplGlfw_NewFrame();
-
   ImGui::NewFrame();
-  ImGui::SetNextWindowBgAlpha(0.8);
-  ImGui::SetNextWindowSize(ImVec2(450, 0), ImGuiCond_FirstUseEver);
 
-  ImGui::Begin("Ray Tracing Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+  ImGuiH::Panel::Begin(ImGuiH::Panel::Side::Right);
   ImGui::Text("%s", &m_physicalDevice.getProperties().deviceName[0]);
 
   bool changed{false};
@@ -600,14 +611,16 @@ void VkRtExample::drawUI()
   {
     nvmath::vec3f eye, center, up;
     CameraManip.getLookat(eye, center, up);
-    changed |= ImGui::DragFloat3("Position", &eye.x);
-    changed |= ImGui::DragFloat3("Center", &center.x);
-    changed |= ImGui::DragFloat3("Up", &up.x, .1f, 0.0f, 1.0f);
     float fov(CameraManip.getFov());
-    if(ImGui::SliderFloat("FOV", &fov, 1, 150))
-      CameraManip.setFov(fov);
+    changed |= GuiH::Drag("Position", "", &eye);
+    changed |= GuiH::Drag("Center", "", &center);
+    changed |= GuiH::Drag("Up", "", &up, nullptr, GuiH::Flags::Normal, vec3f(0.f), vec3f(1.f), 0.01f);
+    changed |= GuiH::Slider("FOV", "", &fov, nullptr, GuiH::Flags::Normal, 1.0f, 150.f, "%.3f deg");
     if(changed)
+    {
       CameraManip.setLookat(eye, center, up);
+      CameraManip.setFov(fov);
+    }
   }
 
   //  modified |= uiLights();
@@ -691,7 +704,7 @@ void VkRtExample::importImages(tinygltf::Model& gltfModel)
   m_textures.resize(gltfModel.images.size());
 
   vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
-  vk::Format            format{vk::Format::eR8G8B8A8Unorm};
+  vk::Format            format{vk::Format::eB8G8R8A8Unorm};
   samplerCreateInfo.maxLod = FLT_MAX;
 
   nvvk::CommandPool sc(m_device, m_graphicsQueueIndex);
