@@ -28,6 +28,7 @@
 
 #include "raytracer.hpp"
 #include "imgui.h"
+#include "imgui_helper.h"
 #include "nvh/fileoperations.hpp"
 #include "nvvk/shaders_vk.hpp"
 
@@ -266,12 +267,17 @@ bool Raytracer::uiSetup()
   bool modified = false;
   if(ImGui::CollapsingHeader("Ray Tracing"))
   {
-    modified = false;
-    modified |= ImGui::SliderInt("Max Ray Depth ", &m_pushC.maxDepth, 1, 10);
-    modified |= ImGui::SliderFloat("Max Ray Length", &m_pushC.maxRayLenght, 1, 1000000, "%.1f", 2.f);
-    modified |= ImGui::SliderInt("Samples Per Frame", &m_pushC.samples, 1, 100);
-    modified |= ImGui::SliderInt("Max Iteration ", &m_maxFrames, 1, 1000);
-    modified |= ImGui::SliderFloat("HDR Multiplier", &m_pushC.hdrMultiplier, 0.f, 10.f, "%.3f", 3.0f);
+    using GuiH = ImGuiH::Control;
+    auto Normal  = ImGuiH::Control::Flags::Normal;
+
+    static PushConstant d;  // defaultvalues
+
+    modified |= GuiH::Slider("Max Ray Depth", "", &m_pushC.maxDepth, &d.maxDepth, Normal, 1, 10);
+    modified |=
+        GuiH::Drag("Max Ray Length", "", &m_pushC.maxRayLenght, &d.maxRayLenght, Normal, 1.f, 1000000.f, 2.f, "%.1f");
+    modified |= GuiH::Slider("Samples Per Frame", "", &m_pushC.samples, &d.samples, Normal, 1, 10);
+    modified |= GuiH::Slider("Max Iteration ", "", &m_maxFrames, nullptr, Normal, 1, 1000);
+    modified |= GuiH::Slider("HDR Multiplier", "", &m_pushC.hdrMultiplier, &d.hdrMultiplier, Normal, 0.f, 10.f, "%.3f");
   }
   return modified;
 }

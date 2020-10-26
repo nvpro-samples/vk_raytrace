@@ -32,6 +32,7 @@ else()
 endif()
     
 _add_project_definitions(${PROJNAME})
+_add_package_FreeImage()
 
 set(CMAKE_CXX_STANDARD 17)
 
