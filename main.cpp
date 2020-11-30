@@ -143,7 +143,7 @@ int main(int argc, char** argv)
 
   example.loadEnvironmentHdr(hdrFilename);
 
-  example.createSurface(surface, SAMPLE_SIZE_WIDTH, SAMPLE_SIZE_HEIGHT);
+  example.createSwapchain(surface, SAMPLE_SIZE_WIDTH, SAMPLE_SIZE_HEIGHT);
   example.createDepthBuffer();
   example.createRenderPass();
   example.createFrameBuffers();
