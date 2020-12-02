@@ -24,19 +24,28 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
- #version 450
-layout (location = 0) out vec2 outUV;
 
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
 
-out gl_PerVertex
-{
-  vec4 gl_Position;
-};
+#include "raycommon.h.glsl"
 
+//-------------------------------------------------------------------------------------------------
+// This will be executed when sending shadow rays and missing all geometries
+// - There are no hit shader for the shadow ray, therefore
+// - Before calling Trace, set isShadowed=true
+// - The default anyhit, closesthit won't change isShadowed, but if nothing is hit, it will be
+//   set to false.
+//-------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------
+// Miss shader for the shadow rayPayloadInNV
+//
+
+layout(location = 1) rayPayloadInNV ShadowHitPayload payload;
 
 void main()
 {
-  outUV = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-  gl_Position = vec4(outUV * 2.0f - 1.0f, 1.0f, 1.0f);
+  payload.isHit = false;
 }
