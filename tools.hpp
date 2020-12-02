@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2018, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,19 +24,47 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
- #version 450
-layout (location = 0) out vec2 outUV;
 
+#pragma once
 
-out gl_PerVertex
+#ifndef TOOLS_H
+#define TOOLS_H
+
+// Utility to time the execution of something resetting the timer
+// on each elapse call
+// Usage:
+// {
+//   MilliTimer timer;
+//   ... stuff ...
+//   double time_elapse = timer.elapse();
+// }
+#include <chrono>
+
+struct MilliTimer
 {
-  vec4 gl_Position;
+  MilliTimer() { reset(); }
+  void   reset() { startTime = std::chrono::high_resolution_clock::now(); }
+  double elapse()
+  {
+    auto now  = std::chrono::high_resolution_clock::now();
+    auto t    = std::chrono::duration_cast<std::chrono::microseconds>(now - startTime).count() / 1000.0;
+    startTime = now;
+    return t;
+  }
+  void print() { LOGI(" --> (%5.3f ms)\n", elapse()); }
+
+  std::chrono::high_resolution_clock::time_point startTime;
 };
 
 
-void main()
+// Formating with local number representation
+template <class T>
+std::string FormatNumbers(T value)
 {
-  outUV = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-  gl_Position = vec4(outUV * 2.0f - 1.0f, 1.0f, 1.0f);
+  std::stringstream ss;
+  ss.imbue(std::locale(""));
+  ss << std::fixed << value;
+  return ss.str();
 }
+
+#endif

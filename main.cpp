@@ -1,4 +1,4 @@
-/* Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,86 +25,92 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//--------------------------------------------------------------------------------------------------
-// This example is creating a scene with many similar objects and a plane. There are a few materials
-// and a light direction.
-// More details in simple.cpp
-//
 
 #include <array>
-#include <chrono>
+#include <filesystem>
 #include <iostream>
-
 #include <vulkan/vulkan.hpp>
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-#include "example.hpp"
+#include "imgui.h"
+#include "imgui_helper.h"
 #include "imgui_impl_glfw.h"
+#include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvh/inputparser.h"
 #include "nvpsystem.hpp"
+#include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
-#include "nvvk/extensions_vk.hpp"
+#include "nvvk/profiler_vk.hpp"
+#include "sample_example.hpp"
 
-int const SAMPLE_SIZE_WIDTH  = 1280;
-int const SAMPLE_SIZE_HEIGHT = 1024;
+
+//////////////////////////////////////////////////////////////////////////
+#define UNUSED(x) (void)(x)
+//////////////////////////////////////////////////////////////////////////
 
 // Default search path for shaders
-std::vector<std::string> defaultSearchPaths{
-    "./",
-    "../",
-    std::string(PROJECT_NAME),
-    std::string("SPV_" PROJECT_NAME),
-    PROJECT_ABSDIRECTORY,
-    NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
-};
+std::vector<std::string> defaultSearchPaths;
 
+// GLFW Callback functions
+static void onErrorCallback(int error, const char* description)
+{
+  fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+static int const SAMPLE_WIDTH  = 1280;
+static int const SAMPLE_HEIGHT = 720;
 
 //--------------------------------------------------------------------------------------------------
-//
+// Application Entry
 //
 int main(int argc, char** argv)
 {
-  // Parsing the command line: mandatory '-f' for the filename of the scene
   InputParser parser(argc, argv);
-  std::string filename = parser.getString("-f");
-  if(parser.exist("-f"))
-  {
-    filename = parser.getString("-f");
-  }
-  else if(argc == 2 && nvh::endsWith(argv[1], ".gltf"))  // Drag&Drop
-  {
-    filename = argv[1];
-  }
-  else
-  {
-    filename = nvh::findFile("data/robot.gltf", defaultSearchPaths);
-  }
+  std::string sceneFile   = parser.getString("-f", "media/robot.gltf");
+  std::string hdrFilename = parser.getString("-e", R"(media/daytime.hdr)");
 
-  std::string hdrFilename = parser.getString("-e");
-  if(hdrFilename.empty())
-  {
-    hdrFilename = nvh::findFile(R"(/data/daytime.hdr)", defaultSearchPaths);
-  }
-
-
-  // setup some basic things for the sample, logging file for example
-  NVPSystem system(argv[0], PROJECT_NAME);
 
   // Setup GLFW window
+  glfwSetErrorCallback(onErrorCallback);
   if(!glfwInit())
   {
     return 1;
   }
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  GLFWwindow* window = glfwCreateWindow(SAMPLE_SIZE_WIDTH, SAMPLE_SIZE_HEIGHT, PROJECT_NAME, nullptr, nullptr);
+  GLFWwindow* window = glfwCreateWindow(SAMPLE_WIDTH, SAMPLE_HEIGHT, PROJECT_NAME, nullptr, nullptr);
 
-  // Enabling the extension
-  vk::PhysicalDeviceDescriptorIndexingFeaturesEXT feature;
+  // Setup camera
+  CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
+  CameraManip.setLookat({2.0, 2.0, -5.0}, {-1.0, 2.0, -1.0}, {0.000, 1.000, 0.000});
 
-  nvvk::ContextCreateInfo contextInfo;
+  // Setup Vulkan
+  if(!glfwVulkanSupported())
+  {
+    printf("GLFW: Vulkan Not Supported\n");
+    return 1;
+  }
+
+  // setup some basic things for the sample, logging file for example
+  NVPSystem system(argv[0], PROJECT_NAME);
+
+  // Search path for shaders and other media
+  defaultSearchPaths = {
+      PROJECT_NAME,  // installed: shaders + media
+      NVPSystem::exePath() + std::string(PROJECT_NAME),
+  };
+
+
+  // Requesting Vulkan extensions and layers
+  nvvk::ContextCreateInfo contextInfo(false);
+  contextInfo.setVersion(1, 2);
   contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);
   contextInfo.addInstanceExtension(VK_KHR_SURFACE_EXTENSION_NAME);
+  contextInfo.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #ifdef WIN32
   contextInfo.addInstanceExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #else
@@ -112,65 +118,190 @@ int main(int argc, char** argv)
   contextInfo.addInstanceExtension(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
 #endif
   contextInfo.addInstanceExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-
   contextInfo.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-  contextInfo.addDeviceExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME, false, &feature);
-  contextInfo.addDeviceExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+  contextInfo.addDeviceExtension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
-  //contextInfo.addDeviceExtension(VK_KHR_BIND_MEMORY_2_EXTENSION_NAME);
-  contextInfo.addDeviceExtension(VK_NV_RAY_TRACING_EXTENSION_NAME);
+  contextInfo.addDeviceExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+  contextInfo.addDeviceExtension(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
+  contextInfo.addDeviceExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+  // #VKRay: Activate the ray tracing extension
+  vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelFeature;
+  contextInfo.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false, &accelFeature);
+  vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature;
+  contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);
+  vk::PhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures;
+  contextInfo.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME, false, &rayQueryFeatures);
+
+  contextInfo.addDeviceExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+  contextInfo.addDeviceExtension(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+  contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+  contextInfo.addDeviceExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
 
-  // Creating the Vulkan instance and device
-  nvvk::Context vkctx;
+  // Creating Vulkan base application
+  nvvk::Context vkctx{};
+  vkctx.ignoreDebugMessage(0x99fb7dfd);  // dstAccelerationStructure
+  vkctx.ignoreDebugMessage(0x45e8716f);  // dstAccelerationStructure
   vkctx.initInstance(contextInfo);
-
   // Find all compatible devices
   auto compatibleDevices = vkctx.getCompatibleDevices(contextInfo);
   assert(!compatibleDevices.empty());
-
-  // Use first compatible device
+  // Use a compatible device
   vkctx.initDevice(compatibleDevices[0], contextInfo);
 
-  VkRtExample example;
+
+  // Create example
+  SampleExample sample;
 
   // Window need to be opened to get the surface on which to draw
-  vk::SurfaceKHR surface = example.getVkSurface(vkctx.m_instance, window);
+  const vk::SurfaceKHR surface = sample.getVkSurface(vkctx.m_instance, window);
   vkctx.setGCTQueueWithPresent(surface);
 
-  example.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
-  LOGI("Using %s \n", example.getPhysicalDevice().getProperties().deviceName);
+  sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
+  sample.createSwapchain(surface, SAMPLE_WIDTH, SAMPLE_HEIGHT);
+  sample.createDepthBuffer();
+  sample.createRenderPass();
+  sample.createFrameBuffers();
 
-  example.loadEnvironmentHdr(hdrFilename);
+  // Setup Imgui
 
-  example.createSwapchain(surface, SAMPLE_SIZE_WIDTH, SAMPLE_SIZE_HEIGHT);
-  example.createDepthBuffer();
-  example.createRenderPass();
-  example.createFrameBuffers();
-  example.createTonemapper();
-  example.createAxis();
-  example.createDescriptorFinal();
-  example.createFinalPipeline();  // How the quad will be rendered
+  sample.initGUI(0);  // Using sub-pass 0
 
-  example.loadScene(filename);  // Now build the example
-  example.initGUI(0);           // Using sub-pass 0
+  // Creation of the example
+  sample.loadScene(nvh::findFile(sceneFile, defaultSearchPaths, true));
+  sample.loadEnvironmentHdr(nvh::findFile(hdrFilename, defaultSearchPaths, true));
+
+  sample.createOffscreenRender();
+  sample.createUniformBuffer();
+  sample.createDescriptorSetLayout();
+
+  nvmath::vec4f clearColor = nvmath::vec4f(1, 1, 1, 1.00f);
 
 
-  // GLFW Callback
-  example.setupGlfwCallbacks(window);
+  SampleExample::RndMethod renderMethod = SampleExample::eRtxCore;
+
+
+  sample.setupGlfwCallbacks(window);
   ImGui_ImplGlfw_InitForVulkan(window, true);
+
+
+  nvvk::ProfilerVK profiler;
+  std::string      profilerStats;
+
+  profiler.init(vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
+  profiler.setLabelUsage(true);  // depends on VK_EXT_debug_utils
 
   // Main loop
   while(!glfwWindowShouldClose(window))
   {
     glfwPollEvents();
-    if(example.isMinimized())
+    if(sample.isMinimized())
       continue;
 
+    profiler.beginFrame();
+
+    // Start rendering the scene
+    sample.prepareFrame();
+    sample.updateFrame();
+
+    // Start command buffer of this frame
+    auto                     curFrame = sample.getCurFrame();
+    const vk::CommandBuffer& cmdBuf   = sample.getCommandBuffers()[curFrame];
+
+    cmdBuf.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
+    // Start the Dear ImGui frame
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    // Show UI window.
+    if(sample.showGui())
+    {
+      ImGuiH::Control::style.ctrlPerc = 0.55f;
+      ImGuiH::Panel::Begin(ImGuiH::Panel::Side::Right);
+
+      using Gui = ImGuiH::Control;
+      bool changed{false};
+      //      changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
+      //                                     Gui::Flags::Normal, {"RtCore"});
+      if(ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
+        changed |= sample.guiCamera();
+      if(ImGui::CollapsingHeader("Ray Tracing", ImGuiTreeNodeFlags_DefaultOpen))
+        changed |= sample.guiRayTracing();
+      if(ImGui::CollapsingHeader("Tonemapper", ImGuiTreeNodeFlags_DefaultOpen))
+        changed |= sample.guiTonemapper();
+      if(ImGui::CollapsingHeader("Environment", ImGuiTreeNodeFlags_DefaultOpen))
+        changed |= sample.guiEnvironment();
+      if(ImGui::CollapsingHeader("Stats"))
+      {
+        changed |= sample.guiStatistics();
+        Gui::Group<bool>("Profiler", false, [&] { return sample.guiProfiler(profiler); });
+        sample.guiGpuMeasures();
+      }
+      ImGui::TextWrapped("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+                         ImGui::GetIO().Framerate);
+
+      // generic print to string
+
+      if(changed)
+        sample.resetFrame();
+      ImGui::End();  // ImGui::Panel::end()
+    }
+
+
+    // Updating camera buffer
+    sample.updateUniformBuffer(cmdBuf);
+
+
+    // Clearing screen
+    vk::ClearValue clearValues[2];
+    clearValues[0].setColor(std::array<float, 4>({clearColor[0], clearColor[1], clearColor[2], clearColor[3]}));
+    clearValues[1].setDepthStencil({1.0f, 0});
+
+    // Offscreen render pass
+    {
+      auto sec = profiler.timeRecurring("Render", cmdBuf);
+
+      // Rendering Scene
+      sample.render(renderMethod, cmdBuf, profiler);
+    }
+
+    // 2nd rendering pass: tone mapper, UI
+    {
+      {
+        auto sec = profiler.timeRecurring("Tonemap", cmdBuf);
+
+        vk::RenderPassBeginInfo postRenderPassBeginInfo;
+        postRenderPassBeginInfo.setClearValueCount(2);
+        postRenderPassBeginInfo.setPClearValues(clearValues);
+        postRenderPassBeginInfo.setRenderPass(sample.getRenderPass());
+        postRenderPassBeginInfo.setFramebuffer(sample.getFramebuffers()[curFrame]);
+        postRenderPassBeginInfo.setRenderArea({{}, sample.getSize()});
+
+        cmdBuf.beginRenderPass(postRenderPassBeginInfo, vk::SubpassContents::eInline);
+        // Rendering tonemapper
+        sample.drawPost(cmdBuf);
+
+        ImGui::Render();
+        ImGui::RenderDrawDataVK(cmdBuf, ImGui::GetDrawData());
+        cmdBuf.endRenderPass();
+      }
+    }
+
+    profiler.endFrame();
+
+    // Submit for display
+    cmdBuf.end();
+    sample.submitFrame();
+
     CameraManip.updateAnim();
-    example.display();  // infinitely drawing
   }
-  example.destroy();
+
+  // Cleanup
+  sample.getDevice().waitIdle();
+  sample.destroyResources();
+  sample.destroy();
+  profiler.deinit();
   vkctx.deinit();
 
   glfwDestroyWindow(window);

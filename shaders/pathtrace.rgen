@@ -1,0 +1,121 @@
+/* Copyright (c) 2014-2018, NVIDIA CORPORATION. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_ray_tracing : require  // This is about ray tracing
+
+// Special extensions to debug groups, warps, SM, ...
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_NV_shader_sm_builtins : require
+
+
+#define USE_INIT_PAYLOAD
+#define USE_RANDOM
+#define USE_STOREIMAGE
+#define USE_SCENE
+#define USE_ACCEL
+#include "raycommon.h.glsl"
+
+layout(location = 0) rayPayloadEXT HitPayload prd;
+// Push Constant
+layout(push_constant) uniform _RtCoreState
+{
+  RtState state;
+};
+
+
+void main()
+{
+  ivec2 sizeImage  = imageSize(resultImage);
+  ivec2 coordImage = ivec2(gl_LaunchIDEXT.xy);
+
+  vec3 hitValues = vec3(0);
+  int  smpl      = 0;
+  for(; smpl < state.maxSamples; ++smpl)
+  {
+
+    prd = InitializePayload(coordImage, sizeImage, cameraMatrices, state.frame * state.maxSamples + smpl);
+
+
+    // Trace the scene
+    uint  rayFlags  = gl_RayFlagsNoneEXT ;
+    float tMin      = 0.00001;
+    float tMax      = 1e32;
+    vec3  curWeight = vec3(1);
+
+
+    for(int depth = 0; depth < state.maxDepth; depth++)
+    {
+      prd.contribution = vec3(0);
+
+      traceRayEXT(topLevelAS,        // acceleration structure
+                  rayFlags,          // rayFlags
+                  0xFF,              // cullMask
+                  0,                 // sbtRecordOffset
+                  0,                 // sbtRecordStride
+                  0,                 // missIndex
+                  prd.rayOrigin,     // ray origin
+                  tMin,              // ray min range
+                  prd.rayDirection,  // ray direction
+                  tMax,              // ray max range
+                  0                  // payload (location = 0)
+      );
+
+      // Adding contribution from hit
+      hitValues += prd.contribution;
+
+      // Removing fireflies
+      {
+        float lum = dot(hitValues, vec3(0.212671f, 0.715160f, 0.072169f));
+        if(lum > state.fireflyClampThreshold)
+          hitValues *= state.fireflyClampThreshold / lum;
+      }
+
+      // Russian roulette termination
+      if(!has_flag(prd.flags, FLAG_FIRST_PATH_SEGMENT))
+      {
+        float pcont = max(prd.weight.x, max(prd.weight.y, prd.weight.z));
+        if(rnd(prd.seed) >= pcont)
+          break;
+        prd.weight /= pcont;
+      }
+
+      if(has_flag(prd.flags, FLAG_DONE))
+        break;
+
+
+      remove_flag(prd.flags, FLAG_FIRST_PATH_SEGMENT);
+    }
+  }
+
+  // Average result
+  hitValues = hitValues / state.maxSamples;
+
+  // Do accumulation over time
+  StoreResult(resultImage, coordImage, state.frame, hitValues);
+}

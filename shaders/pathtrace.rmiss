@@ -24,19 +24,28 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
- #version 450
-layout (location = 0) out vec2 outUV;
+
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_ray_tracing : enable
 
 
-out gl_PerVertex
+#define USE_SUN_AND_SKY
+#include "raycommon.h.glsl"
+
+
+layout(location = 0) rayPayloadInEXT HitPayload prd;
+
+// Push Constant
+layout(push_constant) uniform _RtCoreState
 {
-  vec4 gl_Position;
+  RtState rtstate;
 };
 
 
 void main()
 {
-  outUV = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-  gl_Position = vec4(outUV * 2.0f - 1.0f, 1.0f, 1.0f);
+  prd.contribution = environmentEval(gl_WorldRayDirectionEXT.xyz) * rtstate.environment_intensity_factor;
+  prd.contribution *= prd.weight;
+  prd.flags = FLAG_DONE;
 }
