@@ -29,7 +29,7 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 
-#include "raycommon.h.glsl"
+#include "globals.glsl"
 
 //-------------------------------------------------------------------------------------------------
 // This will be executed when sending shadow rays and missing all geometries

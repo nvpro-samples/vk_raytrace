@@ -26,6 +26,8 @@
  */
 
 #version 450
+#extension GL_GOOGLE_include_directive : enable
+
 layout(location = 0) in vec2 outUV;
 layout(location = 0) out vec4 fragColor;
 
@@ -40,66 +42,25 @@ layout(push_constant) uniform _ShaderInfo
   float sat;
   float invGamma;
   float avgLum;
+  float zoom;
 };
 
+#define TONEMAP_UNCHARTED
+#include "tonemapping.glsl"
 
-const mat3 RGB2XYZ = mat3(0.4124564, 0.3575761, 0.1804375, 0.2126729, 0.7151522, 0.0721750, 0.0193339, 0.1191920, 0.9503041);
-
-const vec3 lum = vec3(0.2126f, 0.7152f, 0.0722f);
-
-float luminance(vec3 color)
+vec3 toneMapReinhard(vec3 RGB, float logAvgLum)
 {
-  return dot(color, lum);  //color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
-}
-
-vec3 tonemap(vec3 RGB, float logAvgLum)
-{
-  vec3  XYZ = RGB2XYZ * RGB;
-  float Y   = (key / logAvgLum) * XYZ.y;
-  float Yd  = (Y * (1.0 + Y / (Ywhite * Ywhite))) / (1.0 + Y);
+  const mat3 RGB2XYZ = mat3(0.4124564, 0.3575761, 0.1804375, 0.2126729, 0.7151522, 0.0721750, 0.0193339, 0.1191920, 0.9503041);
+  vec3  XYZ          = RGB2XYZ * RGB;
+  float Y            = (key / logAvgLum) * XYZ.y;
+  float Yd           = (Y * (1.0 + Y / (Ywhite * Ywhite))) / (1.0 + Y);
   return pow(RGB / XYZ.y, vec3(sat, sat, sat)) * Yd;
 }
 
-
-float A = 0.15;
-float B = 0.50;
-float C = 0.10;
-float D = 0.20;
-float E = 0.02;
-float F = 0.30;
-float W = 11.2;
-
-vec3 Uncharted2Tonemap(vec3 x)
-{
-  return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-}
-
-vec3 tonemapFilmic(vec3 texColor, float logAvgLum)
-{
-  texColor *= logAvgLum;  // Exposure Adjustment
-
-  vec3 curr       = Uncharted2Tonemap(texColor);
-  vec3 whiteScale = 1.0f / Uncharted2Tonemap(vec3(W));
-
-  return curr * whiteScale;
-}
-
-
-vec3 whiteBalance(in vec3 color)
-{
-  vec3 whitebalance = vec3(1, 1, 1);
-
-  vec3  wb = 1.0 / whitebalance;
-  float l  = luminance(wb);
-  return color *= wb / l;
-}
-
-
 void main()
 {
-  vec4 hdr      = texture(inImage, outUV).rgba;
-  vec3 ldrColor = tonemap(hdr.rgb, avgLum);
-  // ldrColor      = tonemapFilmic(hdr.rgb, avgLum);
-  fragColor.rgb = pow(ldrColor, vec3(invGamma));
+  vec4 hdr = texture(inImage, outUV * zoom).rgba;
+  //hdr.rgb       = toneMapReinhard(hdr.rgb, 1.0);
+  fragColor.rgb = toneMap(hdr.rgb, avgLum);
   fragColor.a   = hdr.a;
 }

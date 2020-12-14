@@ -66,7 +66,7 @@ struct SunAndSky
 _INLINE_ SunAndSky SunAndSky_default()
 {
   SunAndSky ss;
-  ss.multiplier            = 0.000101320f;
+  ss.multiplier            = 0.0000101320f;
   ss.rgb_unit_conversion   = vec3(1);
   ss.haze                  = 0.0;
   ss.redblueshift          = 0.0;
@@ -76,8 +76,8 @@ _INLINE_ SunAndSky SunAndSky_default()
   ss.ground_color          = vec3(0.4f, 0.4f, 0.4f);
   ss.night_color           = vec3(0.0, 0.0, 0.01f);
   ss.sun_direction         = vec3(0.00, 0.78, 0.62f);
-  ss.sun_disk_intensity    = 1.0;
-  ss.sun_disk_scale        = 1.0;
+  ss.sun_disk_intensity    = 0.8f;
+  ss.sun_disk_scale        = 5.0;
   ss.sun_glow_intensity    = 1.0;
   ss.y_is_up               = 1;
   ss.physically_scaled_sun = 1;

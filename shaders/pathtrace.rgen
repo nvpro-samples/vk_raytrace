@@ -32,14 +32,14 @@
 // Special extensions to debug groups, warps, SM, ...
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_NV_shader_sm_builtins : require
-
+// Align structure layout to scalar
+#extension GL_EXT_scalar_block_layout : enable
 
 #define USE_INIT_PAYLOAD
-#define USE_RANDOM
 #define USE_STOREIMAGE
-#define USE_SCENE
-#define USE_ACCEL
-#include "raycommon.h.glsl"
+#include "layouts.glsl"
+#include "raycommon.glsl"
+
 
 layout(location = 0) rayPayloadEXT HitPayload prd;
 // Push Constant
@@ -51,7 +51,7 @@ layout(push_constant) uniform _RtCoreState
 
 void main()
 {
-  ivec2 sizeImage  = imageSize(resultImage);
+  ivec2 sizeImage  = ivec2(gl_LaunchSizeEXT.xy);
   ivec2 coordImage = ivec2(gl_LaunchIDEXT.xy);
 
   vec3 hitValues = vec3(0);
@@ -63,7 +63,7 @@ void main()
 
 
     // Trace the scene
-    uint  rayFlags  = gl_RayFlagsNoneEXT ;
+    uint  rayFlags  = gl_RayFlagsNoneEXT;
     float tMin      = 0.00001;
     float tMax      = 1e32;
     vec3  curWeight = vec3(1);
@@ -97,7 +97,7 @@ void main()
       }
 
       // Russian roulette termination
-      if(!has_flag(prd.flags, FLAG_FIRST_PATH_SEGMENT))
+      if(depth > 0)
       {
         float pcont = max(prd.weight.x, max(prd.weight.y, prd.weight.z));
         if(rnd(prd.seed) >= pcont)
@@ -107,9 +107,6 @@ void main()
 
       if(has_flag(prd.flags, FLAG_DONE))
         break;
-
-
-      remove_flag(prd.flags, FLAG_FIRST_PATH_SEGMENT);
     }
   }
 

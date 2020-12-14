@@ -27,8 +27,10 @@
 
 #version 460
 #extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_ray_tracing : require  // This is about ray tracing
-
+#extension GL_EXT_ray_tracing : require          // This is about ray tracing
+#extension GL_EXT_nonuniform_qualifier : enable  // To access unsized descriptor arrays
+// Align structure layout to scalar
+#extension GL_EXT_scalar_block_layout : enable
 
 #define USE_ACCEL
 #define USE_RANDOM
@@ -36,7 +38,10 @@
 #define USE_SHADING
 #define USE_SCENE
 #define USE_SUN_AND_SKY
-#include "raycommon.h.glsl"
+#include "raycommon.glsl"
+
+#include "random.glsl"
+#include "shade_state.glsl"
 
 hitAttributeEXT vec2 bary;
 
@@ -74,14 +79,13 @@ void main()
   const vec3 geom_normal  = normalize(cross(pos1 - pos0, pos2 - pos0));
   bool       is_back_face = dot(geom_normal, gl_ObjectRayDirectionEXT) > 0.0f;
 
-  GltfMaterial mat = materials[nonuniformEXT(matIndex)];
+  GltfShadeMaterial mat = materials[nonuniformEXT(matIndex)];
 
 
   // back face culling
   if(mat.doubleSided == 0 && is_back_face)
   {
-    ignoreIntersectionEXT;
-    return;
+    ignoreIntersectionEXT;  // Terminating (jump statement)
   }
 
 
@@ -96,7 +100,10 @@ void main()
   const vec2 uv0          = getTexCoord(triangleIndex.x);
   const vec2 uv1          = getTexCoord(triangleIndex.y);
   const vec2 uv2          = getTexCoord(triangleIndex.z);
-  const vec2 texcoord0    = uv0 * barycentrics.x + uv1 * barycentrics.y + uv2 * barycentrics.z;
+  vec2       texcoord0    = uv0 * barycentrics.x + uv1 * barycentrics.y + uv2 * barycentrics.z;
+
+  // Uv Transform
+  texcoord0 = (vec4(texcoord0.xy, 1, 1) * mat.uvTransform).xy;
 
 
   float baseColorAlpha = mat.pbrBaseColorFactor.a;
@@ -111,13 +118,11 @@ void main()
     opacity = baseColorAlpha > mat.alphaCutoff ? 1.0 : 0.0;
   }
   else
+  {
     opacity = baseColorAlpha;
-
+  }
 
   // do alpha blending the stochastically way
-  if(rnd(prd.seed) < opacity)
-    return;
-
-
-  ignoreIntersectionEXT;
+  if(rnd(prd.seed) > opacity)
+    ignoreIntersectionEXT;
 }

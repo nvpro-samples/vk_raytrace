@@ -60,6 +60,7 @@ public:
   struct SysInfo
   {
     std::vector<float> cpu;  // Load measurement [0, 100]
+    char               driverVersion[80];
   };
 
   NvmlMonitor(uint32_t interval = 100, uint32_t limit = 100)
@@ -90,7 +91,10 @@ public:
     // System Info
     m_sysInfo.cpu.resize(m_limit);
 
+    // Get driver version
+    result = nvmlSystemGetDriverVersion(m_sysInfo.driverVersion, 80);
 
+    // Loop over all GPUs
     for(int i = 0; i < (int)m_physicalGpuCount; i++)
     {
       // Sizing the data
