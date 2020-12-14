@@ -47,8 +47,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable(${PROJNAME})
 
 target_compile_definitions(${PROJNAME} PUBLIC NVVK_ALLOC_DMA)
-target_compile_definitions(${PROJNAME} PUBLIC PROJECT_NAME="${PROJNAME}")
-
+_add_project_definitions(${PROJNAME})
 
 
 #--------------------------------------------------------------------------------------------------
@@ -76,6 +75,8 @@ target_include_directories(${PROJNAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../com
 # GLSL to SPIR-V custom build
 SET(VULKAN_TARGET_ENV vulkan1.2)
 
+file(GLOB_RECURSE GLSL_HEADER_FILES "shaders/*.h" "shaders/*.glsl")
+
 # Macro to add custom build for Spir-V
 # _SOURCE can be more than one file (.vert + .frag)
 # _OUTPUT is the .spv file, resulting from the linkage
@@ -91,6 +92,7 @@ macro(_compile_GLSL_to_header _SOURCE _OUTPUT SOURCE_LIST OUTPUT_LIST FILE_NAME)
     COMMAND ${GLSLANGVALIDATOR} -g -o autogen/${_OUTPUT} -V ${_SOURCE} --vn ${VAR_NAME} --target-env ${VULKAN_TARGET_ENV}
       MAIN_DEPENDENCY ${_SOURCE}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      DEPENDS ${GLSL_HEADER_FILES}
       )
   else(GLSLANGVALIDATOR)
     MESSAGE(WARNING "could not find GLSLANGVALIDATOR to compile shaders")
@@ -100,7 +102,7 @@ endmacro()
 
 UNSET(GLSL_SOURCES)
 UNSET(SPV_OUTPUT)
-file(GLOB_RECURSE GLSL_HEADER_FILES "shaders/*.h" "shaders/*.glsl")
+
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     "shaders/*.comp"
     "shaders/*.frag"
@@ -116,7 +118,12 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
      _compile_GLSL_to_header(${GLSL} "shaders/${FILE_NAME}.h" GLSL_SOURCES SPV_OUTPUT ${FILE_NAME})
 endforeach(GLSL)
 
-list(APPEND GLSL_SOURCES ${GLSL_HEADER_FILES})
+
+#list(APPEND GLSL_SOURCES ${GLSL_HEADER_FILES})
+
+
+# ADD_CUSTOM_TARGET(GLSL_files ALL DEPENDS ${GLSL_HEADER_FILES})
+# ADD_DEPENDENCIES(${PROJNAME} GLSL_files)
 
 
 
@@ -126,6 +133,7 @@ target_sources(${PROJNAME} PUBLIC ${SOURCE_FILES} ${HEADER_FILES})
 target_sources(${PROJNAME} PUBLIC ${COMMON_SOURCE_FILES})
 target_sources(${PROJNAME} PUBLIC ${PACKAGE_SOURCE_FILES})
 target_sources(${PROJNAME} PUBLIC ${GLSL_SOURCES})
+target_sources(${PROJNAME} PUBLIC ${GLSL_HEADER_FILES})
 #target_sources(${PROJNAME} PUBLIC ${CUDA_FILES} ${CUBIN_SOURCES})
 
 
@@ -135,7 +143,8 @@ target_sources(${PROJNAME} PUBLIC ${GLSL_SOURCES})
 source_group("Common"       FILES ${COMMON_SOURCE_FILES} ${PACKAGE_SOURCE_FILES})
 source_group("Sources"      FILES ${SOURCE_FILES})
 source_group("Headers"      FILES ${HEADER_FILES})
-source_group("Shader_Files" FILES ${GLSL_SOURCES})
+source_group("Shader Sources" FILES ${GLSL_SOURCES})
+source_group("Shader Headers" FILES ${GLSL_HEADER_FILES})
 
 
 

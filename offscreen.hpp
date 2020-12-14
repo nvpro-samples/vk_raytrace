@@ -26,6 +26,7 @@ public:
     float sat{1.f};
     float invGamma{1.0f / 2.2f};
     float avgLum{1.0f};
+    float zoom{1.0f};
   } m_tReinhard;
 
 public:

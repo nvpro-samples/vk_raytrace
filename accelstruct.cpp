@@ -60,7 +60,7 @@ void AccelStructure::destroy()
 void AccelStructure::create(nvh::GltfScene& gltfScene, vk::Buffer vertex, vk::Buffer index)
 {
   MilliTimer timer;
-  LOGI("Create acceleration structure");
+  LOGI("Create acceleration structure \n");
   destroy();  // reset
 
   m_vertexBuffer = vertex;
@@ -122,7 +122,8 @@ void AccelStructure::createBottomLevelAS(nvh::GltfScene& gltfScene)
     allBlas.push_back({geo});
   }
   LOGI(" BLAS(%d)", allBlas.size());
-  m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
+  m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
+                                     | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
 }
 
 //--------------------------------------------------------------------------------------------------

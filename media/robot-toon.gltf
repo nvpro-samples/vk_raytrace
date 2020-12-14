@@ -1,0 +1,8581 @@
+{
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 2951,
+      "max": [
+        0.28566843271255493,
+        3.939645767211914,
+        0.2632633149623871
+      ],
+      "min": [
+        -0.291079580783844,
+        3.5515553951263428,
+        -0.3134850263595581
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 2951,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 2951,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5125,
+      "count": 14400,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5126,
+      "count": 9448,
+      "max": [
+        1.4838283061981201,
+        3.6934256553649902,
+        1.475812315940857
+      ],
+      "min": [
+        -1.4838285446166992,
+        -0.022479433566331863,
+        -1.4758126735687256
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 5,
+      "componentType": 5126,
+      "count": 9448,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 6,
+      "componentType": 5126,
+      "count": 9448,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 7,
+      "componentType": 5125,
+      "count": 50880,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 8,
+      "componentType": 5126,
+      "count": 371,
+      "max": [
+        15.000000953674316,
+        17.102951049804688,
+        6.898482322692871
+      ],
+      "min": [
+        -15.1536283493042,
+        -3.2731968296130813e-16,
+        -9.999999046325684
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "componentType": 5126,
+      "count": 371,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 10,
+      "componentType": 5126,
+      "count": 371,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 11,
+      "componentType": 5125,
+      "count": 1728,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 12,
+      "componentType": 5126,
+      "count": 1403,
+      "max": [
+        0.20136341452598572,
+        1.3183858394622803,
+        0.20136339962482452
+      ],
+      "min": [
+        -0.20136341452598572,
+        1.1548950672149658,
+        -0.20136341452598572
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 13,
+      "componentType": 5126,
+      "count": 1403,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 14,
+      "componentType": 5126,
+      "count": 1403,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 15,
+      "componentType": 5125,
+      "count": 7680,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 16,
+      "componentType": 5126,
+      "count": 25629,
+      "max": [
+        0.20943261682987213,
+        1.2677717208862305,
+        0.255266010761261
+      ],
+      "min": [
+        -0.20943258702754974,
+        1.2444615364074707,
+        -0.2383926957845688
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 17,
+      "componentType": 5126,
+      "count": 25629,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 18,
+      "componentType": 5126,
+      "count": 25629,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 19,
+      "componentType": 5125,
+      "count": 147456,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 20,
+      "componentType": 5126,
+      "count": 6826,
+      "max": [
+        0.604867696762085,
+        2.2702348232269287,
+        0.39725589752197266
+      ],
+      "min": [
+        -0.604867696762085,
+        1.2658971548080444,
+        -0.38166311383247375
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 21,
+      "componentType": 5126,
+      "count": 6826,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 22,
+      "componentType": 5126,
+      "count": 6826,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 23,
+      "componentType": 5125,
+      "count": 32064,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 24,
+      "componentType": 5126,
+      "count": 11475,
+      "max": [
+        1.0,
+        3.7604873180389404,
+        0.607740581035614
+      ],
+      "min": [
+        -1.0,
+        2.3598453998565674,
+        -0.5869694948196411
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 25,
+      "componentType": 5126,
+      "count": 11475,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 26,
+      "componentType": 5126,
+      "count": 11475,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 27,
+      "componentType": 5125,
+      "count": 56160,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 28,
+      "componentType": 5126,
+      "count": 10246,
+      "max": [
+        -1.7360895872116089,
+        2.164673089981079,
+        0.2837275564670563
+      ],
+      "min": [
+        -2.229243516921997,
+        1.5972176790237427,
+        -0.28372758626937866
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 29,
+      "componentType": 5126,
+      "count": 10246,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 30,
+      "componentType": 5126,
+      "count": 10246,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 31,
+      "componentType": 5125,
+      "count": 46272,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 32,
+      "componentType": 5126,
+      "count": 348,
+      "max": [
+        -2.2332382202148438,
+        2.114380359649658,
+        0.2334347367286682
+      ],
+      "min": [
+        -2.6820738315582275,
+        1.6475106477737427,
+        -0.23343470692634583
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 33,
+      "componentType": 5126,
+      "count": 348,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 34,
+      "componentType": 5126,
+      "count": 348,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 35,
+      "componentType": 5125,
+      "count": 1152,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 36,
+      "componentType": 5126,
+      "count": 1128,
+      "max": [
+        -2.6815836429595947,
+        1.9381701946258545,
+        0.04989653825759888
+      ],
+      "min": [
+        -2.744081497192383,
+        1.823720932006836,
+        -0.04989653825759888
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 37,
+      "componentType": 5126,
+      "count": 1128,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 38,
+      "componentType": 5126,
+      "count": 1128,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 39,
+      "componentType": 5125,
+      "count": 2376,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 40,
+      "componentType": 5126,
+      "count": 3159,
+      "max": [
+        -0.4458070993423462,
+        2.059028148651123,
+        0.18294650316238403
+      ],
+      "min": [
+        -0.7588205933570862,
+        1.7016266584396362,
+        -0.16374348104000092
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 41,
+      "componentType": 5126,
+      "count": 3159,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 42,
+      "componentType": 5126,
+      "count": 3159,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 43,
+      "componentType": 5125,
+      "count": 17760,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 44,
+      "componentType": 5126,
+      "count": 3659,
+      "max": [
+        1.9219285249710083,
+        2.0455875396728516,
+        0.19259189069271088
+      ],
+      "min": [
+        1.6088460683822632,
+        1.7081495523452759,
+        -0.154174342751503
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 45,
+      "componentType": 5126,
+      "count": 3659,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 46,
+      "componentType": 5126,
+      "count": 3659,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 47,
+      "componentType": 5125,
+      "count": 20640,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 48,
+      "componentType": 5126,
+      "count": 3159,
+      "max": [
+        0.7463129758834839,
+        2.0556790828704834,
+        0.18295982480049133
+      ],
+      "min": [
+        0.4332995116710663,
+        1.6982779502868652,
+        -0.16373012959957123
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 49,
+      "componentType": 5126,
+      "count": 3159,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 50,
+      "componentType": 5126,
+      "count": 3159,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 51,
+      "componentType": 5125,
+      "count": 17760,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 52,
+      "componentType": 5126,
+      "count": 1311,
+      "max": [
+        -0.15902888774871826,
+        3.5216782093048096,
+        -0.013151157647371292
+      ],
+      "min": [
+        -0.7998388409614563,
+        3.4778807163238525,
+        -0.6667812466621399
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 53,
+      "componentType": 5126,
+      "count": 1311,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 54,
+      "componentType": 5126,
+      "count": 1311,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 55,
+      "componentType": 5125,
+      "count": 6144,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 56,
+      "componentType": 5126,
+      "count": 3041,
+      "max": [
+        -1.8372067213058472,
+        1.7299507856369019,
+        0.05668128281831741
+      ],
+      "min": [
+        -1.9505692720413208,
+        1.7201992273330688,
+        -0.05668128281831741
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 57,
+      "componentType": 5126,
+      "count": 3041,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 58,
+      "componentType": 5126,
+      "count": 3041,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 59,
+      "componentType": 5125,
+      "count": 18048,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 60,
+      "componentType": 5126,
+      "count": 525,
+      "max": [
+        -1.8358254432678223,
+        2.043381690979004,
+        0.05806243419647217
+      ],
+      "min": [
+        -1.9519504308700562,
+        2.03363037109375,
+        -0.05806243419647217
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 61,
+      "componentType": 5126,
+      "count": 525,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 62,
+      "componentType": 5126,
+      "count": 525,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 63,
+      "componentType": 5125,
+      "count": 1128,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 64,
+      "componentType": 5126,
+      "count": 449,
+      "max": [
+        0.8049397468566895,
+        3.264204740524292,
+        -0.46533069014549255
+      ],
+      "min": [
+        0.13527101278305054,
+        2.5945358276367188,
+        -0.4653312563896179
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 65,
+      "componentType": 5126,
+      "count": 449,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 66,
+      "componentType": 5126,
+      "count": 449,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 67,
+      "componentType": 5125,
+      "count": 2304,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 68,
+      "componentType": 5126,
+      "count": 449,
+      "max": [
+        -0.14418034255504608,
+        3.220381259918213,
+        -0.4936836361885071
+      ],
+      "min": [
+        -0.813849151134491,
+        2.5507123470306396,
+        -0.4936842620372772
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 69,
+      "componentType": 5126,
+      "count": 449,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 70,
+      "componentType": 5126,
+      "count": 449,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 71,
+      "componentType": 5125,
+      "count": 2304,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 72,
+      "componentType": 5126,
+      "count": 6018,
+      "max": [
+        -0.5532354116439819,
+        4.935362815856934,
+        0.3024294376373291
+      ],
+      "min": [
+        -0.7186294794082642,
+        3.7479312419891357,
+        0.13703548908233643
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 73,
+      "componentType": 5126,
+      "count": 6018,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 74,
+      "componentType": 5126,
+      "count": 6018,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 75,
+      "componentType": 5125,
+      "count": 31488,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 76,
+      "componentType": 5126,
+      "count": 3553,
+      "max": [
+        0.1494806557893753,
+        2.3626949787139893,
+        0.1494806855916977
+      ],
+      "min": [
+        -0.14948059618473053,
+        2.0471136569976807,
+        -0.1494806408882141
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 77,
+      "componentType": 5126,
+      "count": 3553,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 78,
+      "componentType": 5126,
+      "count": 3553,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 79,
+      "componentType": 5125,
+      "count": 15360,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 80,
+      "componentType": 5126,
+      "count": 34738,
+      "max": [
+        2.8021721839904785,
+        2.0986270904541016,
+        0.12895044684410095
+      ],
+      "min": [
+        1.7783162593841553,
+        1.65586256980896,
+        -0.09051797538995743
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 81,
+      "componentType": 5126,
+      "count": 34738,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 82,
+      "componentType": 5126,
+      "count": 34738,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 83,
+      "componentType": 5125,
+      "count": 161664,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 84,
+      "componentType": 5126,
+      "count": 3525,
+      "max": [
+        0.8037042021751404,
+        3.2629692554473877,
+        -0.29110851883888245
+      ],
+      "min": [
+        0.1365066021680832,
+        2.5957717895507813,
+        -0.6093783378601074
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 85,
+      "componentType": 5126,
+      "count": 3525,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 86,
+      "componentType": 5126,
+      "count": 3525,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 87,
+      "componentType": 5125,
+      "count": 18432,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 88,
+      "componentType": 5126,
+      "count": 3525,
+      "max": [
+        -0.2966064214706421,
+        3.067955732345581,
+        -0.43099427223205566
+      ],
+      "min": [
+        -0.6614229083061218,
+        2.703138828277588,
+        -0.6050208806991577
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 89,
+      "componentType": 5126,
+      "count": 3525,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 90,
+      "componentType": 5126,
+      "count": 3525,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 91,
+      "componentType": 5125,
+      "count": 18432,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 92,
+      "componentType": 5126,
+      "count": 25629,
+      "max": [
+        -0.5960981845855713,
+        2.0717523097991943,
+        0.19705650210380554
+      ],
+      "min": [
+        -0.6202344298362732,
+        1.6945124864578247,
+        -0.18018321692943573
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 93,
+      "componentType": 5126,
+      "count": 25629,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 94,
+      "componentType": 5126,
+      "count": 25629,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 95,
+      "componentType": 5125,
+      "count": 147456,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 96,
+      "componentType": 5126,
+      "count": 1797,
+      "max": [
+        0.6169524192810059,
+        2.072132110595703,
+        0.19743657112121582
+      ],
+      "min": [
+        0.5925564169883728,
+        1.6941323280334473,
+        -0.1805633306503296
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 97,
+      "componentType": 5126,
+      "count": 1797,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 98,
+      "componentType": 5126,
+      "count": 1797,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 99,
+      "componentType": 5125,
+      "count": 9216,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 100,
+      "componentType": 5126,
+      "count": 2333,
+      "max": [
+        -2.2256104946136475,
+        2.1190388202667236,
+        0.23809349536895752
+      ],
+      "min": [
+        -2.248286247253418,
+        1.6428518295288086,
+        -0.23809361457824707
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 101,
+      "componentType": 5126,
+      "count": 2333,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 102,
+      "componentType": 5126,
+      "count": 2333,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 103,
+      "componentType": 5125,
+      "count": 12288,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 104,
+      "componentType": 5126,
+      "count": 1797,
+      "max": [
+        0.18900001049041748,
+        2.29351806640625,
+        0.19743657112121582
+      ],
+      "min": [
+        -0.1889999508857727,
+        2.2691221237182617,
+        -0.1805633306503296
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 105,
+      "componentType": 5126,
+      "count": 1797,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 106,
+      "componentType": 5126,
+      "count": 1797,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 107,
+      "componentType": 5125,
+      "count": 9216,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 108,
+      "componentType": 5126,
+      "count": 25629,
+      "max": [
+        0.18861991167068481,
+        2.3671159744262695,
+        0.19705650210380554
+      ],
+      "min": [
+        -0.18861983716487885,
+        2.342979669570923,
+        -0.18018321692943573
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 109,
+      "componentType": 5126,
+      "count": 25629,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 110,
+      "componentType": 5126,
+      "count": 25629,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 111,
+      "componentType": 5125,
+      "count": 147456,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 112,
+      "componentType": 5126,
+      "count": 17149,
+      "max": [
+        -0.6098504662513733,
+        3.769106864929199,
+        0.24564725160598755
+      ],
+      "min": [
+        -0.661727786064148,
+        3.760451316833496,
+        0.1937699168920517
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 113,
+      "componentType": 5126,
+      "count": 17149,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 114,
+      "componentType": 5126,
+      "count": 17149,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 115,
+      "componentType": 5125,
+      "count": 98304,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 116,
+      "componentType": 5126,
+      "count": 1797,
+      "max": [
+        0.18900001049041748,
+        2.36724591255188,
+        0.19743657112121582
+      ],
+      "min": [
+        -0.1889999508857727,
+        2.3428499698638916,
+        -0.1805633306503296
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 117,
+      "componentType": 5126,
+      "count": 1797,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 118,
+      "componentType": 5126,
+      "count": 1797,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 119,
+      "componentType": 5125,
+      "count": 9216,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 120,
+      "componentType": 5126,
+      "count": 3041,
+      "max": [
+        1.162517786026001,
+        0.10000040382146835,
+        1.1625255346298218
+      ],
+      "min": [
+        -1.1625330448150635,
+        -0.10000135004520416,
+        -1.1625252962112427
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 121,
+      "componentType": 5126,
+      "count": 3041,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 122,
+      "componentType": 5126,
+      "count": 3041,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 123,
+      "componentType": 5125,
+      "count": 18048,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 124,
+      "componentType": 5126,
+      "count": 230,
+      "max": [
+        -2.696742057800293,
+        1.901970624923706,
+        0.14769040048122406
+      ],
+      "min": [
+        -4.006921291351318,
+        1.8599202632904053,
+        -0.147690549492836
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 125,
+      "componentType": 5126,
+      "count": 230,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 126,
+      "componentType": 5126,
+      "count": 230,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 127,
+      "componentType": 5125,
+      "count": 822,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 128,
+      "componentType": 5126,
+      "count": 2529,
+      "max": [
+        -0.901139497756958,
+        0.6344508528709412,
+        -0.04737172648310661
+      ],
+      "min": [
+        -0.9236000180244446,
+        0.5248212218284607,
+        -0.1570013016462326
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 129,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 130,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 131,
+      "componentType": 5125,
+      "count": 14976,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 132,
+      "componentType": 5126,
+      "count": 40065,
+      "max": [
+        0.9108525514602661,
+        0.6343675851821899,
+        -0.04745521768927574
+      ],
+      "min": [
+        0.8883922100067139,
+        0.5249049067497253,
+        -0.15691779553890228
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 133,
+      "componentType": 5126,
+      "count": 40065,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 134,
+      "componentType": 5126,
+      "count": 40065,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 135,
+      "componentType": 5125,
+      "count": 239616,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 136,
+      "componentType": 5126,
+      "count": 2529,
+      "max": [
+        -0.9011377096176147,
+        0.6344602704048157,
+        0.1567901223897934
+      ],
+      "min": [
+        -0.9236018657684326,
+        0.5248122215270996,
+        0.047142043709754944
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 137,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 138,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 139,
+      "componentType": 5125,
+      "count": 14976,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 140,
+      "componentType": 5126,
+      "count": 2529,
+      "max": [
+        0.9108538031578064,
+        0.457986056804657,
+        0.05471041798591614
+      ],
+      "min": [
+        0.8883909583091736,
+        0.34834474325180054,
+        -0.05493083968758583
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 141,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 142,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 143,
+      "componentType": 5125,
+      "count": 14976,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 144,
+      "componentType": 5126,
+      "count": 2529,
+      "max": [
+        -0.9011383652687073,
+        0.457986056804657,
+        0.054710399359464645
+      ],
+      "min": [
+        -0.9236011505126953,
+        0.34834474325180054,
+        -0.05493084341287613
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 145,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 146,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 147,
+      "componentType": 5125,
+      "count": 14976,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 148,
+      "componentType": 5126,
+      "count": 40065,
+      "max": [
+        0.9108545780181885,
+        0.6343767642974854,
+        0.15670660138130188
+      ],
+      "min": [
+        0.888390302658081,
+        0.5248957276344299,
+        0.04722553864121437
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 149,
+      "componentType": 5126,
+      "count": 40065,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 150,
+      "componentType": 5126,
+      "count": 40065,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 151,
+      "componentType": 5125,
+      "count": 239616,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 152,
+      "componentType": 5126,
+      "count": 2529,
+      "max": [
+        1.8279839754104614,
+        2.0424699783325195,
+        0.06750081479549408
+      ],
+      "min": [
+        1.7309657335281372,
+        2.0225930213928223,
+        -0.029517482966184616
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 153,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 154,
+      "componentType": 5126,
+      "count": 2529,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 155,
+      "componentType": 5125,
+      "count": 14976,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 156,
+      "componentType": 5126,
+      "count": 40065,
+      "max": [
+        1.8279101848602295,
+        1.7313642501831055,
+        0.06742693483829498
+      ],
+      "min": [
+        1.7310395240783691,
+        1.7114875316619873,
+        -0.029443606734275818
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 157,
+      "componentType": 5126,
+      "count": 40065,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 158,
+      "componentType": 5126,
+      "count": 40065,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 159,
+      "componentType": 5125,
+      "count": 239616,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 160,
+      "componentType": 5126,
+      "count": 91378,
+      "max": [
+        -0.5045754313468933,
+        1.0418639183044434,
+        0.5212830305099487
+      ],
+      "min": [
+        -0.9302847981452942,
+        -0.0007019727490842342,
+        -0.5212830305099487
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 161,
+      "componentType": 5126,
+      "count": 91378,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 162,
+      "componentType": 5126,
+      "count": 91378,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 163,
+      "componentType": 5125,
+      "count": 546816,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 164,
+      "componentType": 5126,
+      "count": 91378,
+      "max": [
+        0.9245962500572205,
+        1.0418639183044434,
+        0.5212830305099487
+      ],
+      "min": [
+        0.4988870620727539,
+        -0.0007019727490842342,
+        -0.5212830305099487
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 165,
+      "componentType": 5126,
+      "count": 91378,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 166,
+      "componentType": 5126,
+      "count": 91378,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 167,
+      "componentType": 5125,
+      "count": 546816,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 168,
+      "componentType": 5126,
+      "count": 672,
+      "max": [
+        -8.784910202026367,
+        0.04433690756559372,
+        1.7012728452682495
+      ],
+      "min": [
+        -8.982110977172852,
+        -0.12055934965610504,
+        1.2155791521072388
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 169,
+      "componentType": 5126,
+      "count": 672,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 170,
+      "componentType": 5126,
+      "count": 672,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 171,
+      "componentType": 5125,
+      "count": 1764,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 172,
+      "componentType": 5126,
+      "count": 40538,
+      "max": [
+        -0.6244096159934998,
+        2.0433812141418457,
+        0.06990843266248703
+      ],
+      "min": [
+        -1.9637887477874756,
+        1.7202028036117554,
+        -0.06990843266248703
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 173,
+      "componentType": 5126,
+      "count": 40538,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 174,
+      "componentType": 5126,
+      "count": 40538,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 175,
+      "componentType": 5125,
+      "count": 194304,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 176,
+      "componentType": 5126,
+      "count": 19123,
+      "max": [
+        1.777888298034668,
+        1.9618891477584839,
+        0.08912468701601028
+      ],
+      "min": [
+        0.6119019389152527,
+        1.7920681238174438,
+        -0.05069218948483467
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 177,
+      "componentType": 5126,
+      "count": 19123,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 178,
+      "componentType": 5126,
+      "count": 19123,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 179,
+      "componentType": 5125,
+      "count": 91008,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 180,
+      "componentType": 5126,
+      "count": 2324,
+      "max": [
+        0.574892520904541,
+        0.9099165201187134,
+        0.3893353343009949
+      ],
+      "min": [
+        -0.574892520904541,
+        0.1312457025051117,
+        -0.3893354535102844
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 181,
+      "componentType": 5126,
+      "count": 2324,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 182,
+      "componentType": 5126,
+      "count": 2324,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 183,
+      "componentType": 5125,
+      "count": 13440,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 184,
+      "componentType": 5126,
+      "count": 7821,
+      "max": [
+        0.49242520332336426,
+        1.0785267353057861,
+        0.4388781189918518
+      ],
+      "min": [
+        -0.49248066544532776,
+        0.07888299226760864,
+        -0.4388783574104309
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 185,
+      "componentType": 5126,
+      "count": 7821,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 186,
+      "componentType": 5126,
+      "count": 7821,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 187,
+      "componentType": 5125,
+      "count": 42624,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 188,
+      "componentType": 5126,
+      "count": 3547,
+      "max": [
+        0.1721484661102295,
+        1.1825987100601196,
+        0.1721484363079071
+      ],
+      "min": [
+        -0.1721484512090683,
+        0.9186589121818542,
+        -0.1721484512090683
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 189,
+      "componentType": 5126,
+      "count": 3547,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 190,
+      "componentType": 5126,
+      "count": 3547,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 191,
+      "componentType": 5125,
+      "count": 19968,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 192,
+      "componentType": 5126,
+      "count": 5596,
+      "max": [
+        -0.5121970772743225,
+        0.9601973295211792,
+        0.4396163821220398
+      ],
+      "min": [
+        -0.9209479093551636,
+        0.08096463978290558,
+        -0.43961644172668457
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 193,
+      "componentType": 5126,
+      "count": 5596,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 194,
+      "componentType": 5126,
+      "count": 5596,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 195,
+      "componentType": 5125,
+      "count": 33024,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 196,
+      "componentType": 5126,
+      "count": 5596,
+      "max": [
+        0.9147504568099976,
+        0.9601973295211792,
+        0.4396163821220398
+      ],
+      "min": [
+        0.5059995055198669,
+        0.08096463978290558,
+        -0.43961644172668457
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 197,
+      "componentType": 5126,
+      "count": 5596,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 198,
+      "componentType": 5126,
+      "count": 5596,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 199,
+      "componentType": 5125,
+      "count": 33024,
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "copyright": "NVIDIA Corporation",
+    "generator": "Iray glTF plugin",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 35412,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 35412,
+      "byteOffset": 35412,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 23608,
+      "byteOffset": 70824,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 57600,
+      "byteOffset": 94432
+    },
+    {
+      "buffer": 0,
+      "byteLength": 113376,
+      "byteOffset": 152032,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 113376,
+      "byteOffset": 265408,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 75584,
+      "byteOffset": 378784,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 203520,
+      "byteOffset": 454368
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4452,
+      "byteOffset": 657888,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4452,
+      "byteOffset": 662340,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2968,
+      "byteOffset": 666792,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 6912,
+      "byteOffset": 669760
+    },
+    {
+      "buffer": 0,
+      "byteLength": 16836,
+      "byteOffset": 676672,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 16836,
+      "byteOffset": 693508,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 11224,
+      "byteOffset": 710344,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30720,
+      "byteOffset": 721568
+    },
+    {
+      "buffer": 0,
+      "byteLength": 307548,
+      "byteOffset": 752288,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 307548,
+      "byteOffset": 1059836,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 205032,
+      "byteOffset": 1367384,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 589824,
+      "byteOffset": 1572416
+    },
+    {
+      "buffer": 0,
+      "byteLength": 81912,
+      "byteOffset": 2162240,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 81912,
+      "byteOffset": 2244152,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 54608,
+      "byteOffset": 2326064,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 128256,
+      "byteOffset": 2380672
+    },
+    {
+      "buffer": 0,
+      "byteLength": 137700,
+      "byteOffset": 2508928,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 137700,
+      "byteOffset": 2646628,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 91800,
+      "byteOffset": 2784328,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 224640,
+      "byteOffset": 2876128
+    },
+    {
+      "buffer": 0,
+      "byteLength": 122952,
+      "byteOffset": 3100768,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 122952,
+      "byteOffset": 3223720,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 81968,
+      "byteOffset": 3346672,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 185088,
+      "byteOffset": 3428640
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4176,
+      "byteOffset": 3613728,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4176,
+      "byteOffset": 3617904,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2784,
+      "byteOffset": 3622080,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4608,
+      "byteOffset": 3624864
+    },
+    {
+      "buffer": 0,
+      "byteLength": 13536,
+      "byteOffset": 3629472,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 13536,
+      "byteOffset": 3643008,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 9024,
+      "byteOffset": 3656544,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 9504,
+      "byteOffset": 3665568
+    },
+    {
+      "buffer": 0,
+      "byteLength": 37908,
+      "byteOffset": 3675072,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 37908,
+      "byteOffset": 3712980,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 25272,
+      "byteOffset": 3750888,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 71040,
+      "byteOffset": 3776160
+    },
+    {
+      "buffer": 0,
+      "byteLength": 43908,
+      "byteOffset": 3847200,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 43908,
+      "byteOffset": 3891108,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 29272,
+      "byteOffset": 3935016,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 82560,
+      "byteOffset": 3964288
+    },
+    {
+      "buffer": 0,
+      "byteLength": 37908,
+      "byteOffset": 4046848,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 37908,
+      "byteOffset": 4084756,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 25272,
+      "byteOffset": 4122664,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 71040,
+      "byteOffset": 4147936
+    },
+    {
+      "buffer": 0,
+      "byteLength": 15732,
+      "byteOffset": 4218976,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 15732,
+      "byteOffset": 4234708,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 10488,
+      "byteOffset": 4250440,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 24576,
+      "byteOffset": 4260928
+    },
+    {
+      "buffer": 0,
+      "byteLength": 36492,
+      "byteOffset": 4285504,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 36492,
+      "byteOffset": 4321996,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 24328,
+      "byteOffset": 4358488,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 72192,
+      "byteOffset": 4382816
+    },
+    {
+      "buffer": 0,
+      "byteLength": 6300,
+      "byteOffset": 4455008,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 6300,
+      "byteOffset": 4461308,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4200,
+      "byteOffset": 4467608,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4512,
+      "byteOffset": 4471808
+    },
+    {
+      "buffer": 0,
+      "byteLength": 5388,
+      "byteOffset": 4476320,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 5388,
+      "byteOffset": 4481708,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 3592,
+      "byteOffset": 4487096,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 9216,
+      "byteOffset": 4490688
+    },
+    {
+      "buffer": 0,
+      "byteLength": 5388,
+      "byteOffset": 4499904,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 5388,
+      "byteOffset": 4505292,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 3592,
+      "byteOffset": 4510680,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 9216,
+      "byteOffset": 4514272
+    },
+    {
+      "buffer": 0,
+      "byteLength": 72216,
+      "byteOffset": 4523488,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 72216,
+      "byteOffset": 4595704,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 48144,
+      "byteOffset": 4667920,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 125952,
+      "byteOffset": 4716064
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42636,
+      "byteOffset": 4842016,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42636,
+      "byteOffset": 4884652,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 28424,
+      "byteOffset": 4927288,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 61440,
+      "byteOffset": 4955712
+    },
+    {
+      "buffer": 0,
+      "byteLength": 416856,
+      "byteOffset": 5017152,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 416856,
+      "byteOffset": 5434008,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 277904,
+      "byteOffset": 5850864,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 646656,
+      "byteOffset": 6128768
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42300,
+      "byteOffset": 6775424,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42300,
+      "byteOffset": 6817724,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 28200,
+      "byteOffset": 6860024,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 73728,
+      "byteOffset": 6888224
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42300,
+      "byteOffset": 6961952,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42300,
+      "byteOffset": 7004252,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 28200,
+      "byteOffset": 7046552,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 73728,
+      "byteOffset": 7074752
+    },
+    {
+      "buffer": 0,
+      "byteLength": 307548,
+      "byteOffset": 7148480,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 307548,
+      "byteOffset": 7456028,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 205032,
+      "byteOffset": 7763576,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 589824,
+      "byteOffset": 7968608
+    },
+    {
+      "buffer": 0,
+      "byteLength": 21564,
+      "byteOffset": 8558432,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 21564,
+      "byteOffset": 8579996,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 14376,
+      "byteOffset": 8601560,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 36864,
+      "byteOffset": 8615936
+    },
+    {
+      "buffer": 0,
+      "byteLength": 27996,
+      "byteOffset": 8652800,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 27996,
+      "byteOffset": 8680796,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 18664,
+      "byteOffset": 8708792,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 49152,
+      "byteOffset": 8727456
+    },
+    {
+      "buffer": 0,
+      "byteLength": 21564,
+      "byteOffset": 8776608,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 21564,
+      "byteOffset": 8798172,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 14376,
+      "byteOffset": 8819736,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 36864,
+      "byteOffset": 8834112
+    },
+    {
+      "buffer": 0,
+      "byteLength": 307548,
+      "byteOffset": 8870976,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 307548,
+      "byteOffset": 9178524,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 205032,
+      "byteOffset": 9486072,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 589824,
+      "byteOffset": 9691104
+    },
+    {
+      "buffer": 0,
+      "byteLength": 205788,
+      "byteOffset": 10280928,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 205788,
+      "byteOffset": 10486716,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 137192,
+      "byteOffset": 10692504,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 393216,
+      "byteOffset": 10829696
+    },
+    {
+      "buffer": 0,
+      "byteLength": 21564,
+      "byteOffset": 11222912,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 21564,
+      "byteOffset": 11244476,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 14376,
+      "byteOffset": 11266040,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 36864,
+      "byteOffset": 11280416
+    },
+    {
+      "buffer": 0,
+      "byteLength": 36492,
+      "byteOffset": 11317280,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 36492,
+      "byteOffset": 11353772,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 24328,
+      "byteOffset": 11390264,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 72192,
+      "byteOffset": 11414592
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2760,
+      "byteOffset": 11486784,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2760,
+      "byteOffset": 11489544,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 1840,
+      "byteOffset": 11492304,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 3288,
+      "byteOffset": 11494144
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 11497432,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 11527780,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 20232,
+      "byteOffset": 11558128,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 59904,
+      "byteOffset": 11578360
+    },
+    {
+      "buffer": 0,
+      "byteLength": 480780,
+      "byteOffset": 11638264,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 480780,
+      "byteOffset": 12119044,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 320520,
+      "byteOffset": 12599824,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 958464,
+      "byteOffset": 12920344
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 13878808,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 13909156,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 20232,
+      "byteOffset": 13939504,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 59904,
+      "byteOffset": 13959736
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 14019640,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 14049988,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 20232,
+      "byteOffset": 14080336,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 59904,
+      "byteOffset": 14100568
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 14160472,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 14190820,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 20232,
+      "byteOffset": 14221168,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 59904,
+      "byteOffset": 14241400
+    },
+    {
+      "buffer": 0,
+      "byteLength": 480780,
+      "byteOffset": 14301304,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 480780,
+      "byteOffset": 14782084,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 320520,
+      "byteOffset": 15262864,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 958464,
+      "byteOffset": 15583384
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 16541848,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 30348,
+      "byteOffset": 16572196,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 20232,
+      "byteOffset": 16602544,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 59904,
+      "byteOffset": 16622776
+    },
+    {
+      "buffer": 0,
+      "byteLength": 480780,
+      "byteOffset": 16682680,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 480780,
+      "byteOffset": 17163460,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 320520,
+      "byteOffset": 17644240,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 958464,
+      "byteOffset": 17964760
+    },
+    {
+      "buffer": 0,
+      "byteLength": 1096536,
+      "byteOffset": 18923224,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 1096536,
+      "byteOffset": 20019760,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 731024,
+      "byteOffset": 21116296,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2187264,
+      "byteOffset": 21847320
+    },
+    {
+      "buffer": 0,
+      "byteLength": 1096536,
+      "byteOffset": 24034584,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 1096536,
+      "byteOffset": 25131120,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 731024,
+      "byteOffset": 26227656,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2187264,
+      "byteOffset": 26958680
+    },
+    {
+      "buffer": 0,
+      "byteLength": 8064,
+      "byteOffset": 29145944,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 8064,
+      "byteOffset": 29154008,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 5376,
+      "byteOffset": 29162072,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 7056,
+      "byteOffset": 29167448
+    },
+    {
+      "buffer": 0,
+      "byteLength": 486456,
+      "byteOffset": 29174504,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 486456,
+      "byteOffset": 29660960,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 324304,
+      "byteOffset": 30147416,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 777216,
+      "byteOffset": 30471720
+    },
+    {
+      "buffer": 0,
+      "byteLength": 229476,
+      "byteOffset": 31248936,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 229476,
+      "byteOffset": 31478412,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 152984,
+      "byteOffset": 31707888,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 364032,
+      "byteOffset": 31860872
+    },
+    {
+      "buffer": 0,
+      "byteLength": 27888,
+      "byteOffset": 32224904,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 27888,
+      "byteOffset": 32252792,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 18592,
+      "byteOffset": 32280680,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 53760,
+      "byteOffset": 32299272
+    },
+    {
+      "buffer": 0,
+      "byteLength": 93852,
+      "byteOffset": 32353032,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 93852,
+      "byteOffset": 32446884,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 62568,
+      "byteOffset": 32540736,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 170496,
+      "byteOffset": 32603304
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42564,
+      "byteOffset": 32773800,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 42564,
+      "byteOffset": 32816364,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 28376,
+      "byteOffset": 32858928,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 79872,
+      "byteOffset": 32887304
+    },
+    {
+      "buffer": 0,
+      "byteLength": 67152,
+      "byteOffset": 32967176,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 67152,
+      "byteOffset": 33034328,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 44768,
+      "byteOffset": 33101480,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 132096,
+      "byteOffset": 33146248
+    },
+    {
+      "buffer": 0,
+      "byteLength": 67152,
+      "byteOffset": 33278344,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 67152,
+      "byteOffset": 33345496,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteLength": 44768,
+      "byteOffset": 33412648,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteLength": 132096,
+      "byteOffset": 33457416
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 33589512,
+      "uri": "robot-toon.bin"
+    }
+  ],
+  "cameras": [
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "mip_burn_highlights",
+              "type": "Float32",
+              "value": 0.25
+            },
+            {
+              "name": "mip_crush_blacks",
+              "type": "Float32",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "mip_f_number",
+              "type": "Float32",
+              "value": 8.0
+            },
+            {
+              "name": "mip_saturation",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "mip_cm2_factor",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "mip_vignetting",
+              "type": "Float32",
+              "value": 0.0
+            },
+            {
+              "name": "mip_burn_highlights_per_component",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "mip_gamma",
+              "type": "Float32",
+              "value": 2.200000047683716
+            },
+            {
+              "name": "tm_enable_tonemapper",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "mip_whitepoint",
+              "type": "Color",
+              "value": [
+                1.042870044708252,
+                0.9838629961013794,
+                1.03357994556427,
+                1.0
+              ]
+            },
+            {
+              "name": "mip_film_iso",
+              "type": "Float32",
+              "value": 100.0
+            },
+            {
+              "name": "tm_tonemapper",
+              "type": "String",
+              "value": "mia_exposure_photographic"
+            },
+            {
+              "name": "mip_camera_shutter",
+              "type": "Float32",
+              "value": 2.0
+            }
+          ]
+        }
+      },
+      "extras": {
+        "resolution": [
+          1000,
+          750
+        ]
+      },
+      "name": "default",
+      "perspective": {
+        "aspectRatio": 1.3333333730697632,
+        "yfov": 0.48071810603141785,
+        "zfar": 10000.0,
+        "znear": 0.10000000149011612
+      },
+      "type": "perspective"
+    }
+  ],
+  "extensions": {
+    "NV_materials_mdl": {
+      "modules": [
+        "::base",
+        "::gltf_support",
+        "::nvidia::core_definitions",
+        "::nvidia::vMaterials::AEC::Glass::Glazing::glazing_tempered",
+        "::user_materials::robot::disc_mat",
+        "::user_materials::robot::eye_left_mat",
+        "::user_materials::robot::eye_right_mat",
+        "::user_materials::robot::robo_metal_default",
+        "::user_materials::robot::robo_rings",
+        "::user_materials::robot::robo_rubber",
+        "::user_materials::simple_surface_materials"
+      ],
+      "shaders": [
+        {
+          "arguments": [
+            {
+              "name": "texture",
+              "value": 6
+            }
+          ],
+          "definition": "::base::environment_spherical(texture_2d)",
+          "name": "env_shd"
+        },
+        {
+          "arguments": [
+            {
+              "name": "base_color_texture",
+              "value": 2
+            },
+            {
+              "name": "normal_texture",
+              "value": 3
+            }
+          ],
+          "definition": "::gltf_support::gltf_material",
+          "name": "flask_cork_matSG"
+        },
+        {
+          "arguments": [
+            {
+              "name": "tint_color",
+              "value": [
+                1.0,
+                0.40982601046562195,
+                0.21576400101184845
+              ]
+            }
+          ],
+          "definition": "::nvidia::vMaterials::AEC::Glass::Glazing::glazing_tempered::glazing_tempered",
+          "name": "flask_materialSG"
+        },
+        {
+          "arguments": [
+            {
+              "name": "tex_diffuse",
+              "value": 4
+            },
+            {
+              "name": "tex_bump",
+              "value": 5
+            },
+            {
+              "name": "tex_spec",
+              "value": 5
+            },
+            {
+              "name": "roughness",
+              "value": 0.20000000298023224
+            }
+          ],
+          "definition": "::user_materials::simple_surface_materials::GenericTextured",
+          "name": "mdl_material1SG"
+        },
+        {
+          "arguments": [
+            {
+              "call": 5,
+              "name": "normal"
+            }
+          ],
+          "definition": "::user_materials::robot::robo_rubber::robo_rubber",
+          "name": "robo_rubber_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_381"
+        },
+        {
+          "arguments": [
+            {
+              "call": 7,
+              "name": "normal"
+            }
+          ],
+          "definition": "::user_materials::robot::robo_metal_default::robo_metal_default",
+          "name": "robo_metal_default_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_379"
+        },
+        {
+          "arguments": [
+            {
+              "name": "base_color",
+              "value": [
+                0.4819520115852356,
+                0.7742270231246948,
+                0.01347339991480112
+              ]
+            },
+            {
+              "call": 9,
+              "name": "normal"
+            }
+          ],
+          "definition": "::nvidia::core_definitions::flex_material",
+          "name": "robo_torso_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_384"
+        },
+        {
+          "arguments": [
+            {
+              "name": "base_color",
+              "value": [
+                0.4819520115852356,
+                0.7742270231246948,
+                0.01347339991480112
+              ]
+            },
+            {
+              "call": 11,
+              "name": "normal"
+            }
+          ],
+          "definition": "::nvidia::core_definitions::flex_material",
+          "name": "robo_head_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_377"
+        },
+        {
+          "arguments": [
+            {
+              "name": "base_color",
+              "value": [
+                0.4819520115852356,
+                0.7742270231246948,
+                0.01347339991480112
+              ]
+            },
+            {
+              "call": 13,
+              "name": "normal"
+            }
+          ],
+          "definition": "::nvidia::core_definitions::flex_material",
+          "name": "robo_red_default_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_380"
+        },
+        {
+          "arguments": [
+            {
+              "call": 15,
+              "name": "normal"
+            }
+          ],
+          "definition": "::user_materials::robot::robo_metal_default::robo_metal_default",
+          "name": "robo_metal_default_mat"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_378"
+        },
+        {
+          "arguments": [
+            {
+              "name": "use_diffuse_tex",
+              "value": false
+            },
+            {
+              "name": "diffuse_color",
+              "value": [
+                0.05112209916114807,
+                0.6940810084342957,
+                0.7893139719963074
+              ]
+            }
+          ],
+          "definition": "::user_materials::robot::disc_mat::disc_mat",
+          "name": "disc_materialSG"
+        },
+        {
+          "arguments": [
+            {
+              "call": 18,
+              "name": "normal"
+            }
+          ],
+          "definition": "::user_materials::robot::robo_metal_default::robo_metal_default",
+          "name": "robo_skrews_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_382"
+        },
+        {
+          "arguments": [
+            {
+              "call": 20,
+              "name": "normal"
+            }
+          ],
+          "definition": "::user_materials::robot::eye_left_mat::eye_left_mat",
+          "name": "eye_right_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_373"
+        },
+        {
+          "arguments": [
+            {
+              "name": "diffuse_color",
+              "value": [
+                1.0,
+                1.0,
+                0.0
+              ]
+            },
+            {
+              "call": 22,
+              "name": "normal"
+            }
+          ],
+          "definition": "::user_materials::robot::eye_right_mat::eye_right_mat",
+          "name": "eye_left_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_372"
+        },
+        {
+          "arguments": [
+            {
+              "call": 24,
+              "name": "normal"
+            }
+          ],
+          "definition": "::nvidia::core_definitions::flex_material",
+          "name": "eye_ring_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_374"
+        },
+        {
+          "arguments": [
+            {
+              "name": "tex_bump",
+              "value": 0
+            },
+            {
+              "name": "tex_spec",
+              "value": 1
+            }
+          ],
+          "definition": "::user_materials::robot::robo_rings::robo_rings",
+          "name": "robo_rings_mat"
+        },
+        {
+          "arguments": [
+            {
+              "call": 27,
+              "name": "normal"
+            }
+          ],
+          "definition": "::nvidia::core_definitions::flex_material",
+          "name": "robo_tire_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_383"
+        },
+        {
+          "arguments": [
+            {
+              "call": 29,
+              "name": "normal"
+            }
+          ],
+          "definition": "::user_materials::robot::robo_metal_default::robo_metal_default",
+          "name": "robo_hand_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_376"
+        },
+        {
+          "arguments": [
+            {
+              "name": "base_color",
+              "value": [
+                0.4819520115852356,
+                0.7742270231246948,
+                0.01347339991480112
+              ]
+            },
+            {
+              "call": 31,
+              "name": "normal"
+            }
+          ],
+          "definition": "::nvidia::core_definitions::flex_material",
+          "name": "robo_base_matSG"
+        },
+        {
+          "definition": "::state::normal()",
+          "name": "mdl::state::normal_375"
+        }
+      ]
+    }
+  },
+  "extensionsUsed": [
+    "NV_materials_mdl",
+    "KHR_lights_punctual",
+    "NV_attributes_iray"
+  ],
+  "images": [
+    {
+      "name": "img",
+      "uri": "robot-toonAssets\\corkboard_dif.png"
+    },
+    {
+      "name": "img_1",
+      "uri": "robot-toonAssets\\corkboard_nrm.png"
+    }
+  ],
+  "materials": [
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 1
+        }
+      },
+      "name": "flask_cork_matSG",
+      "normalTexture": {
+        "index": 1
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        }
+      }
+    },
+    {
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 2
+        }
+      },
+      "name": "flask_materialSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.22713729739189148,
+          0.9322785139083862,
+          0.7817490100860596,
+          0.3529450595378876
+        ]
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 3
+        }
+      },
+      "name": "mdl_material1SG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.7799999713897705,
+          0.7900000214576721,
+          0.7599999904632568,
+          1.0
+        ],
+        "roughnessFactor": 0.20000000298023224
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 4
+        }
+      },
+      "name": "robo_rubber_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.019899999722838402,
+          0.019899999722838402,
+          0.019899999722838402,
+          1.0
+        ]
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 6
+        }
+      },
+      "name": "robo_metal_default_matSG",
+      "pbrMetallicRoughness": {
+        "roughnessFactor": 0.05000000074505806
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 8
+        }
+      },
+      "name": "robo_torso_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.4819520115852356,
+          0.7742270231246948,
+          0.01347339991480112,
+          1.0
+        ]
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 10
+        }
+      },
+      "name": "robo_head_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.4819520115852356,
+          0.7742270231246948,
+          0.01347339991480112,
+          1.0
+        ]
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 12
+        }
+      },
+      "name": "robo_red_default_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.4819520115852356,
+          0.7742270231246948,
+          0.01347339991480112,
+          1.0
+        ]
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 14
+        }
+      },
+      "name": "robo_metal_default_mat",
+      "pbrMetallicRoughness": {
+        "roughnessFactor": 0.05000000074505806
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 16
+        }
+      },
+      "name": "disc_materialSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.05112209916114807,
+          0.6940810084342957,
+          0.7893139719963074,
+          1.0
+        ],
+        "roughnessFactor": 0.0
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 17
+        }
+      },
+      "name": "robo_skrews_matSG",
+      "pbrMetallicRoughness": {
+        "roughnessFactor": 0.05000000074505806
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 19
+        }
+      },
+      "name": "eye_right_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.4480000138282776,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "roughnessFactor": 0.0
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 21
+        }
+      },
+      "name": "eye_left_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "roughnessFactor": 0.0
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 23
+        }
+      },
+      "name": "eye_ring_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.5,
+          0.5,
+          0.5,
+          1.0
+        ]
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 25
+        }
+      },
+      "name": "robo_rings_mat",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.7817509770393372,
+          0.7893139719963074,
+          0.6592239737510681,
+          1.0
+        ],
+        "roughnessFactor": 0.0010000000474974513
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 26
+        }
+      },
+      "name": "robo_tire_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.5,
+          0.5,
+          0.5,
+          1.0
+        ]
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 28
+        }
+      },
+      "name": "robo_hand_matSG",
+      "pbrMetallicRoughness": {
+        "roughnessFactor": 0.05000000074505806
+      }
+    },
+    {
+      "doubleSided": true,
+      "extensions": {
+        "NV_materials_mdl": {
+          "mdl_shader": 30
+        }
+      },
+      "name": "robo_base_matSG",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.4819520115852356,
+          0.7742270231246948,
+          0.01347339991480112,
+          1.0
+        ]
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Glass_Flask_Varients:Cork_Triangle_FlaskShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TEXCOORD_0": 2
+          },
+          "indices": 3,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Glass_Flask_Varients:Traingle_FlaskShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 5,
+            "POSITION": 4,
+            "TEXCOORD_0": 6
+          },
+          "indices": 7,
+          "material": 1,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "pPlaneShape1",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 9,
+            "POSITION": 8,
+            "TEXCOORD_0": 10
+          },
+          "indices": 11,
+          "material": 2,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_body_jointShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 13,
+            "POSITION": 12,
+            "TEXCOORD_0": 14
+          },
+          "indices": 15,
+          "material": 3,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_body_joint_torusShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 17,
+            "POSITION": 16,
+            "TEXCOORD_0": 18
+          },
+          "indices": 19,
+          "material": 4,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_chestShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 21,
+            "POSITION": 20,
+            "TEXCOORD_0": 22
+          },
+          "indices": 23,
+          "material": 5,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_head1Shape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 25,
+            "POSITION": 24,
+            "TEXCOORD_0": 26
+          },
+          "indices": 27,
+          "material": 6,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_left_arm_tool_handleShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 29,
+            "POSITION": 28,
+            "TEXCOORD_0": 30
+          },
+          "indices": 31,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_left_arm_tool_jointShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 33,
+            "POSITION": 32,
+            "TEXCOORD_0": 34
+          },
+          "indices": 35,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_left_arm_tool_joint_screwShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 37,
+            "POSITION": 36,
+            "TEXCOORD_0": 38
+          },
+          "indices": 39,
+          "material": 8,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pBodyJointBase1Shape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 41,
+            "POSITION": 40,
+            "TEXCOORD_0": 42
+          },
+          "indices": 43,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pBodyJointBase5Shape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 45,
+            "POSITION": 44,
+            "TEXCOORD_0": 46
+          },
+          "indices": 47,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pBodyJointBase6Shape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 49,
+            "POSITION": 48,
+            "TEXCOORD_0": 50
+          },
+          "indices": 51,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pCubeShape35",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 53,
+            "POSITION": 52,
+            "TEXCOORD_0": 54
+          },
+          "indices": 55,
+          "material": 9,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pCylinderShape38",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 57,
+            "POSITION": 56,
+            "TEXCOORD_0": 58
+          },
+          "indices": 59,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pCylinderShape39",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 61,
+            "POSITION": 60,
+            "TEXCOORD_0": 62
+          },
+          "indices": 63,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pCylinderShape88",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 65,
+            "POSITION": 64,
+            "TEXCOORD_0": 66
+          },
+          "indices": 67,
+          "material": 11,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pCylinderShape89",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 69,
+            "POSITION": 68,
+            "TEXCOORD_0": 70
+          },
+          "indices": 71,
+          "material": 12,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pCylinder91Shape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 73,
+            "POSITION": 72,
+            "TEXCOORD_0": 74
+          },
+          "indices": 75,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pNeckShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 77,
+            "POSITION": 76,
+            "TEXCOORD_0": 78
+          },
+          "indices": 79,
+          "material": 3,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pPipe16Shape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 81,
+            "POSITION": 80,
+            "TEXCOORD_0": 82
+          },
+          "indices": 83,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pPipeShape23",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 85,
+            "POSITION": 84,
+            "TEXCOORD_0": 86
+          },
+          "indices": 87,
+          "material": 13,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pPipeShape24",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 89,
+            "POSITION": 88,
+            "TEXCOORD_0": 90
+          },
+          "indices": 91,
+          "material": 13,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pTorusShape1",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 93,
+            "POSITION": 92,
+            "TEXCOORD_0": 94
+          },
+          "indices": 95,
+          "material": 4,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pTorusShape2",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 97,
+            "POSITION": 96,
+            "TEXCOORD_0": 98
+          },
+          "indices": 99,
+          "material": 4,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pTorusShape3",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 101,
+            "POSITION": 100,
+            "TEXCOORD_0": 102
+          },
+          "indices": 103,
+          "material": 4,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pTorusShape4",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 105,
+            "POSITION": 104,
+            "TEXCOORD_0": 106
+          },
+          "indices": 107,
+          "material": 4,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pTorusShape5",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 109,
+            "POSITION": 108,
+            "TEXCOORD_0": 110
+          },
+          "indices": 111,
+          "material": 4,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pTorusShape6",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 113,
+            "POSITION": 112,
+            "TEXCOORD_0": 114
+          },
+          "indices": 115,
+          "material": 4,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_pTorusShape7",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 117,
+            "POSITION": 116,
+            "TEXCOORD_0": 118
+          },
+          "indices": 119,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_screw_tongs1|robot_03_screw_tongs1Shape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 121,
+            "POSITION": 120,
+            "TEXCOORD_0": 122
+          },
+          "indices": 123,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_screwdriverShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 125,
+            "POSITION": 124,
+            "TEXCOORD_0": 126
+          },
+          "indices": 127,
+          "material": 14,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew1_tire_leftShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 129,
+            "POSITION": 128,
+            "TEXCOORD_0": 130
+          },
+          "indices": 131,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew1_tire_rightShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 133,
+            "POSITION": 132,
+            "TEXCOORD_0": 134
+          },
+          "indices": 135,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew2_tire_leftShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 137,
+            "POSITION": 136,
+            "TEXCOORD_0": 138
+          },
+          "indices": 139,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew2_tire_rightShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 141,
+            "POSITION": 140,
+            "TEXCOORD_0": 142
+          },
+          "indices": 143,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew3_tire_leftShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 145,
+            "POSITION": 144,
+            "TEXCOORD_0": 146
+          },
+          "indices": 147,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew3_tire_rightShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 149,
+            "POSITION": 148,
+            "TEXCOORD_0": 150
+          },
+          "indices": 151,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew_elbow_rightShape1",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 153,
+            "POSITION": 152,
+            "TEXCOORD_0": 154
+          },
+          "indices": 155,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_skrew_elbow_rightShape2",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 157,
+            "POSITION": 156,
+            "TEXCOORD_0": 158
+          },
+          "indices": 159,
+          "material": 10,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_tire_leftShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 161,
+            "POSITION": 160,
+            "TEXCOORD_0": 162
+          },
+          "indices": 163,
+          "material": 15,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_tire_rightShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 165,
+            "POSITION": 164,
+            "TEXCOORD_0": 166
+          },
+          "indices": 167,
+          "material": 15,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_tongs2|robot_03_tongsShape1",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 169,
+            "POSITION": 168,
+            "TEXCOORD_0": 170
+          },
+          "indices": 171,
+          "material": 16,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_upper_arm_leftShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 173,
+            "POSITION": 172,
+            "TEXCOORD_0": 174
+          },
+          "indices": 175,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_upper_arm_rightShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 177,
+            "POSITION": 176,
+            "TEXCOORD_0": 178
+          },
+          "indices": 179,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_wheel_baseShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 181,
+            "POSITION": 180,
+            "TEXCOORD_0": 182
+          },
+          "indices": 183,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_wheel_base_decorShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 185,
+            "POSITION": 184,
+            "TEXCOORD_0": 186
+          },
+          "indices": 187,
+          "material": 17,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_wheel_base_jointShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 189,
+            "POSITION": 188,
+            "TEXCOORD_0": 190
+          },
+          "indices": 191,
+          "material": 3,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_wheel_rim_leftShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 193,
+            "POSITION": 192,
+            "TEXCOORD_0": 194
+          },
+          "indices": 195,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "robot_03_wheel_rim_rightShape",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 197,
+            "POSITION": 196,
+            "TEXCOORD_0": 198
+          },
+          "indices": 199,
+          "material": 7,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 197673
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.33890320787850853,
+        0.012469744967191833,
+        0.15918807036418606,
+        -0.0,
+        -0.016768692361209325,
+        0.36864685531636154,
+        -0.06457699994181124,
+        0.0,
+        -0.1587932913197713,
+        -0.06554306782574444,
+        -0.33292787012986996,
+        -0.0,
+        -1.1703249857161586,
+        1.2040673711313996,
+        1.8053305060970541,
+        1.0
+      ],
+      "mesh": 0,
+      "name": "Glass_Flask_Varients:Cork_Triangle_Flask"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 16707271
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.3389032078785086,
+        0.01246974496719181,
+        0.15918807036418609,
+        -0.0,
+        -0.016768692361209328,
+        0.36864685531636154,
+        -0.06457699994181122,
+        0.0,
+        -0.1587932913197713,
+        -0.0655430678257445,
+        -0.3329278701298699,
+        -0.0,
+        -1.169599670877364,
+        1.179824236328906,
+        1.8057143610413335,
+        1.0
+      ],
+      "mesh": 1,
+      "name": "Glass_Flask_Varients:Traingle_Flask"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "disable",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 24566
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -1.2357297292170268,
+        -0.0,
+        0.1706244713876171,
+        -0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        -0.25799557899401127,
+        -0.0,
+        -1.8685043179699239,
+        -0.0,
+        7.461097954520726e-07,
+        -0.0,
+        -3.4754703518254053,
+        1.0
+      ],
+      "mesh": 2,
+      "name": "pPlane1"
+    },
+    {
+      "camera": 0,
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 8355711
+            },
+            {
+              "name": "iview:up",
+              "type": "Float32<3>",
+              "value": [
+                0.0,
+                1.0,
+                0.0
+              ]
+            },
+            {
+              "name": "iview:roll",
+              "type": "Float32",
+              "value": 0.0
+            },
+            {
+              "name": "iview:fkey",
+              "type": "Sint32",
+              "value": -1
+            },
+            {
+              "name": "iview:interest",
+              "type": "Float32<3>",
+              "value": [
+                0.7,
+                2.24,
+                -1.1
+              ]
+            },
+            {
+              "name": "iview:position",
+              "type": "Float32<3>",
+              "value": [
+                4.4,
+                5.1,
+                11.2
+              ]
+            },
+            {
+              "name": "iview:fov",
+              "type": "Float32",
+              "value": 36.19441223144531
+            }
+          ]
+        }
+      },
+      "matrix": [
+        0.9154914991297992,
+        -3.0317677053267426e-17,
+        -0.4023373149747271,
+        0.0,
+        -0.10705411815926964,
+        0.9639508088773204,
+        -0.24359444544139483,
+        0.0,
+        0.38783338021141744,
+        0.2660805104940224,
+        0.8824887711064808,
+        0.0,
+        8.191675234726647,
+        8.03707977068971,
+        18.651410905609318,
+        1.0
+      ],
+      "name": "persp"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 12056679
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8406787557524568,
+        -0.021702888436103275,
+        -0.5410987836374321,
+        -0.0,
+        0.012036705341232478,
+        0.998200762835867,
+        -0.05873759968634569,
+        0.0,
+        0.5414003366694232,
+        -0.05589250903949594,
+        -0.8389053548621153,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 3,
+      "name": "robot_03_body_joint"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 6113523
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8406787557524568,
+        -0.021702888436103275,
+        -0.5410987836374321,
+        -0.0,
+        0.012036705341232478,
+        0.998200762835867,
+        -0.05873759968634569,
+        0.0,
+        0.5414003366694232,
+        -0.05589250903949594,
+        -0.8389053548621153,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 4,
+      "name": "robot_03_body_joint_torus"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 8933837
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8406787557524568,
+        -0.021702888436103275,
+        -0.5410987836374321,
+        -0.0,
+        0.012036705341232478,
+        0.998200762835867,
+        -0.05873759968634569,
+        0.0,
+        0.5414003366694232,
+        -0.05589250903949594,
+        -0.8389053548621153,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 5,
+      "name": "robot_03_chest:robot_03_chestShape"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 7088387
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 6,
+      "name": "robot_03_head1"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 14812321
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.6157324015167007,
+        -0.3314066351570968,
+        -0.7148729279613499,
+        -0.0,
+        0.39857782729155217,
+        0.6516229517395763,
+        -0.6453867086902183,
+        0.0,
+        0.6797131794681077,
+        -0.6823167894333793,
+        -0.2691339487521248,
+        -0.0,
+        -0.2287518369445944,
+        -0.44883592191830707,
+        0.28904713592771536,
+        1.0
+      ],
+      "mesh": 7,
+      "name": "robot_03_left_arm_tool_handle"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 16342567
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.6157324015167007,
+        -0.3314066351570968,
+        -0.7148729279613499,
+        -0.0,
+        0.39857782729155217,
+        0.6516229517395763,
+        -0.6453867086902183,
+        0.0,
+        0.6797131794681077,
+        -0.6823167894333793,
+        -0.2691339487521248,
+        -0.0,
+        -0.2287518369445944,
+        -0.44883592191830707,
+        0.28904713592771536,
+        1.0
+      ],
+      "mesh": 8,
+      "name": "robot_03_left_arm_tool_joint"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 15557
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.6157324015167007,
+        -0.3314066351570968,
+        -0.7148729279613499,
+        -0.0,
+        0.39857782729155217,
+        0.6516229517395763,
+        -0.6453867086902183,
+        0.0,
+        0.6797131794681077,
+        -0.6823167894333793,
+        -0.2691339487521248,
+        -0.0,
+        -0.2287518369445944,
+        -0.44883592191830707,
+        0.28904713592771536,
+        1.0
+      ],
+      "mesh": 9,
+      "name": "robot_03_left_arm_tool_joint_screw"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 9368878
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.840678846536796,
+        -0.021703065566694962,
+        -0.5410986354857398,
+        -0.0,
+        0.39857794473573344,
+        0.6516227035879893,
+        -0.6453868867088576,
+        -0.0,
+        0.36659935106601255,
+        -0.7582321324067219,
+        -0.5391555504356,
+        -0.0,
+        -0.7253359827828085,
+        0.6585980160616207,
+        1.1005032739106224,
+        1.0
+      ],
+      "mesh": 10,
+      "name": "robot_03_pBodyJointBase1:robot_03_pBodyJointBase1Shape"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 550361
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8191854101454609,
+        0.10726074186350142,
+        0.5634093973389763,
+        -0.0,
+        0.12165004077523107,
+        0.992499235805093,
+        -0.012073743958330788,
+        0.0,
+        -0.5604778837166388,
+        0.05864812181810836,
+        -0.8260895734480348,
+        -0.0,
+        -0.19998270406164254,
+        0.015838374673562063,
+        -0.8534082433267739,
+        1.0
+      ],
+      "mesh": 11,
+      "name": "robot_03_pBodyJointBase5"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 201841
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8932881417810072,
+        0.14704757886402756,
+        -0.4247512001836594,
+        -0.0,
+        0.18934035556609177,
+        0.9801443742270803,
+        -0.05887727600387103,
+        0.0,
+        0.40765960284743064,
+        -0.13301689845426104,
+        -0.9033931912334364,
+        -0.0,
+        -0.317959946200163,
+        -0.06390302337728242,
+        -0.07987961793302631,
+        1.0
+      ],
+      "mesh": 12,
+      "name": "robot_03_pBodyJointBase6"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 2228248
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 13,
+      "name": "robot_03_pCube35"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 2996222
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9002172960325192,
+        0.4125019788244791,
+        -0.139467132500415,
+        -0.0,
+        0.3985779171616071,
+        0.6516231923311372,
+        -0.6453864102716897,
+        0.0,
+        -0.17534259060318927,
+        -0.6365766980378396,
+        -0.7510165445094699,
+        -0.0,
+        -0.7672199556941315,
+        0.9602215930264677,
+        1.379175076890952,
+        1.0
+      ],
+      "mesh": 14,
+      "name": "robot_03_pCylinder38"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 12364696
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9002172960325192,
+        0.4125019788244791,
+        -0.139467132500415,
+        -0.0,
+        0.3985779171616071,
+        0.6516231923311372,
+        -0.6453864102716897,
+        0.0,
+        -0.17534259060318927,
+        -0.6365766980378396,
+        -0.7510165445094699,
+        -0.0,
+        -0.7672199556941315,
+        0.9602215930264677,
+        1.379175076890952,
+        1.0
+      ],
+      "mesh": 15,
+      "name": "robot_03_pCylinder39"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 10232827
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 16,
+      "name": "robot_03_pCylinder88"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 7995009
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 17,
+      "name": "robot_03_pCylinder89"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 16521608
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 18,
+      "name": "robot_03_pCylinder91"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 4121310
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8406787557524568,
+        -0.021702888436103275,
+        -0.5410987836374321,
+        -0.0,
+        0.012036705341232478,
+        0.998200762835867,
+        -0.05873759968634569,
+        0.0,
+        0.5414003366694232,
+        -0.05589250903949594,
+        -0.8389053548621153,
+        -0.0,
+        0.0005109555302904045,
+        0.04534410078955946,
+        -0.005410891546694874,
+        1.0
+      ],
+      "mesh": 19,
+      "name": "robot_03_pNeck"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 13090304
+            }
+          ]
+        }
+      },
+      "matrix": [
+        0.20553327811752675,
+        -0.04744818717868029,
+        0.9774995114369527,
+        0.0,
+        0.1627052368390431,
+        0.9865798475974907,
+        0.01367780707658874,
+        0.0,
+        -0.9650302673887721,
+        0.15623276772856123,
+        0.210494854649039,
+        0.0,
+        -2.156293133015797,
+        0.307316856890073,
+        -1.7072641996273559,
+        1.0
+      ],
+      "mesh": 20,
+      "name": "robot_03_pPipe16:robot_03_pPipe16Shape"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 4816311
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 21,
+      "name": "robot_03_pPipe23"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 13229084
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 22,
+      "name": "robot_03_pPipe24"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 1690449
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8406787557524568,
+        -0.021702888436103275,
+        -0.5410987836374321,
+        -0.0,
+        0.012036705341232478,
+        0.998200762835867,
+        -0.05873759968634569,
+        0.0,
+        0.5414003366694232,
+        -0.05589250903949594,
+        -0.8389053548621153,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 23,
+      "name": "robot_03_pTorus1"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 13828328
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8406787557524568,
+        -0.021702888436103275,
+        -0.5410987836374321,
+        -0.0,
+        0.012036705341232478,
+        0.998200762835867,
+        -0.05873759968634569,
+        0.0,
+        0.5414003366694232,
+        -0.05589250903949594,
+        -0.8389053548621153,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 24,
+      "name": "robot_03_pTorus2"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 978703
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.6157324015167007,
+        -0.3314066351570968,
+        -0.7148729279613499,
+        -0.0,
+        0.39857782729155217,
+        0.6516229517395763,
+        -0.6453867086902183,
+        0.0,
+        0.6797131794681077,
+        -0.6823167894333793,
+        -0.2691339487521248,
+        -0.0,
+        -0.2287518369445944,
+        -0.44883592191830707,
+        0.28904713592771536,
+        1.0
+      ],
+      "mesh": 25,
+      "name": "robot_03_pTorus3"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 15832064
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8406787557524568,
+        -0.021702888436103275,
+        -0.5410987836374321,
+        -0.0,
+        0.012036705341232478,
+        0.998200762835867,
+        -0.05873759968634569,
+        0.0,
+        0.5414003366694232,
+        -0.05589250903949594,
+        -0.8389053548621153,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 26,
+      "name": "robot_03_pTorus4"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 11105602
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 27,
+      "name": "robot_03_pTorus5"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 494845
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.007946964956758243,
+        -0.0040836317960531825,
+        -0.04975578842814066,
+        1.0
+      ],
+      "mesh": 28,
+      "name": "robot_03_pTorus6"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 15389104
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9086505506150293,
+        -0.0018030111770909575,
+        -0.4175542498734356,
+        -0.0,
+        0.015370551741510384,
+        0.9991680344610367,
+        -0.037762760880520836,
+        0.0,
+        0.4172750224948784,
+        -0.040731214949126016,
+        -0.9078670288352549,
+        -0.0,
+        -0.00793609887427811,
+        -0.0023033654470928687,
+        -0.04992913733550007,
+        1.0
+      ],
+      "mesh": 29,
+      "name": "robot_03_pTorus7"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 4957033
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.015608529272573696,
+        0.003603274787386316,
+        -0.0742330047111204,
+        -0.0,
+        0.012356076429095034,
+        0.07492246157461471,
+        0.0010387188700483334,
+        0.0,
+        -0.07328612973052887,
+        0.01186453114602828,
+        0.015985311973667673,
+        -0.0,
+        -1.2804104773531249,
+        2.249218188328071,
+        0.9571918862180921,
+        1.0
+      ],
+      "mesh": 30,
+      "name": "robot_03_screw_tongs1"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 10161652
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.015608529272573696,
+        0.003603274787386316,
+        -0.0742330047111204,
+        -0.0,
+        -0.012356076429095034,
+        -0.07492246157461471,
+        -0.0010387188700483334,
+        -0.0,
+        -0.07328612973052887,
+        0.01186453114602828,
+        0.015985311973667673,
+        -0.0,
+        -1.351014332243722,
+        1.8211037593330826,
+        0.9512565428432057,
+        1.0
+      ],
+      "mesh": 30,
+      "name": "robot_03_screw_tongs2"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 16710903
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.6157324015167007,
+        -0.3314066351570968,
+        -0.7148729279613499,
+        -0.0,
+        0.39857782729155217,
+        0.6516229517395763,
+        -0.6453867086902183,
+        0.0,
+        0.6797131794681077,
+        -0.6823167894333793,
+        -0.2691339487521248,
+        -0.0,
+        -0.2287518369445944,
+        -0.44883592191830707,
+        0.28904713592771536,
+        1.0
+      ],
+      "mesh": 31,
+      "name": "robot_03_screwdriver"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 15990269
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 32,
+      "name": "robot_03_skrew1_tire_left"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 16188119
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 33,
+      "name": "robot_03_skrew1_tire_right"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 1448622
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 34,
+      "name": "robot_03_skrew2_tire_left"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 1163501
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 35,
+      "name": "robot_03_skrew2_tire_right"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 144522
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 36,
+      "name": "robot_03_skrew3_tire_left"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 59962
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 37,
+      "name": "robot_03_skrew3_tire_right"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 15330284
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8062342368064499,
+        0.18941191675725605,
+        0.5604547046110392,
+        -0.0,
+        0.1893408733641595,
+        0.9801442773670367,
+        -0.05887722329211586,
+        0.0,
+        -0.5604787400239049,
+        0.05864834306590225,
+        -0.8260889767599918,
+        -0.0,
+        -0.358875202099143,
+        -0.09646803278879817,
+        -0.7535773051339859,
+        1.0
+      ],
+      "mesh": 38,
+      "name": "robot_03_skrew_elbow_right1"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 2294360
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8062342368064499,
+        0.18941191675725605,
+        0.5604547046110392,
+        -0.0,
+        0.1893408733641595,
+        0.9801442773670367,
+        -0.05887722329211586,
+        0.0,
+        -0.5604787400239049,
+        0.05864834306590225,
+        -0.8260889767599918,
+        -0.0,
+        -0.34204980910916694,
+        -0.10928595740015695,
+        -0.7659028721427783,
+        1.0
+      ],
+      "mesh": 39,
+      "name": "robot_03_skrew_elbow_right2"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 16672517
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 40,
+      "name": "robot_03_tire_left"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 64773
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        -3.400390271229481e-17,
+        -2.2407423902462663e-16,
+        -3.46528484082085e-17,
+        1.0
+      ],
+      "mesh": 41,
+      "name": "robot_03_tire_right"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 6965549
+            }
+          ]
+        }
+      },
+      "matrix": [
+        1.982859382380816,
+        -0.32087747708334585,
+        -0.44230443523847224,
+        -0.0,
+        0.334647506825113,
+        2.029174098725879,
+        0.02813202367048768,
+        0.0,
+        0.43197719912506755,
+        -0.0990860913654163,
+        2.008458253979772,
+        0.0,
+        15.984449854250343,
+        -0.6434745087657037,
+        -5.528480851794152,
+        1.0
+      ],
+      "mesh": 42,
+      "name": "robot_03_tongs1"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 8124363
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -2.0236301717193363,
+        0.35286881158770284,
+        0.10357487049902249,
+        -0.0,
+        0.3544546369141045,
+        2.02586727604971,
+        0.023357964232975252,
+        0.0,
+        0.09801095369897994,
+        -0.040831126207388095,
+        2.054031796485476,
+        0.0,
+        -19.615237959844478,
+        5.340477786052107,
+        -0.6782413026501296,
+        1.0
+      ],
+      "mesh": 42,
+      "name": "robot_03_tongs2"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 5703947
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9002172960325192,
+        0.4125019788244791,
+        -0.139467132500415,
+        -0.0,
+        0.3985779171616071,
+        0.6516231923311372,
+        -0.6453864102716897,
+        0.0,
+        -0.17534259060318927,
+        -0.6365766980378396,
+        -0.7510165445094699,
+        -0.0,
+        -0.7672199556941315,
+        0.9602215930264677,
+        1.379175076890952,
+        1.0
+      ],
+      "mesh": 43,
+      "name": "robot_03_upper_arm_left"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 16528700
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.8062342368064499,
+        0.18941191675725605,
+        0.5604547046110392,
+        -0.0,
+        0.1893408733641595,
+        0.9801442773670367,
+        -0.05887722329211586,
+        0.0,
+        -0.5604787400239049,
+        0.05864834306590225,
+        -0.8260889767599918,
+        -0.0,
+        -0.358875202099143,
+        -0.09646803278879817,
+        -0.7535773051339859,
+        1.0
+      ],
+      "mesh": 44,
+      "name": "robot_03_upper_arm_right:robot_03_upper_arm_rightShape"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 3789598
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 45,
+      "name": "robot_03_wheel_base"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 11403449
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 46,
+      "name": "robot_03_wheel_base_decor"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 3214592
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 47,
+      "name": "robot_03_wheel_base_joint"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 14125590
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 48,
+      "name": "robot_03_wheel_rim_left"
+    },
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "caustic",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "caustic_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "globillum_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "label",
+              "type": "Sint32",
+              "value": 14590298
+            }
+          ]
+        }
+      },
+      "matrix": [
+        -0.9998329614489392,
+        0.012824862371622966,
+        0.013059801874612597,
+        -0.0,
+        0.012036747545683511,
+        0.9982007663286214,
+        -0.05873753168095704,
+        0.0,
+        -0.013789614234076474,
+        -0.05857055430623497,
+        -0.9981880380208508,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mesh": 49,
+      "name": "robot_03_wheel_rim_right"
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "extensions": {
+        "NV_attributes_iray": {
+          "attributes": [
+            {
+              "name": "transparency_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "transparency_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "reflection_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "refraction_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "shadow_cast",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "shadow_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "finalgather_recv",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "face_front",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "face_back",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "samples",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "samples_adaptivity",
+              "type": "Float32",
+              "value": 16.0
+            },
+            {
+              "name": "mode",
+              "type": "Sint32",
+              "value": 3
+            },
+            {
+              "name": "filter",
+              "type": "Sint32",
+              "value": 2
+            },
+            {
+              "name": "radius",
+              "type": "Float32",
+              "value": 1.5
+            },
+            {
+              "name": "depth_reflect",
+              "type": "Sint32",
+              "value": 4
+            },
+            {
+              "name": "depth_refract",
+              "type": "Sint32",
+              "value": 4
+            },
+            {
+              "name": "depth",
+              "type": "Sint32",
+              "value": 6
+            },
+            {
+              "name": "fg_mode",
+              "type": "Sint32",
+              "value": 1
+            },
+            {
+              "name": "fg_depth",
+              "type": "Sint32",
+              "value": 2
+            },
+            {
+              "name": "ca_mode",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "mdl_meters_per_scene_unit",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "gi_mode",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "samples quality",
+              "type": "Float32<4>",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "progressive_rendering_converged_pixel_ratio",
+              "type": "Float32",
+              "value": 0.949999988079071
+            },
+            {
+              "name": "iview::inline_width",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "iray_bloom_filtering_radius",
+              "type": "Float32",
+              "value": 0.009999999776482582
+            },
+            {
+              "name": "iview::magnifier_size",
+              "type": "Sint32",
+              "value": 300
+            },
+            {
+              "name": "environment_dome_depth",
+              "type": "Float32",
+              "value": 200.0
+            },
+            {
+              "name": "environment_dome_ground_shadow_intensity",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "light importance sampling",
+              "type": "String",
+              "value": "on"
+            },
+            {
+              "name": "finalgather mode",
+              "type": "String",
+              "value": "automatic"
+            },
+            {
+              "name": "progressive_aux_canvas",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "progressive_rendering_quality_enabled",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "mila diffuse detail",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "environment_function_intensity",
+              "type": "Float32",
+              "value": 150.0
+            },
+            {
+              "name": "environment_dome_height",
+              "type": "Float32",
+              "value": 200.0
+            },
+            {
+              "name": "iview:sunsky:latitude",
+              "type": "Float32",
+              "value": 37.31999969482422
+            },
+            {
+              "name": "iview::outline_width",
+              "type": "Float32",
+              "value": 2.0
+            },
+            {
+              "name": "iview::zoom_factor",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "iview:sunsky:active",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "iray_optix_prime",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "mila diffuse quality",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "post_ssim_enabled",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "post_denoiser_enabled",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "shutter full close",
+              "type": "Float32",
+              "value": 0.800000011920929
+            },
+            {
+              "name": "environment lighting globillum photons",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "iview:sunsky:dst",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "progressive_rendering_max_samples",
+              "type": "Sint32",
+              "value": 100
+            },
+            {
+              "call": 0,
+              "name": "environment_function",
+              "type": "Ref"
+            },
+            {
+              "name": "mila clamp level",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "environment_dome_ground_legacy_reflection",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "light importance sampling resolution",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "iview::offset",
+              "type": "Float32",
+              "value": 10.0
+            },
+            {
+              "name": "finalgather points",
+              "type": "Sint32",
+              "value": 10
+            },
+            {
+              "name": "mila diffuse detail distance",
+              "type": "Float32",
+              "value": 10.0
+            },
+            {
+              "name": "iray_bloom_filtering_threshold",
+              "type": "Float32",
+              "value": 0.8999999761581421
+            },
+            {
+              "name": "samples per object",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "gi diffuse transmission depth",
+              "type": "Sint32",
+              "value": 2
+            },
+            {
+              "name": "environment_dome_ground",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "maya render pass",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "shutter shape function",
+              "type": "String",
+              "value": "none"
+            },
+            {
+              "name": "iray_instancing",
+              "type": "String",
+              "value": "off"
+            },
+            {
+              "name": "ambient occlusion",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "rast motion factor",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "environment lighting quality",
+              "type": "Float32",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "ambient occlusion cache points",
+              "type": "Sint32",
+              "value": 64
+            },
+            {
+              "name": "post_ssim_max_memory",
+              "type": "Sint32",
+              "value": 1024
+            },
+            {
+              "name": "rast useopacity",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "maya custom depth",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "iview:sunsky:date",
+              "type": "String",
+              "value": "Thu Mar 12 2020"
+            },
+            {
+              "name": "iview::overview",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "samples max",
+              "type": "Float32",
+              "value": 200.0
+            },
+            {
+              "name": "ray differentials",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "gi",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "mila clamp output",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "light relative scale",
+              "type": "Float32",
+              "value": 0.3183099925518036
+            },
+            {
+              "name": "samples min",
+              "type": "Float32",
+              "value": 2.0
+            },
+            {
+              "name": "iview:sunsky:timezone",
+              "type": "String",
+              "value": "America/Los_Angeles"
+            },
+            {
+              "name": "iview:sunsky:longitude",
+              "type": "Float32",
+              "value": -122.02999877929688
+            },
+            {
+              "name": "iray_degrain_filtering",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "IVP_color",
+              "type": "Color",
+              "value": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "post_denoiser_available",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "mila glossy quality",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "trace camera motion vectors",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "mila quality",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "maya custom alpha",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "environment_dome_width",
+              "type": "Float32",
+              "value": 200.0
+            },
+            {
+              "name": "geom displace motion factor",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "gi rays",
+              "type": "Sint32",
+              "value": 81
+            },
+            {
+              "name": "iray_bloom_filtering_brightness_scale",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "gi density",
+              "type": "Float32",
+              "value": 4.0
+            },
+            {
+              "name": "environment lighting caustic photons",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "maya shader glow",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "gi scale",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "light importance sampling quality",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "environment_dome_mode",
+              "type": "String",
+              "value": "infinite"
+            },
+            {
+              "name": "iview:sunsky:time",
+              "type": "String",
+              "value": "12:00:00"
+            },
+            {
+              "name": "environment_dome_ground_texturescale",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "environment_dome_rotation_angle",
+              "type": "Float32",
+              "value": 0.0
+            },
+            {
+              "name": "mila scatter quality",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "progressive subsampling mode",
+              "type": "String",
+              "value": "detail"
+            },
+            {
+              "name": "mila scatter scale",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "ambient occlusion rays",
+              "type": "Sint32",
+              "value": 64
+            },
+            {
+              "name": "environment_dome_position",
+              "type": "Float32<3>",
+              "value": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "name": "samples error cutoff",
+              "type": "Float32<4>",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "name": "maya custom label",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "progressive_samples_per_motion_sample",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "progressive_rendering_quality",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "environment_lighting_shader_samples",
+              "type": "Sint32",
+              "value": 2
+            },
+            {
+              "name": "maya filter size compute",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "maya refraction blur limit",
+              "type": "Sint32",
+              "value": 1
+            },
+            {
+              "name": "iray_bloom_filtering",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "trace camera clip",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "light importance sampling precomputed",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "gi diffuse depth",
+              "type": "Sint32",
+              "value": 2
+            },
+            {
+              "name": "maya filter size default",
+              "type": "Float32",
+              "value": 9.999999747378752e-05
+            },
+            {
+              "name": "maya shader glow buffer",
+              "type": "String",
+              "value": "mayaGlow"
+            },
+            {
+              "name": "gi clamp",
+              "type": "Float32",
+              "value": -1.0
+            },
+            {
+              "name": "ambient occlusion cache density",
+              "type": "Float32",
+              "value": 1.0
+            },
+            {
+              "name": "post_denoiser_start_iteration",
+              "type": "Sint32",
+              "value": 8
+            },
+            {
+              "name": "iray_degrain_filtering_blur_difference",
+              "type": "Float32",
+              "value": 0.05000000074505806
+            },
+            {
+              "name": "mila use max distance inside",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "maya allocate temp data on heap",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "gi gpu",
+              "type": "Boolean",
+              "value": true
+            },
+            {
+              "name": "contrast all buffers",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "mdl meters per scene unit",
+              "type": "Float32",
+              "value": 0.009999999776482582
+            },
+            {
+              "name": "environment_dome_radius",
+              "type": "Float32",
+              "value": 100.0
+            },
+            {
+              "name": "progressive_rendering_subsampling_size",
+              "type": "Sint32",
+              "value": 4
+            },
+            {
+              "name": "post_ssim_available",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "shadowmap pixel samples",
+              "type": "Sint32",
+              "value": 3
+            },
+            {
+              "name": "iray_degrain_filtering_radius",
+              "type": "Sint32",
+              "value": 3
+            },
+            {
+              "name": "progressive_rendering_max_time",
+              "type": "Sint32",
+              "value": 0
+            },
+            {
+              "name": "environment_dome_ground_position",
+              "type": "Float32<3>",
+              "value": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "name": "gi gpu devices",
+              "type": "Sint32",
+              "value": 3
+            },
+            {
+              "name": "progressive_rendering",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "environment lighting mode",
+              "type": "String",
+              "value": "off"
+            },
+            {
+              "name": "environment lighting scale",
+              "type": "Float32<3>",
+              "value": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "iview::inline_color",
+              "type": "Color",
+              "value": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "shutter full open",
+              "type": "Float32",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "shadow_terminator_offset_mode",
+              "type": "String",
+              "value": "off"
+            },
+            {
+              "name": "ambient occlusion cache",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "maya reflection blur limit",
+              "type": "Sint32",
+              "value": 1
+            },
+            {
+              "name": "finalgather normal tolerance",
+              "type": "Float32",
+              "value": 25.841999053955078
+            },
+            {
+              "name": "environment_lighting_resolution",
+              "type": "Sint32",
+              "value": 512
+            },
+            {
+              "name": "hair detail shadowmap",
+              "type": "Boolean",
+              "value": false
+            },
+            {
+              "name": "rast transparency depth",
+              "type": "Sint32",
+              "value": 250
+            },
+            {
+              "name": "iview::outline_color",
+              "type": "Color",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "light importance sampling samples",
+              "type": "Sint32",
+              "value": 4
+            },
+            {
+              "name": "maya shadow limit",
+              "type": "Sint32",
+              "value": 3
+            },
+            {
+              "name": "unified sampling",
+              "type": "Boolean",
+              "value": true
+            }
+          ]
+        }
+      },
+      "nodes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "extras": {
+        "gamma": 0.0
+      },
+      "name": "tex_0",
+      "source": 0
+    },
+    {
+      "extras": {
+        "gamma": 0.0
+      },
+      "name": "tex_2",
+      "source": 1
+    }
+  ]
+}

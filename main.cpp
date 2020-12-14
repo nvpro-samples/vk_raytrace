@@ -71,8 +71,8 @@ static int const SAMPLE_HEIGHT = 720;
 int main(int argc, char** argv)
 {
   InputParser parser(argc, argv);
-  std::string sceneFile   = parser.getString("-f", "media/robot.gltf");
-  std::string hdrFilename = parser.getString("-e", R"(media/daytime.hdr)");
+  std::string sceneFile   = parser.getString("-f", "media/robot-toon.gltf");
+  std::string hdrFilename = parser.getString("-e", R"(media/std_env.hdr)");
 
 
   // Setup GLFW window
@@ -100,17 +100,18 @@ int main(int argc, char** argv)
 
   // Search path for shaders and other media
   defaultSearchPaths = {
-      PROJECT_NAME,  // installed: shaders + media
+      PROJECT_ABSDIRECTORY,
+      PROJECT_ABSDIRECTORY "..",
+      NVPSystem::exePath(),
+      NVPSystem::exePath() + "..",
       NVPSystem::exePath() + std::string(PROJECT_NAME),
   };
 
 
   // Requesting Vulkan extensions and layers
-  nvvk::ContextCreateInfo contextInfo(false);
+  nvvk::ContextCreateInfo contextInfo(true);
   contextInfo.setVersion(1, 2);
-  contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);
   contextInfo.addInstanceExtension(VK_KHR_SURFACE_EXTENSION_NAME);
-  contextInfo.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #ifdef WIN32
   contextInfo.addInstanceExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #else
@@ -157,7 +158,7 @@ int main(int argc, char** argv)
   const vk::SurfaceKHR surface = sample.getVkSurface(vkctx.m_instance, window);
   vkctx.setGCTQueueWithPresent(surface);
 
-  sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
+  sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex, vkctx.m_queueC.familyIndex);
   sample.createSwapchain(surface, SAMPLE_WIDTH, SAMPLE_HEIGHT);
   sample.createDepthBuffer();
   sample.createRenderPass();
@@ -166,16 +167,21 @@ int main(int argc, char** argv)
   // Setup Imgui
 
   sample.initGUI(0);  // Using sub-pass 0
+  sample.createOffscreenRender();
 
   // Creation of the example
-  sample.loadScene(nvh::findFile(sceneFile, defaultSearchPaths, true));
   sample.loadEnvironmentHdr(nvh::findFile(hdrFilename, defaultSearchPaths, true));
+  sample.m_busy = true;
+  std::thread([&] {
+    sample.m_busyReasonText = "Loading Scene";
+    sample.loadScene(nvh::findFile(sceneFile, defaultSearchPaths, true));
+    sample.createUniformBuffer();
+    sample.createDescriptorSetLayout();
+    sample.m_busy = false;
+  }).detach();
 
-  sample.createOffscreenRender();
-  sample.createUniformBuffer();
-  sample.createDescriptorSetLayout();
 
-  nvmath::vec4f clearColor = nvmath::vec4f(1, 1, 1, 1.00f);
+  nvmath::vec4f clearColor(1);
 
 
   SampleExample::RndMethod renderMethod = SampleExample::eRtxCore;
@@ -214,6 +220,9 @@ int main(int argc, char** argv)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    sample.titleBar();
+    sample.menuBar();
+
     // Show UI window.
     if(sample.showGui())
     {
@@ -249,43 +258,42 @@ int main(int argc, char** argv)
     }
 
 
-    // Updating camera buffer
-    sample.updateUniformBuffer(cmdBuf);
-
-
     // Clearing screen
     vk::ClearValue clearValues[2];
     clearValues[0].setColor(std::array<float, 4>({clearColor[0], clearColor[1], clearColor[2], clearColor[3]}));
     clearValues[1].setDepthStencil({1.0f, 0});
 
     // Offscreen render pass
+    if(sample.isBusy() == false)
     {
       auto sec = profiler.timeRecurring("Render", cmdBuf);
+      // Updating camera buffer
+      sample.updateUniformBuffer(cmdBuf);
 
       // Rendering Scene
       sample.render(renderMethod, cmdBuf, profiler);
     }
+    else
+      sample.showBusyWindow();
 
-    // 2nd rendering pass: tone mapper, UI
+    // Rendering pass: tone mapper, UI
     {
-      {
-        auto sec = profiler.timeRecurring("Tonemap", cmdBuf);
+      auto sec = profiler.timeRecurring("Tonemap", cmdBuf);
 
-        vk::RenderPassBeginInfo postRenderPassBeginInfo;
-        postRenderPassBeginInfo.setClearValueCount(2);
-        postRenderPassBeginInfo.setPClearValues(clearValues);
-        postRenderPassBeginInfo.setRenderPass(sample.getRenderPass());
-        postRenderPassBeginInfo.setFramebuffer(sample.getFramebuffers()[curFrame]);
-        postRenderPassBeginInfo.setRenderArea({{}, sample.getSize()});
+      vk::RenderPassBeginInfo postRenderPassBeginInfo;
+      postRenderPassBeginInfo.setClearValueCount(2);
+      postRenderPassBeginInfo.setPClearValues(clearValues);
+      postRenderPassBeginInfo.setRenderPass(sample.getRenderPass());
+      postRenderPassBeginInfo.setFramebuffer(sample.getFramebuffers()[curFrame]);
+      postRenderPassBeginInfo.setRenderArea({{}, sample.getSize()});
 
-        cmdBuf.beginRenderPass(postRenderPassBeginInfo, vk::SubpassContents::eInline);
-        // Rendering tonemapper
-        sample.drawPost(cmdBuf);
+      cmdBuf.beginRenderPass(postRenderPassBeginInfo, vk::SubpassContents::eInline);
+      // Rendering tonemapper
+      sample.drawPost(cmdBuf);
 
-        ImGui::Render();
-        ImGui::RenderDrawDataVK(cmdBuf, ImGui::GetDrawData());
-        cmdBuf.endRenderPass();
-      }
+      ImGui::Render();
+      ImGui::RenderDrawDataVK(cmdBuf, ImGui::GetDrawData());
+      cmdBuf.endRenderPass();
     }
 
     profiler.endFrame();

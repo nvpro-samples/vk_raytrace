@@ -35,6 +35,7 @@ public:
     eNormal,
     eTexCoord,
     eTangent,
+    eColor,
     eMaterial,
     eMatrix,
     ePrimLookup,
@@ -44,9 +45,9 @@ public:
 public:
   void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
   {
-    m_device     = device;
-    m_pAlloc     = allocator;
-    m_queueIndex = familyIndex;
+    m_device            = device;
+    m_pAlloc            = allocator;
+    m_queueFamillyIndex = familyIndex;
     m_debug.setup(device);
   }
 
@@ -60,6 +61,7 @@ public:
   nvh::GltfScene&         getScene() { return m_gltfScene; }
   nvh::GltfStats&         getStat() { return m_stats; }
   nvvk::Buffer&           getBuffer(EBuffer b) { return m_buffers[b]; }
+  const std::string&      getSceneName() const { return m_sceneName; }
 
 private:
   nvh::GltfScene m_gltfScene;
@@ -71,7 +73,7 @@ private:
   nvvk::Allocator*   m_pAlloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil    m_debug;   // Utility to name objects
   vk::Device         m_device;
-  uint32_t           m_queueIndex;
+  uint32_t           m_queueFamillyIndex;
 
   // Resources
   std::array<nvvk::Buffer, EBuffer::last_elem> m_buffers;
@@ -82,6 +84,7 @@ private:
   vk::DescriptorSet       m_descSet;
 
 
-  void createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfModel);
-  void createDescriptorSet();
+  void        createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfModel);
+  void        createDescriptorSet();
+  std::string m_sceneName;
 };

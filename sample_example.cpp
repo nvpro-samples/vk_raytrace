@@ -51,6 +51,7 @@
 #include "fileformats/tiny_gltf.h"
 #include "fileformats/tiny_gltf_freeimage.h"
 
+#include "imgui_orient.h"
 #include "nvml_monitor.hpp"
 
 static NvmlMonitor g_nvml(100, 100);
@@ -59,9 +60,13 @@ static NvmlMonitor g_nvml(100, 100);
 // Keep the handle on the device
 // Initialize the tool to do all our allocations: buffers, images
 //
-void SampleExample::setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueFamily)
+void SampleExample::setup(const vk::Instance&       instance,
+                          const vk::Device&         device,
+                          const vk::PhysicalDevice& physicalDevice,
+                          uint32_t                  gtcQueueIndex,
+                          uint32_t                  computeQueueIndex)
 {
-  AppBase::setup(instance, device, physicalDevice, queueFamily);
+  AppBase::setup(instance, device, physicalDevice, gtcQueueIndex);
 
   m_memAllocator.init(device, physicalDevice);
   m_memAllocator.setAllocateFlags(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, true);
@@ -69,17 +74,17 @@ void SampleExample::setup(const vk::Instance& instance, const vk::Device& device
   m_debug.setup(m_device);
 
   m_sunAndSky = SunAndSky_default();
-  m_picker.setup(m_device, physicalDevice, queueFamily, &m_alloc);
-  m_scene.setup(m_device, physicalDevice, queueFamily, &m_alloc);
-  m_accelStruct.setup(m_device, physicalDevice, queueFamily, &m_alloc);
-  m_offscreen.setup(m_device, physicalDevice, queueFamily, &m_alloc);
-  m_skydome.setup(device, physicalDevice, queueFamily, &m_alloc);
+  m_picker.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
+  m_scene.setup(m_device, physicalDevice, gtcQueueIndex, &m_alloc);
+  m_accelStruct.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
+  m_offscreen.setup(m_device, physicalDevice, gtcQueueIndex, &m_alloc);
+  m_skydome.setup(device, physicalDevice, gtcQueueIndex, &m_alloc);
 
   // Create and setup all renderers
   m_pRender[eRtxCore] = new RtCore;
 
   for(auto r : m_pRender)
-    r->setup(m_device, physicalDevice, queueFamily, &m_alloc);
+    r->setup(m_device, physicalDevice, gtcQueueIndex, &m_alloc);
 }
 
 
@@ -104,8 +109,55 @@ void SampleExample::loadEnvironmentHdr(const std::string& hdrFilename)
   m_skydome.loadEnvironment(hdrFilename);
   LOGI(" --> (%5.3f ms)\n", timer.elapse());
 
-  m_offscreen.m_tReinhard.avgLum = m_skydome.getAverage();
-  m_state.fireflyClampThreshold  = m_skydome.getIntegral() * 4.f;  //magic
+  //m_offscreen.m_tReinhard.avgLum = m_skydome.getAverage();
+  m_state.fireflyClampThreshold = m_skydome.getIntegral() * 4.f;  //magic
+}
+
+
+//--------------------------------------------------------------------------------------------------
+// Loading asset in a separate thread
+// - Used by file drop and menu operation
+// Marking the session as busy, to avoid calling rendering while loading assets
+//
+void SampleExample::loadAssets(const char* filename)
+{
+  std::string sfile = filename;
+
+  // Need to stop current rendering
+  m_busy = true;
+  m_device.waitIdle();
+
+  std::thread([&, sfile]() {
+    LOGI("Loading: %s\n", sfile.c_str());
+
+    // Supporting only GLTF and HDR files
+    namespace fs          = std::filesystem;
+    std::string extension = fs::path(sfile).extension().string();
+    if(extension == ".gltf" || extension == ".glb")
+    {
+      m_busyReasonText = "Loading scene ";
+
+      // Loading scene and creating acceleration structure
+      loadScene(sfile);
+      // Loading the scene might have loaded new textures, which is changing the number of elements
+      // in the DescriptorSetLayout. Therefore, the PipelineLayout will be out-of-date and need
+      // to be re-created. If they are re-created, the pipeline also need to be re-created.
+      m_pRender[m_rndMethod]->create(
+          m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
+    }
+
+    if(extension == ".hdr")  //|| extension == ".exr")
+    {
+      m_busyReasonText = "Loading HDR ";
+      loadEnvironmentHdr(sfile);
+      updateHdrDescriptors();
+    }
+
+
+    // Re-starting the frame count to 0
+    SampleExample::resetFrame();
+    m_busy = false;
+  }).detach();
 }
 
 
@@ -250,8 +302,10 @@ void SampleExample::createOffscreenRender()
   m_axis.init(m_device, m_renderPass);
 }
 
+
 void SampleExample::drawPost(vk::CommandBuffer cmdBuf)
 {
+  m_offscreen.m_tReinhard.zoom = m_descaling ? 1.0f / m_descalingLevel : 1.0f;
   m_offscreen.run(cmdBuf, m_size);
   if(m_showAxis)
     m_axis.display(cmdBuf, CameraManip.getMatrix(), m_size);
@@ -281,8 +335,12 @@ void SampleExample::render(RndMethod method, const vk::CommandBuffer& cmdBuf, nv
         m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
   }
 
+  vk::Extent2D render_size = m_size;
+  if(m_descaling)
+    render_size = vk::Extent2D(m_size.width / m_descalingLevel, m_size.height / m_descalingLevel);
+
   m_pRender[m_rndMethod]->m_state = m_state;
-  m_pRender[m_rndMethod]->run(cmdBuf, m_size, profiler,
+  m_pRender[m_rndMethod]->run(cmdBuf, render_size, profiler,
                               {m_accelStruct.getDescSet(), m_offscreen.getDescSet(), m_scene.getDescSet(), m_descSet});
 }
 
@@ -291,6 +349,87 @@ void SampleExample::render(RndMethod method, const vk::CommandBuffer& cmdBuf, nv
 /// GUI
 //////////////////////////////////////////////////////////////////////////
 using GuiH = ImGuiH::Control;
+
+
+//--------------------------------------------------------------------------------------------------
+//
+//
+void SampleExample::titleBar()
+{
+  static float dirtyTimer = 0.0f;
+
+  dirtyTimer += ImGui::GetIO().DeltaTime;
+  if(dirtyTimer > 1)
+  {
+    std::stringstream o;
+    o << "VK glTF Viewer";
+    o << " | " << m_scene.getSceneName();                     // Scene name
+    o << " | " << m_size.width << "x" << m_size.height;       // resolution
+    o << " | " << static_cast<int>(ImGui::GetIO().Framerate)  // FPS / ms
+      << " FPS / " << std::setprecision(3) << 1000.F / ImGui::GetIO().Framerate << "ms";
+    if(g_nvml.isValid())  // Graphic card, driver
+    {
+      const auto& i = g_nvml.getInfo(0);
+      o << " | " << i.name;
+      o << " | " << g_nvml.getSysInfo().driverVersion;
+    }
+    glfwSetWindowTitle(m_window, o.str().c_str());
+    dirtyTimer = 0;
+  }
+}
+
+void SampleExample::menuBar()
+{
+  auto openFilename = [](const char* filter) {
+#ifdef _WIN32
+    char         filename[MAX_PATH];
+    OPENFILENAME ofn;
+    ZeroMemory(&filename, sizeof(filename));
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner   = nullptr;  // If you have a window to center over, put its HANDLE here
+    ofn.lpstrFilter = filter;
+    ofn.lpstrFile   = filename;
+    ofn.nMaxFile    = MAX_PATH;
+    ofn.lpstrTitle  = "Select a File";
+    ofn.Flags       = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
+
+    if(GetOpenFileNameA(&ofn))
+    {
+      return std::string(filename);
+    }
+#endif
+
+    return std::string("");
+  };
+
+
+  // Menu Bar
+  if(ImGui::BeginMainMenuBar())
+  {
+    if(ImGui::BeginMenu("File"))
+    {
+      if(ImGui::MenuItem("Open GLTF Scene"))
+        loadAssets(openFilename("GLTF Files\0*.gltf\0Binary\0*.glb\0").c_str());
+      if(ImGui::MenuItem("Open HDR Environment"))
+        loadAssets(openFilename("HDR Files\0*.hdr\0\0").c_str());
+      ImGui::Separator();
+      if(ImGui::MenuItem("Quit", "ESC"))
+        glfwSetWindowShouldClose(m_window, 1);
+      ImGui::EndMenu();
+    }
+
+    if(ImGui::BeginMenu("Tools"))
+    {
+      ImGui::MenuItem("Settings", "F10", &m_show_gui);
+      ImGui::MenuItem("Axis", nullptr, &m_showAxis);
+      ImGui::EndMenu();
+    }
+    ImGuiH::Panel::style.panel_offset.y = ImGui::GetWindowSize().y;
+
+    ImGui::EndMainMenuBar();
+  }
+}
 
 //--------------------------------------------------------------------------------------------------
 //
@@ -312,9 +451,14 @@ bool SampleExample::guiRayTracing()
   changed |= GuiH::Slider("Samples Per Frame", "", &m_state.maxSamples, nullptr, Normal, 1, 10);
   changed |= GuiH::Slider("Max Iteration ", "", &m_maxFrames, nullptr, Normal, 1, 1000);
   changed |= GuiH::Selection("Debug Mode", "Display unique values of material", &m_state.debugging_mode, nullptr, Normal,
-                             {"No Debug", "BaseColor", "Normal", "Metallic", "AO", "Emissive", "Alpha", "Roughness",
-                              "Textcoord", "Tangent"});
+                             {"No Debug", "BaseColor", "Normal", "Metallic", "Emissive", "Alpha", "Roughness",
+                              "Textcoord", "Tangent", "Radiance", "Weight", "RayDir"});
 
+  changed |= GuiH::Slider("De-scaling ",
+                          "Reduce resolution while navigating.\n"
+                          "Speeding up rendering while camera moves.\n"
+                          "Value of 1, will not de-scale",
+                          &m_descalingLevel, nullptr, Normal, 1, 8);
 
   GuiH::Info("Frame", "", std::to_string(m_state.frame), GuiH::Flags::Disabled);
   return changed;
@@ -327,13 +471,15 @@ bool SampleExample::guiTonemapper()
   auto&                       tm = m_offscreen.m_tReinhard;
   bool                        changed{false};
 
-  changed |= GuiH::Slider("Brightness", "Brightness adjustment of the output image", &tm.key, &default_tm.key,
-                          GuiH::Flags::Normal, 0.00f, 2.00f);
-  changed |= GuiH::Slider("White Burning", "More or less white", &tm.Ywhite, &default_tm.Ywhite, GuiH::Flags::Normal, 0.001f, 10.00f);
-  changed |= GuiH::Slider("Saturation", "Color to grey", &tm.sat, &default_tm.sat, GuiH::Flags::Normal, 0.00f, 2.00f);
+  // changed |= GuiH::Slider("Brightness", "Brightness adjustment of the output image", &tm.key, &default_tm.key,
+  //                        GuiH::Flags::Normal, 0.00f, 2.00f);
+  // changed |= GuiH::Slider("White Burning", "More or less white", &tm.Ywhite, &default_tm.Ywhite, GuiH::Flags::Normal, 0.001f, 10.00f);
+  // changed |= GuiH::Slider("Saturation", "Color to grey", &tm.sat, &default_tm.sat, GuiH::Flags::Normal, 0.00f, 2.00f);
 
-  changed |= GuiH::Slider("Luminance", "Average luminance of the scene", &tm.avgLum, &default_tm.avgLum,
-                          GuiH::Flags::Normal, 0.001f, 25.00f);
+  // changed |= GuiH::Slider("Luminance", "Average luminance of the scene", &tm.avgLum, &default_tm.avgLum,
+  //                        GuiH::Flags::Normal, 0.001f, 25.00f);
+
+  changed |= GuiH::Slider("Exposure", "Scene Exposure", &tm.avgLum, &default_tm.avgLum, GuiH::Flags::Normal, 0.001f, 5.00f);
 
   return false;  // doesn't matter
 }
@@ -345,13 +491,20 @@ bool SampleExample::guiEnvironment()
 
   changed |= ImGui::Checkbox("Use Sun & Sky", (bool*)&m_sunAndSky.in_use);
   changed |= GuiH::Slider("Exposure", "Intensity of the environment", &m_state.environment_intensity_factor, nullptr,
-                          GuiH::Flags::Normal, 0.f, 2.f);
+                          GuiH::Flags::Normal, 0.f, 5.f);
 
   if(m_sunAndSky.in_use)
   {
     GuiH::Group<bool>("Sun", true, [&] {
-      changed |= GuiH::Slider("Direction", "", &m_sunAndSky.sun_direction, &dss.sun_direction, GuiH::Flags::Normal,
-                              vec3(-1.f), vec3(1.f));
+      changed |= GuiH::Custom("Direction", "Sun Direction", [&] {
+        float indent = ImGui::GetCursorPos().x;
+        changed |= ImGui::DirectionGizmo("", &m_sunAndSky.sun_direction.x, true);
+        ImGui::NewLine();
+        ImGui::SameLine(indent);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        changed |= ImGui::InputFloat3("##IG", &m_sunAndSky.sun_direction.x);
+        return changed;
+      });
       changed |= GuiH::Slider("Disk Scale", "", &m_sunAndSky.sun_disk_scale, &dss.sun_disk_scale, GuiH::Flags::Normal, 0.f, 100.f);
       changed |= GuiH::Slider("Glow Intensity", "", &m_sunAndSky.sun_glow_intensity, &dss.sun_glow_intensity,
                               GuiH::Flags::Normal, 0.f, 5.f);
@@ -577,6 +730,47 @@ bool SampleExample::guiGpuMeasures()
 }
 
 
+//--------------------------------------------------------------------------------------------------
+// Display a static window when loading assets
+//
+void SampleExample::showBusyWindow()
+{
+  static int   nb_dots   = 0;
+  static float deltaTime = 0;
+  bool         show      = true;
+  size_t       width     = 270;
+  size_t       height    = 60;
+
+  deltaTime += ImGui::GetIO().DeltaTime;
+  if(deltaTime > .25)
+  {
+    deltaTime = 0;
+    nb_dots   = ++nb_dots % 10;
+  }
+
+  ImGui::SetNextWindowSize(ImVec2(float(width), float(height)));
+  ImGui::SetNextWindowPos(ImVec2(float(m_size.width - width) * 0.5f, float(m_size.height - height) * 0.5f));
+
+  ImGui::SetNextWindowBgAlpha(0.75f);
+  if(ImGui::Begin("##notitle", &show,
+                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
+                      | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMouseInputs))
+  {
+    ImVec2 available = ImGui::GetContentRegionAvail();
+
+    ImVec2 text_size = ImGui::CalcTextSize(m_busyReasonText.c_str(), nullptr, false, available.x);
+
+    ImVec2 pos = ImGui::GetCursorPos();
+    pos.x += (available.x - text_size.x) * 0.5f;
+    pos.y += (available.y - text_size.y) * 0.5f;
+
+    ImGui::SetCursorPos(pos);
+    ImGui::TextWrapped((m_busyReasonText + std::string(nb_dots, '.')).c_str());
+  }
+  ImGui::End();
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 // Keyboard / Drag and Drop
 //////////////////////////////////////////////////////////////////////////
@@ -644,31 +838,33 @@ void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
 
 void SampleExample::onFileDrop(const char* filename)
 {
-  LOGI("File drop: %s\n", filename);
+  loadAssets(filename);
+}
 
-  // Supporting only GLTF and HDR files
-  namespace fs = std::filesystem;
-  if(fs::path(filename).extension().string() == ".gltf")
+
+//--------------------------------------------------------------------------------------------------
+// Window callback when the mouse move
+// - Handling ImGui and a default camera
+//
+void SampleExample::onMouseMotion(int x, int y)
+{
+  AppBase::onMouseMotion(x, y);
+
+  if(ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard)
+    return;
+
+  if(m_inputs.lmb || m_inputs.rmb || m_inputs.mmb)
   {
-
-    // Need to stop current rendering
-    m_device.waitIdle();
-    // Loading scene and creating acceleration structure
-    loadScene(filename);
-    // Loading the scene might have loaded new textures, which is changing the number of elements
-    // in the DescriptorSetLayout. Therefore, the PipelineLayout will be out-of-date and need
-    // to be re-created. If they are re-created, the pipeline also need to be re-created.
-    m_pRender[m_rndMethod]->create(
-        m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
+    m_descaling = true;
   }
+}
 
-  if(fs::path(filename).extension().string() == ".hdr")
+void SampleExample::onMouseButton(int button, int action, int mods)
+{
+  AppBase::onMouseButton(button, action, mods);
+  if((m_inputs.lmb || m_inputs.rmb || m_inputs.mmb) == false && action == GLFW_RELEASE && m_descaling == true)
   {
-    loadEnvironmentHdr(filename);
-    updateHdrDescriptors();
+    m_descaling = false;
+    resetFrame();
   }
-
-
-  // Re-starting the frame count to 0
-  SampleExample::resetFrame();
 }

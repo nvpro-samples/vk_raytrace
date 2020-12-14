@@ -82,7 +82,7 @@ public:
     eNone,
   };
 
-  void setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueFamily) override;
+  void setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueFamily, uint32_t computeQueueIndex);
   void createDescriptorSetLayout();
   void updateHdrDescriptors();
   void loadScene(const std::string& filename);
@@ -95,18 +95,27 @@ public:
   void updateFrame();
   void resetFrame();
 
+  bool isBusy() { return m_busy; }
+
   bool guiCamera();
   bool guiTonemapper();
   bool guiEnvironment();
   bool guiStatistics();
   bool guiProfiler(nvvk::ProfilerVK& profiler);
   bool guiGpuMeasures();
+  void showBusyWindow();
   bool guiRayTracing();
+  void titleBar();
 
 
+  void menuBar();
   void onKeyboard(int key, int scancode, int action, int mods) override;
   void onFileDrop(const char* filename) override;
 
+  void loadAssets(const char* filename);
+
+  void onMouseMotion(int x, int y) override;
+  void onMouseButton(int button, int action, int mods) override;
 
   vk::RenderPass  getOffscreenRenderPass() { return m_offscreen.getRenderPass(); }
   vk::Framebuffer getOffscreenFrameBuffer() { return m_offscreen.getFrameBuffer(); }
@@ -145,7 +154,11 @@ public:
   void render(RndMethod method, const vk::CommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
 
 
-  RtState m_state{0 /*frame*/, 5 /*depth*/, 2 /*sample*/, 1 /*firefly*/, 1 /*intensity*/, 0 /*debug mode*/};
-  int     m_maxFrames{1000};
-  bool    m_showAxis{true};
+  RtState     m_state{0 /*frame*/, 5 /*depth*/, 1 /*sample*/, 1 /*firefly*/, 1 /*intensity*/, 0 /*debug mode*/};
+  int         m_maxFrames{1000};
+  bool        m_showAxis{true};
+  bool        m_descaling{false};
+  int         m_descalingLevel{1};
+  bool        m_busy{false};
+  std::string m_busyReasonText;
 };

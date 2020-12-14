@@ -1,11 +1,123 @@
 # VK_RAYTRACE
 ![vk_raytrace](doc/vk_raytrace.png)
 
-Similar to vk_scene, it reads [glTF](https://www.khronos.org/gltf/) scenes but renders the scene using NVIDIA raytracing. Each object goes to a BLAS and a TLAS is created from instances referencing the BLAS. Besides the shading, the materials are all uploaded and accessible at shading time. For this to work, unsized arrays of textures, materials, matrices, vertices, indices and all other vertex attributes are in buffers, in conjunction with a primitive buffer having the offets to arrays. The example shows as well how to implement a picking ray, which is using the same acceleration struction for drawing, but is using the data to return the information under the mouse cursor. This information can be use for setting the camera interest position, or to debug any shading data. 
 
+This project is a [glTF 2.0](https://www.khronos.org/gltf/) sample viewer using [Vulkan ray tracing](https://www.khronos.org/blog/vulkan-ray-tracing-final-specification-release). It follows the [ray tracing tutorial](https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR) and combines all chapters into a single example. 
+
+The lighting equation is based on the [reference glTF PBR implementation](https://github.com/KhronosGroup/glTF-WebGL-PBR) from Khronos. 
+
+
+
+
+Features
+========
+
+- [x] Load glTF 2.0 files ascii and binary using [tiny glTF](https://github.com/syoyo/tinygltf)
+- [x] Support for full node hierarchy
+- [x] Full implementation of metallic-roughness and specular-glossiness
+- [x] IBL lighting using importance light sampling
+- [x] Alpha blend and cut-out
+- [x] Texture transforms and samplers
+- Attributes
+  - [x] Normal : create geometric normal when not present
+  - [x] Texture coords : only set 0, project cube map when text coords are missing.
+  - [x] Tangents : generate tangents and bitangent when missing.
+  - [x] Color : default (1,1,1,1)
+- Extensions
+  - [ ] [KHR_lights_punctual](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_lights_punctual)
+  - [x] [KHR_materials_pbrSpecularGlossiness](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness)
+  - [ ] [KHR_materials_clearcoat](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_clearcoat)
+  - [x] [KHR_materials_unlit](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_unlit)
+  - [x] [KHR_texture_transform](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_texture_transform)
+  - [x] KHR_materials_anisotropy
+  - [ ] [KHR_materials_transmission](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_transmission)
+  - [ ] [KHR_materials_sheen](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_sheen)
+
+Usage
+-----
+
+**Controls**
+
+| Action | Description |
+|--------|-------------|
+|`LMB`        | Rotate around the target|
+|`RMB`        | Dolly in/out|
+|`MMB`        | Pan along view plane|
+|`LMB + Shift`| Dolly in/out|
+|`LMB + Ctrl` | Pan |
+|`LMB + Alt`  | Look around |
+|`Mouse wheel`| Dolly in/out |
+|`Mouse wheel + Shift`| Zoom in/out (FOV)
+|`Space`| Set interest point on the surface under the mouse cursor.
+|`F10`| Toggle UI pane.
+
+
+**Change glTF model**
+
+* Drag and drop glTF files (`.gltf` or `.glb`) into viewer
+
+**Change HDR lighting**
+
+* Drag and drop HDR files (`.hdr`) into viewer
+
+
+Setup
+-----
+
+~~~~ 
+git clone https://github.com/nvpro-samples/shared_sources.git
+git clone https://github.com/nvpro-samples/shared_external.git
+git clone https://github.com/nvpro-samples/vk_raytracing.git
+~~~~
+
+
+Other
+-----
 
 Tags: 
 - raytracing, GLTF, HDR, tonemapper, picking, BLAS, TLAS, PBR material
 
 Extensions: 
-- VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, VK_NV_RAY_TRACING_EXTENSION_NAME, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, VK_KHR_MAINTENANCE3_EXTENSION_NAME, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
+- VK_KHR_RAY_QUERY_EXTENSION_NAME
+- VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME
+- VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME
+- VK_KHR_SHADER_CLOCK_EXTENSION_NAME
+- VK_KHR_MAINTENANCE3_EXTENSION_NAME
+- VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME
+- VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+- VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
+- VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME
+- VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
+- VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
+- VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME
+- VK_KHR_SWAPCHAIN_EXTENSION_NAME
+- VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
+- VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+- VK_KHR_SURFACE_EXTENSION_NAME
+
+
+## Links
+* [glTF format specification](https://github.com/KhronosGroup/glTF)
+* [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models)
+* [tiny glTF library](https://github.com/syoyo/tinygltf)
+* [Ray Tracer Tutorial](https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR)
+
+---------------------
+
+Test Scenes
+===========
+
+|Model | Link |
+|------|------|
+|![](doc/2cylinder.png)  | [2 Cylinder Engine](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/2CylinderEngine) |
+|![](doc/Anisotropy.png)  | [Anisotropy](https://github.com/KhronosGroup/glTF-Sample-Models/tree/develop/sample-viewer-enhancements/2.0/AnisotropySpheres/glTF)|
+|![](doc/AntiqueCamera.png)  | [Antique Camera](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/AntiqueCamera) |
+|![](doc/BoomBox.png)  | [Boom Box](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/BoomBox) |
+|![](doc/Corset.png)  | [Corset](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/Corset) |
+|![](doc/Damagedhelmet.png)  | [Damaged Helmet](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/DamagedHelmet)
+|![](doc/FlightHelmet.png)  | [Flight Helmet](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/FlightHelmet) |
+|![](doc/MetalRoughness.png) | [Metal Rough Spheres](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/MetalRoughSpheres)  |
+|![](doc/SciFiHelmet.png)  | [SciFi](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/SciFiHelmet) |
+|![](doc/SpecGlossVsMetalRough.png)  | [SpecGlossVsMetalRough](https://github.com/KhronosGroup/glTF-Sample-Models/tree/develop/sample-viewer-enhancements/2.0/SpecGlossVsMetalRough) |
+|![](doc/Unlit.png)  | [Unlit](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/UnlitTest) |
+|![](doc/VertexColor.png)  |[Box Vertex Color](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/BoxVertexColors) |

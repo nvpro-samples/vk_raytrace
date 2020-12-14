@@ -78,7 +78,10 @@ void HdrSampling::loadEnvironment(const std::string& hrdImage)
   vk::ImageCreateInfo   icInfo = nvvk::makeImage2DCreateInfo(imgSize, format);
 
   {
-    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    // We are using a different index (1), to allow loading in a different
+    // queue/thread that the display (0)
+    auto                     queue = m_device.getQueue(m_queueIndex, 1);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex, queue);
     nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, pixels, icInfo);
     vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
     m_textures.txtHdr               = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
@@ -184,7 +187,10 @@ void HdrSampling::createEnvironmentAccelTexture(const float* pixels, vk::Extent2
   }
 
   {
-    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex);
+    // We are using a different index (1), to allow loading in a different
+    // queue/thread that the display (0)
+    auto                     queue = m_device.getQueue(m_queueIndex, 1);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex, queue);
 
     vk::SamplerCreateInfo samplerCreateInfo{};
     vk::Format            format     = vk::Format::eR32G32B32A32Sfloat;

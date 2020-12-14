@@ -24,7 +24,8 @@
 #define B_MATRICES 6
 #define B_TEXTURES 7
 #define B_TANGENTS 8
-#define B_PRIMLOOKUP 9
+#define B_COLORS 9
+#define B_PRIMLOOKUP 10
 
 // Environment - Set 3
 #define B_SUNANDSKY 0
