@@ -24,7 +24,7 @@
 #include "autogen/shaders/pathtraceShadow.rmiss.h"
 
 
-void RtCore::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
+void RtxPipeline::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
 {
   m_device     = device;
   m_pAlloc     = allocator;
@@ -37,7 +37,7 @@ void RtCore::setup(const vk::Device& device, const vk::PhysicalDevice& physicalD
   m_rtProperties = properties.get<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
 }
 
-void RtCore::destroy()
+void RtxPipeline::destroy()
 {
   m_pAlloc->destroy(m_rtSBTBuffer);
 
@@ -49,10 +49,10 @@ void RtCore::destroy()
 }
 
 
-void RtCore::create(const vk::Extent2D& size, const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts, Scene* scene)
+void RtxPipeline::create(const vk::Extent2D& size, const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts, Scene* scene)
 {
   MilliTimer timer;
-  LOGI("Create RtCore");
+  LOGI("Create RtxPipeline");
 
   m_nbHit = 1;  //scene->getStat().nbMaterials;
 
@@ -65,7 +65,7 @@ void RtCore::create(const vk::Extent2D& size, const std::vector<vk::DescriptorSe
 //--------------------------------------------------------------------------------------------------
 // Pipeline for the ray tracer: all shaders, raygen, chit, miss
 //
-void RtCore::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts)
+void RtxPipeline::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts)
 {
   m_device.destroy(m_rtPipeline);
   m_device.destroy(m_rtPipelineLayout);
@@ -75,7 +75,7 @@ void RtCore::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtDescSe
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
   vk::PushConstantRange pushConstant{vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
                                          | vk::ShaderStageFlagBits::eMissKHR,
-                                     0, sizeof(RtState)};
+                                     0, sizeof(RtxState)};
   pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
   pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstant);
   pipelineLayoutCreateInfo.setSetLayoutCount(static_cast<uint32_t>(rtDescSetLayouts.size()));
@@ -147,7 +147,7 @@ void RtCore::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtDescSe
 // - Besides exception, this could be always done like this
 //   See how the SBT buffer is used in run()
 //
-void RtCore::createRtShaderBindingTable()
+void RtxPipeline::createRtShaderBindingTable()
 {
   m_pAlloc->destroy(m_rtSBTBuffer);
 
@@ -183,17 +183,20 @@ void RtCore::createRtShaderBindingTable()
 //--------------------------------------------------------------------------------------------------
 // Ray Tracing the scene
 //
-void RtCore::run(const vk::CommandBuffer& cmdBuf, const vk::Extent2D& size, nvvk::ProfilerVK& profiler, const std::vector<vk::DescriptorSet>& descSets)
+void RtxPipeline::run(const vk::CommandBuffer&              cmdBuf,
+                      const vk::Extent2D&                   size,
+                      nvvk::ProfilerVK&                     profiler,
+                      const std::vector<vk::DescriptorSet>& descSets)
 {
   m_debug.beginLabel(cmdBuf, "Ray trace");
 
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0, descSets, {});
-  cmdBuf.pushConstants<RtState>(m_rtPipelineLayout,
-                                vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
-                                    | vk::ShaderStageFlagBits::eMissKHR,
-                                0, m_state);
+  cmdBuf.pushConstants<RtxState>(m_rtPipelineLayout,
+                                 vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
+                                     | vk::ShaderStageFlagBits::eMissKHR,
+                                 0, m_state);
 
   // Size of a program identifier
   uint32_t groupSize   = nvh::align_up(m_rtProperties.shaderGroupHandleSize, m_rtProperties.shaderGroupBaseAlignment);

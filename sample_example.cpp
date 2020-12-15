@@ -81,7 +81,7 @@ void SampleExample::setup(const vk::Instance&       instance,
   m_skydome.setup(device, physicalDevice, gtcQueueIndex, &m_alloc);
 
   // Create and setup all renderers
-  m_pRender[eRtxCore] = new RtCore;
+  m_pRender[eRtxPipeline] = new RtxPipeline;
 
   for(auto r : m_pRender)
     r->setup(m_device, physicalDevice, gtcQueueIndex, &m_alloc);
@@ -286,7 +286,7 @@ void SampleExample::destroyResources()
 void SampleExample::onResize(int /*w*/, int /*h*/)
 {
   m_offscreen.update(m_size);
-  if(m_rndMethod != eRtxCore)  // RtCore doesn't care about size, only on run
+  if(m_rndMethod != eRtxPipeline)  // RtxPipeline doesn't care about size, only on run
     m_pRender[m_rndMethod]->create(
         m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
   resetFrame();
@@ -752,6 +752,7 @@ void SampleExample::showBusyWindow()
   ImGui::SetNextWindowPos(ImVec2(float(m_size.width - width) * 0.5f, float(m_size.height - height) * 0.5f));
 
   ImGui::SetNextWindowBgAlpha(0.75f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 15.0);
   if(ImGui::Begin("##notitle", &show,
                   ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
                       | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMouseInputs))
@@ -767,6 +768,7 @@ void SampleExample::showBusyWindow()
     ImGui::SetCursorPos(pos);
     ImGui::TextWrapped((m_busyReasonText + std::string(nb_dots, '.')).c_str());
   }
+  ImGui::PopStyleVar();
   ImGui::End();
 }
 

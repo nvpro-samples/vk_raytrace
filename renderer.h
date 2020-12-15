@@ -32,5 +32,5 @@ public:
                       const std::vector<vk::DescriptorSetLayout>& extraDescSetsLayout,
                       Scene*                                      _scene = nullptr)                          = 0;
 
-  RtState m_state;
+  RtxState m_state;
 };

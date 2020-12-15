@@ -420,7 +420,6 @@ void Scene::updateCamera(const vk::CommandBuffer& cmdBuf)
   beforeBarrier.setSrcAccessMask(vk::AccessFlagBits::eShaderRead);
   beforeBarrier.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
   beforeBarrier.setBuffer(deviceUBO);
-  beforeBarrier.setOffset(0);
   beforeBarrier.setSize(sizeof hostUBO);
   cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eRayTracingShaderKHR,
                          vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits::eDeviceGroup, {}, {beforeBarrier}, {});
@@ -434,7 +433,6 @@ void Scene::updateCamera(const vk::CommandBuffer& cmdBuf)
   afterBarrier.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite);
   afterBarrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
   afterBarrier.setBuffer(deviceUBO);
-  afterBarrier.setOffset(0);
   afterBarrier.setSize(sizeof hostUBO);
   cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
                          vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eRayTracingShaderKHR,

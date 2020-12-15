@@ -78,7 +78,7 @@ class SampleExample : public nvvk::AppBase
 public:
   enum RndMethod
   {
-    eRtxCore,
+    eRtxPipeline,
     eNone,
   };
 
@@ -154,7 +154,7 @@ public:
   void render(RndMethod method, const vk::CommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
 
 
-  RtState     m_state{0 /*frame*/, 5 /*depth*/, 1 /*sample*/, 1 /*firefly*/, 1 /*intensity*/, 0 /*debug mode*/};
+  RtxState    m_state{0 /*frame*/, 5 /*depth*/, 1 /*sample*/, 1 /*firefly*/, 1 /*intensity*/, 0 /*debug mode*/};
   int         m_maxFrames{1000};
   bool        m_showAxis{true};
   bool        m_descaling{false};
