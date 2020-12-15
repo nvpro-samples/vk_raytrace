@@ -34,7 +34,7 @@ Creating the RtCore renderer
   - create
   - run
 */
-class RtCore : public Renderer
+class RtxPipeline : public Renderer
 {
 public:
   void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator) override;

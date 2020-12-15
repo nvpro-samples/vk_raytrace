@@ -32,7 +32,7 @@
 // Align structure layout to scalar
 #extension GL_EXT_scalar_block_layout : enable
 
-// C++ shared structure: RtState
+// C++ shared structure: RtxState
 #include "../structures.h"
 // Payload and other structures
 #include "globals.glsl"
@@ -43,9 +43,9 @@ layout(location = 0) rayPayloadInEXT HitPayload prd;
 layout(location = 1) rayPayloadEXT ShadowHitPayload shadow_payload;
 
 // Push Constant
-layout(push_constant) uniform _RtCoreState
+layout(push_constant) uniform _RtxState
 {
-  RtState rtstate;
+  RtxState rtstate;
 };
 
 

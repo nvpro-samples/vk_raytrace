@@ -38,9 +38,9 @@
 layout(location = 0) rayPayloadInEXT HitPayload prd;
 
 // Push Constant
-layout(push_constant) uniform _RtCoreState
+layout(push_constant) uniform _RtxState
 {
-  RtState rtstate;
+  RtxState rtstate;
 };
 
 

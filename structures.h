@@ -122,7 +122,7 @@ const uint
 ;
 
 // Use with PushConstant
-struct RtState
+struct RtxState
 {
   int   frame;                         // Current frame, start at 0
   int   maxDepth;                      // How deep the path is

@@ -184,7 +184,7 @@ int main(int argc, char** argv)
   nvmath::vec4f clearColor(1);
 
 
-  SampleExample::RndMethod renderMethod = SampleExample::eRtxCore;
+  SampleExample::RndMethod renderMethod = SampleExample::eRtxPipeline;
 
 
   sample.setupGlfwCallbacks(window);
@@ -232,7 +232,7 @@ int main(int argc, char** argv)
       using Gui = ImGuiH::Control;
       bool changed{false};
       //      changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
-      //                                     Gui::Flags::Normal, {"RtCore"});
+      //                                     Gui::Flags::Normal, {"RtxPipeline"});
       if(ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
         changed |= sample.guiCamera();
       if(ImGui::CollapsingHeader("Ray Tracing", ImGuiTreeNodeFlags_DefaultOpen))
