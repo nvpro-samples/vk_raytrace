@@ -11,6 +11,7 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
 
+#include "nvmath/nvmath_glsltypes.h"
 #include "nvvk/allocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
@@ -19,22 +20,23 @@
 class Offscreen
 {
 public:
-  struct TReinhard
+  struct Tonemapper
   {
-    float key{0.5f};
-    float Ywhite{5.0f};
-    float sat{1.f};
-    float invGamma{1.0f / 2.2f};
-    float avgLum{1.0f};
-    float zoom{1.0f};
-  } m_tReinhard;
+    float        brightness{1.0f};
+    float        contrast{1.0f};
+    float        saturation{1.0f};
+    float        vignette{0.0f};
+    float        avgLum{1.0f};
+    float        zoom{1.0f};
+    nvmath::vec2 renderingRatio{1.0f, 1.0f};  // Rendering area without the UI
+  } m_tonemapper;
 
 public:
   void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator);
   void destroy();
   void create(const vk::Extent2D& size, const vk::RenderPass& renderPass);
   void update(const vk::Extent2D& size);
-  void run(vk::CommandBuffer cmdBuf, const vk::Extent2D& size);
+  void run(vk::CommandBuffer cmdBuf);
 
   vk::DescriptorSetLayout getDescLayout() { return m_postDescSetLayout; }
   vk::DescriptorSet       getDescSet() { return m_postDescSet; }
@@ -56,9 +58,10 @@ private:
   vk::RenderPass          m_offscreenRenderPass;
   vk::Framebuffer         m_offscreenFramebuffer;
   nvvk::Texture           m_offscreenColor;
-  vk::Format              m_offscreenColorFormat{vk::Format::eR32G32B32A32Sfloat};
-  nvvk::Texture           m_offscreenDepth;
-  vk::Format              m_offscreenDepthFormat{vk::Format::eD32Sfloat};
+  //vk::Format m_offscreenColorFormat{vk::Format::eR16G16B16A16Sfloat};  // Darkening the scene over 5000 iterations
+  vk::Format    m_offscreenColorFormat{vk::Format::eR32G32B32A32Sfloat};
+  nvvk::Texture m_offscreenDepth;
+  vk::Format    m_offscreenDepthFormat;
 
 
   // Setup

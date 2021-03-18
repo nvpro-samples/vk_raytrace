@@ -28,64 +28,115 @@
 #ifndef GLOBALS_GLSL
 #define GLOBALS_GLSL 1
 
+#define PI 3.14159265358979323
+#define TWO_PI 6.28318530717958648
+#define INFINITY 1e32
+#define EPS 0.0001
 
-// Math defines
-const highp float M_PI   = 3.14159265358979323846;   // pi
-const highp float M_PI_2 = 1.57079632679489661923;   // pi/2
-const highp float M_PI_4 = 0.785398163397448309616;  // pi/4
-const highp float M_1_PI = 0.318309886183790671538;  // 1/pi
-const highp float M_2_PI = 0.636619772367581343076;  // 2/pi
+const highp float M_PI        = 3.14159265358979323846;   // pi
+const highp float M_TWO_PI    = 6.28318530717958648;      // 2*pi
+const highp float M_PI_2      = 1.57079632679489661923;   // pi/2
+const highp float M_PI_4      = 0.785398163397448309616;  // pi/4
+const highp float M_1_OVER_PI = 0.318309886183790671538;  // 1/pi
+const highp float M_2_OVER_PI = 0.636619772367581343076;  // 2/pi
 
+#define REFL 0
+#define REFR 1
+#define SUBS 2
 
-// Flags for ray and material
-const uint FLAG_NONE               = 0u;
-const uint FLAG_INSIDE             = 1u;
-const uint FLAG_DONE               = 2u;
-const uint FLAG_FIRST_PATH_SEGMENT = 4u;
-
-
-// clang-format off
-void add_flag(inout uint flags, uint to_add) { flags |= to_add; }
-void toggle_flag(inout uint flags, uint to_toggle) { flags ^= to_toggle; }
-void remove_flag(inout uint flags, uint to_remove) {flags &= ~to_remove; }
-bool has_flag(uint flags, uint to_check) { return (flags & to_check) != 0; }
-// clang-format on
-
-//----------------------------------------------
-// Common structures
-//----------------------------------------------
-
-// Hit payload structure, returned information after a hit
-struct HitPayload
+//-----------------------------------------------------------------------
+struct Ray
 {
-  uint  seed;
-  vec3  contribution;  // Hit value
-  vec3  weight;        // weight of the contribution
-  vec3  rayOrigin;
-  vec3  rayDirection;
-  float last_pdf;
-  uint  flags;
+  vec3 origin;
+  vec3 direction;
 };
 
 
-// Payload for Shadow
+struct PtPayload
+{
+  uint   seed;
+  float  hitT;
+  int    primitiveID;
+  int    instanceID;
+  int    instanceCustomIndex;
+  vec2   baryCoord;
+  mat4x3 objectToWorld;
+  mat4x3 worldToObject;
+};
+
 struct ShadowHitPayload
 {
-  uint seed;  // Need to be in first position as it is shared with HitPayload
+  uint seed;
   bool isHit;
 };
 
-// Hit state
-// Information on the hit shared between Rtx Pipeline and RayQuery for shading
-struct HitState
+struct Material
 {
-  uint   InstanceID;
-  uint   PrimitiveID;
-  vec2   bary;
-  int    InstanceCustomIndex;
-  vec3   WorldRayOrigin;
-  mat4x3 ObjectToWorld;
-  mat4x3 WorldToObject;
+  vec3  albedo;
+  float specular;
+  vec3  emission;
+  float anisotropy;
+  float metallic;
+  float roughness;
+  float subsurface;
+  float specularTint;
+  float sheen;
+  float sheenTint;
+  float clearcoat;
+  float clearcoatRoughness;
+  float transmission;
+  float ior;
+  vec3  attenuationColor;
+  float attenuationDistance;
+
+  //vec3  texIDs;
+  // Roughness calculated from anisotropic
+  float ax;
+  float ay;
+  // ----
+  vec3  f0;
+  float alpha;
+  bool  unlit;
+  bool  thinwalled;
+};
+
+struct State
+{
+  int   depth;
+  float eta;
+
+  vec3 position;
+  vec3 normal;
+  vec3 ffnormal;
+  vec3 tangent;
+  vec3 bitangent;
+  vec2 texCoord;
+
+  bool isEmitter;
+  bool specularBounce;
+  bool isSubsurface;
+
+
+  uint     matID;
+  Material mat;
+};
+
+
+//-----------------------------------------------------------------------
+struct BsdfSampleRec
+{
+  vec3  L;
+  vec3  f;
+  float pdf;
+};
+
+//-----------------------------------------------------------------------
+struct LightSampleRec
+{
+  vec3  surfacePos;
+  vec3  normal;
+  vec3  emission;
+  float pdf;
 };
 
 

@@ -26,30 +26,27 @@
  */
 
 
-#ifndef BRDF_GLSL
-#define BRDF_GLSL 1
+#ifndef PBR_SAMPLING_GLSL
+#define PBR_SAMPLING_GLSL 1
 
 #include "random.glsl"
 #include "sampling.glsl"
 
 
-// clang-format off
-struct Ray { vec3 origin; vec3 direction; };
-struct Material { vec4 albedo; float metallic; float roughness; vec3 f0; float anisotropy;};
-// clang-format on
-
-
-//-----------------------------------------------------------------------
-float powerHeuristic(float a, float b)
+float clampedDot(vec3 x, vec3 y)
 {
-  float t = a * a;
-  return t / (b * b + t);
+  return clamp(dot(x, y), 0.0, 1.0);
 }
 
 
 // The following equation models the Fresnel reflectance term of the spec equation (aka F())
 // Implementation of fresnel from [4], Equation 15
 vec3 F_Schlick(vec3 f0, vec3 f90, float VdotH)
+{
+  return f0 + (f90 - f0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
+}
+
+float F_Schlick(float f0, float f90, float VdotH)
 {
   return f0 + (f90 - f0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
@@ -121,6 +118,7 @@ float D_GGX_anisotropic(float NdotH, float TdotH, float BdotH, float anisotropy,
   return a2 * w2 * w2 / M_PI;
 }
 
+
 //Sheen implementation-------------------------------------------------------------------------------------
 // See  https://github.com/sebavan/glTF/tree/KHR_materials_sheen/extensions/2.0/Khronos/KHR_materials_sheen
 
@@ -191,171 +189,4 @@ vec3 BRDF_specularSheen(vec3 sheenColor, float sheenIntensity, float sheenRoughn
 }
 
 
-//-----------------------------------------------------------------------
-float BsdfPdf(in Ray ray, in vec3 N, in vec3 T, in vec3 B, in Material mat, in vec3 bsdfDir)
-{
-  vec3 V = -ray.direction;
-  vec3 L = bsdfDir;
-
-  float alphaRoughness = max(0.001, mat.roughness);
-
-  float diffuseRatio  = 0.5 * (1.0 - mat.metallic);
-  float specularRatio = 1.0 - diffuseRatio;
-
-  vec3  H     = normalize(L + V);
-  float NdotH = abs(dot(N, H));
-  float LdotH = clamp(abs(dot(L, H)), 0.001, 1);
-  float NdotL = abs(dot(N, L));
-
-  float pdfDs;
-
-  if(mat.anisotropy > 0)
-  {
-    float TdotH = dot(T, H);
-    float BdotH = dot(B, H);
-
-    float at = max(alphaRoughness * (1.0 + mat.anisotropy), 0.001);
-    float ab = max(alphaRoughness * (1.0 - mat.anisotropy), 0.001);
-    pdfDs    = D_GGX_anisotropic(NdotH, TdotH, BdotH, mat.anisotropy, at, ab);
-  }
-  else
-  {
-    pdfDs = D_GGX(NdotH, alphaRoughness) * NdotH;
-  }
-
-  float pdfSpec = pdfDs / (4.0 * LdotH);
-  float pdfDiff = NdotL * M_1_PI;
-
-  // Weight PDF
-  return diffuseRatio * pdfDiff + specularRatio * pdfSpec;
-}
-
-
-//-----------------------------------------------------------------------
-vec3 BsdfSample(in Ray ray, in vec3 N, in vec3 T, in vec3 B, in Material mat, vec3 rndVal)
-{
-  vec3 V = -ray.direction;
-
-  vec3 dir;
-
-  float probability  = rndVal.x;
-  float diffuseRatio = 0.5 * (1.0 - mat.metallic);
-
-  float r1 = rndVal.y;
-  float r2 = rndVal.z;
-
-  vec3 tangent_u;  // = T;
-  vec3 tangent_v;  // = B;
-  CreateCoordinateSystem(N, tangent_u, tangent_v);
-
-  if(probability < diffuseRatio)  // sample diffuse
-  {
-    dir = CosineSampleHemisphere(r1, r2);
-    dir = dir.x * tangent_u + dir.y * tangent_v + dir.z * N;
-  }
-  else
-  {
-    float specularAlpha = max(0.001, mat.roughness);
-
-    float phi = r1 * 2.0 * M_PI;
-
-    float cosTheta = sqrt((1.0 - r2) / (1.0 + (specularAlpha * specularAlpha - 1.0) * r2));
-    float sinTheta = clamp(sqrt(1.0 - (cosTheta * cosTheta)), 0.0, 1.0);
-    float sinPhi   = sin(phi);
-    float cosPhi   = cos(phi);
-
-    vec3 halfVec = vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
-    halfVec      = tangent_u * halfVec.x + tangent_v * halfVec.y + N * halfVec.z;
-
-    dir = 2.0 * dot(V, halfVec) * halfVec - V;
-  }
-  return dir;
-}
-
-
-//-----------------------------------------------------------------------
-vec3 BsdfEval(in Ray ray, in vec3 N, in vec3 T, in vec3 B, in Material mat, in vec3 bsdfDir)
-{
-  vec3 V = -ray.direction;
-  vec3 L = bsdfDir;
-
-  float NdotL = clamp(dot(N, L), 0.001, 1.0);
-  float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
-
-  if(NdotL <= 0.0 || NdotV <= 0.0)
-    return vec3(0.0);
-
-  vec3  H     = normalize(L + V);
-  float NdotH = clamp(dot(N, H), 0, 1);
-  float LdotH = clamp(dot(L, H), 0, 1);
-  float VdotH = clamp(dot(V, H), 0, 1);
-
-  // specular
-  vec3 specularCol = mat.f0;
-
-  // Compute reflectance.
-  // Anything less than 2% is physically impossible and is instead considered to be shadowing. Compare to "Real-Time-Rendering" 4th editon on page 325.
-  float reflectance = max(max(specularCol.r, specularCol.g), specularCol.b);
-  vec3  f0          = specularCol.rgb;
-  vec3  f90         = vec3(clamp(reflectance * 50.0, 0.0, 1.0));
-
-
-  // Calculation of analytical lighting contribution
-  vec3 diffuseContrib = BRDF_lambertian(f0, f90, mat.albedo.xyz, VdotH, mat.metallic);
-  vec3 specContrib;
-  if(mat.anisotropy == 0.0)
-  {
-    specContrib = BRDF_specularGGX(f0, f90, mat.roughness, VdotH, NdotL, NdotV, NdotH);
-  }
-  else
-  {
-
-    float TdotV = clamp(dot(T, V), 0, 1);
-    float BdotV = clamp(dot(B, V), 0, 1);
-    float TdotL = dot(T, L);
-    float BdotL = dot(B, L);
-    float TdotH = dot(T, H);
-    float BdotH = dot(B, H);
-    specContrib = BRDF_specularAnisotropicGGX(f0, f90, mat.roughness, VdotH, NdotL, NdotV, NdotH, BdotV, TdotV, TdotL,
-                                              BdotL, TdotH, BdotH, mat.anisotropy);
-  }
-
-  return diffuseContrib + specContrib;
-}
-
-
-//-------------------------------------------------------------------------------------------------
-// Specular-Glossiness converter
-// See: // https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness/examples/convert-between-workflows/js/three.pbrUtilities.js#L34
-//-------------------------------------------------------------------------------------------------
-
-
-const float c_MinReflectance = 0.04;
-
-float getPerceivedBrightness(vec3 vector)
-{
-  return sqrt(0.299 * vector.r * vector.r + 0.587 * vector.g * vector.g + 0.114 * vector.b * vector.b);
-}
-
-
-float solveMetallic(vec3 diffuse, vec3 specular, float oneMinusSpecularStrength)
-{
-  float specularBrightness = getPerceivedBrightness(specular);
-
-  if(specularBrightness < c_MinReflectance)
-  {
-    return 0.0;
-  }
-
-  float diffuseBrightness = getPerceivedBrightness(diffuse);
-
-  float a = c_MinReflectance;
-  float b = diffuseBrightness * oneMinusSpecularStrength / (1.0 - c_MinReflectance) + specularBrightness - 2.0 * c_MinReflectance;
-  float c = c_MinReflectance - specularBrightness;
-  float D = max(b * b - 4.0 * a * c, 0);
-
-  return clamp((-b + sqrt(D)) / (2.0 * a), 0.0, 1.0);
-}
-
-
-#endif  // BRDF_GLSL
+#endif  // PBR_SAMPLING_GLSL

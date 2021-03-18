@@ -35,7 +35,7 @@
 
 
 // Including structs used by the layouts
-#include "globals.glsl"
+//#include "globals.glsl"
 
 
 // Sun & Sky structure
@@ -53,7 +53,7 @@ layout(set = S_ACCEL, binding = B_TLAS) uniform accelerationStructureEXT topLeve
 layout(set = S_OUT, binding = 1) uniform image2D resultImage;
 
 layout(set = S_SCENE, binding = B_PRIMLOOKUP) readonly buffer _InstanceInfo {RtPrimitiveLookup primInfo[];};
-layout(set = S_SCENE, binding = B_CAMERA) uniform _CameraMatrices { CameraMatrices cameraMatrices; };
+layout(set = S_SCENE, binding = B_CAMERA) uniform _SceneCamera { SceneCamera sceneCamera; };
 layout(set = S_SCENE, binding = B_VERTICES) readonly buffer _VertexBuf {float vertices[];};
 layout(set = S_SCENE, binding = B_INDICES) readonly buffer _Indices {uint indices[];};
 layout(set = S_SCENE, binding = B_NORMALS) readonly buffer _NormalBuf {float normals[];};
@@ -63,13 +63,11 @@ layout(set = S_SCENE, binding = B_COLORS) readonly buffer _ColorBuf {float color
 layout(set = S_SCENE, binding = B_MATERIALS) readonly buffer _MaterialBuffer {GltfShadeMaterial materials[];};
 layout(set = S_SCENE, binding = B_TEXTURES) uniform sampler2D texturesMap[]; // all textures
 layout(set = S_SCENE, binding = B_MATRICES) buffer _Matrices { InstanceMatrices matrices[]; };
-
+layout(set = S_SCENE, binding = B_LIGHTS) buffer _Lights { Light lights[]; };
 
 layout(set = S_ENV, binding = B_SUNANDSKY) uniform _SunAndSkyBuffer {SunAndSky _sunAndSky;};
 layout(set = S_ENV, binding = B_HDR) uniform sampler2D environmentTexture;
 layout(set = S_ENV, binding = B_IMPORT_SMPL) uniform sampler2D environmentSamplingData;
-
-
 // clang-format on
 
 

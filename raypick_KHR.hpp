@@ -184,7 +184,7 @@ private:
                                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     sCmd.submitAndWait(cmdBuf);
     m_alloc->finalizeAndReleaseStaging();
-    m_debug.setObjectName(m_pickResult.buffer, "PickResult");
+    NAME_VK(m_pickResult.buffer);
   }
 
   void createDescriptorSet()
@@ -220,14 +220,12 @@ private:
     pipelineLayoutCreateInfo.setPSetLayouts(&m_descSetLayout);
     pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
     pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstant);
-    m_pipelineLayout = m_device.createPipelineLayout(pipelineLayoutCreateInfo);
+    CREATE_NAMED_VK(m_pipelineLayout, m_device.createPipelineLayout(pipelineLayoutCreateInfo));
 
     vk::ComputePipelineCreateInfo computePipelineCreateInfo{{}, {}, m_pipelineLayout};
     computePipelineCreateInfo.stage = nvvk::createShaderStageInfo(m_device, getSpirV(), VK_SHADER_STAGE_COMPUTE_BIT);
-    m_pipeline = static_cast<const vk::Pipeline&>(m_device.createComputePipeline({}, computePipelineCreateInfo));
+    CREATE_NAMED_VK(m_pipeline, m_device.createComputePipeline({}, computePipelineCreateInfo).value);
     m_device.destroy(computePipelineCreateInfo.stage.module);
-
-    m_debug.setObjectName(m_pipeline, "Picking");
   }
 
 

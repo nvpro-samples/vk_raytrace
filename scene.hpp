@@ -18,6 +18,7 @@
 #include "nvvk/allocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
+#include "structures.h"
 
 
 /*
@@ -39,21 +40,22 @@ public:
     eMaterial,
     eMatrix,
     ePrimLookup,
-    last_elem
+    eLights,
+    eLast_elem
   };
 
 public:
   void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
   {
-    m_device            = device;
-    m_pAlloc            = allocator;
-    m_queueFamillyIndex = familyIndex;
+    m_device           = device;
+    m_pAlloc           = allocator;
+    m_queueFamilyIndex = familyIndex;
     m_debug.setup(device);
   }
 
   bool load(const std::string& filename);
   void destroy();
-  void updateCamera(const vk::CommandBuffer& cmdBuf);
+  void updateCamera(const vk::CommandBuffer& cmdBuf, float aspectRatio);
 
 
   vk::DescriptorSetLayout getDescLayout() { return m_descSetLayout; }
@@ -62,22 +64,26 @@ public:
   nvh::GltfStats&         getStat() { return m_stats; }
   nvvk::Buffer&           getBuffer(EBuffer b) { return m_buffers[b]; }
   const std::string&      getSceneName() const { return m_sceneName; }
+  SceneCamera&            getCamera() { return m_camera; }
 
 private:
   nvh::GltfScene m_gltfScene;
   nvh::GltfStats m_stats;
 
+  SceneCamera m_camera{};
 
   // Setup
   nvvk::MemAllocator m_memAllocator;
   nvvk::Allocator*   m_pAlloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil    m_debug;   // Utility to name objects
   vk::Device         m_device;
-  uint32_t           m_queueFamillyIndex;
+  uint32_t           m_queueFamilyIndex;
 
   // Resources
-  std::array<nvvk::Buffer, EBuffer::last_elem> m_buffers;
-  std::vector<nvvk::Texture>                   m_textures;  // vector of all textures of the scene
+  std::array<nvvk::Buffer, EBuffer::eLast_elem>            m_buffers;
+  std::vector<nvvk::Texture>                               m_textures;         // vector of all textures of the scene
+  std::vector<std::pair<nvvk::Image, vk::ImageCreateInfo>> m_images;           // vector of all images of the scene
+  std::vector<size_t>                                      m_defaultTextures;  // for cleanup
 
   vk::DescriptorPool      m_descPool;
   vk::DescriptorSetLayout m_descSetLayout;

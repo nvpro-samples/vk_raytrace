@@ -15,10 +15,12 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
 // The cfgmgr32 header is necessary for interrogating driver information in the registry.
 #include <cfgmgr32.h>
 // For convenience the library is also linked in automatically using the #pragma command.
 #pragma comment(lib, "Cfgmgr32.lib")
+#endif
 
 /** 
 
@@ -187,6 +189,7 @@ private:
 
   float getCpuLoad()
   {
+  #ifdef _WIN32
     static uint64_t _previousTotalTicks = 0;
     static uint64_t _previousIdleTicks  = 0;
 
@@ -209,9 +212,12 @@ private:
     _previousIdleTicks  = idleTicks;
 
     return result * 100.f;
+#else
+    return 0;
+#endif
   }
 
-
+#ifdef _WIN32
   void* LoadNmvlLibrary()
   {
     const char* nvmlDllName = "nvml.dll";
@@ -334,7 +340,7 @@ private:
 
     return handle;
   }
-
+#endif
 
   bool                 m_valid{false};
   uint32_t             m_physicalGpuCount{0};

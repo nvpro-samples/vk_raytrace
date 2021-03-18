@@ -28,6 +28,9 @@
 #ifndef SAMPLING_GLSL
 #define SAMPLING_GLSL
 
+
+#include "globals.glsl"
+
 //-------------------------------------------------------------------------------------------------
 // Environment Sampling
 // See:  https://arxiv.org/pdf/1901.05423.pdf
@@ -57,6 +60,12 @@ Environment_sample_data GetSampleData(sampler2D sample_buffer, uint idx)
   uint  px   = idx % size.x;
   uint  py   = idx / size.x;
   return GetSampleData(sample_buffer, ivec2(px, size.y - py - 1));  // Image is upside down
+}
+
+float Environment_pdf(sampler2D sample_buffer, vec2 uv)
+{
+  uvec2 size = textureSize(sample_buffer, 0);
+  return texelFetch(sample_buffer, ivec2(uv.x * size.x, (1 - uv.y) * size.y), 0).z;
 }
 
 
@@ -105,64 +114,45 @@ vec3 Environment_sample(sampler2D lat_long_tex, sampler2D sample_buffer, in vec3
   to_light               = vec3(cos_phi * sin_theta, -cos_theta, sin_phi * sin_theta);
 
   // lookup filtered value
-  const float v = theta * M_1_PI;
+  const float v = theta * M_1_OVER_PI;
   return texture(lat_long_tex, vec2(u, v)).xyz;
 }
 
 
-//-------------------------------------------------------------------------------------------------
-// Sampling
-//-------------------------------------------------------------------------------------------------
-
 //-----------------------------------------------------------------------
-// Randomly sampling around +Z
-vec3 CosineSampleHemisphere(float u1, float u2)
-{
-  vec3  dir;
-  float r   = sqrt(u1);
-  float phi = 2.0 * M_PI * u2;
-  dir.x     = r * cos(phi);
-  dir.y     = r * sin(phi);
-  dir.z     = sqrt(max(0.0, 1.0 - dir.x * dir.x - dir.y * dir.y));
-
-  return dir;
-}
-
-// Sampling hemiphere around z, with basis tangent (x) and bitangent (y)
-vec3 SamplingHemisphere(vec2 randVal, in vec3 x, in vec3 y, in vec3 z)
-{
-  float r1        = randVal.x;
-  float r2        = randVal.y;
-  vec3  direction = CosineSampleHemisphere(r1, r2);
-  return direction.x * x + direction.y * y + direction.z * z;
-}
-
-
 // Return the tangent and binormal from the incoming normal
+//-----------------------------------------------------------------------
 void CreateCoordinateSystem(in vec3 N, out vec3 Nt, out vec3 Nb)
 {
-  if(abs(N.x) > abs(N.y))
-    Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z);
-  else
-    Nt = vec3(0, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z);
-  Nb = cross(N, Nt);
+  // http://www.pbr-book.org/3ed-2018/Geometry_and_Transformations/Vectors.html#CoordinateSystemfromaVector
+  //if(abs(N.x) > abs(N.y))
+  //  Nt = vec3(-N.z, 0, N.x) / sqrt(N.x * N.x + N.z * N.z);
+  //else
+  //  Nt = vec3(0, N.z, -N.y) / sqrt(N.y * N.y + N.z * N.z);
+  //Nb = cross(N, Nt);
+
+  Nt = normalize(((abs(N.z) > 0.99999f) ? vec3(-N.x * N.y, 1.0f - N.y * N.y, -N.y * N.z) :
+                                          vec3(-N.x * N.z, -N.y * N.z, 1.0f - N.z * N.z)));
+  Nb = cross(Nt, N);
 }
 
 
+//-----------------------------------------------------------------------
 // Return the UV in a lat-long HDR map
+//-----------------------------------------------------------------------
 vec2 GetSphericalUv(vec3 v)
 {
   float gamma = asin(-v.y);
   float theta = atan(v.z, v.x);
 
-  vec2 uv = vec2(theta * M_1_PI * 0.5, gamma * M_1_PI) + 0.5;
+  vec2 uv = vec2(theta * M_1_OVER_PI * 0.5, gamma * M_1_OVER_PI) + 0.5;
   return uv;
 }
 
 
 //-------------------------------------------------------------------------------------------------
 // Avoiding self intersections (see Ray Tracing Gems, Ch. 6)
-//
+//-----------------------------------------------------------------------
 vec3 OffsetRay(in vec3 p, in vec3 n)
 {
   const float intScale   = 256.0f;
@@ -181,33 +171,43 @@ vec3 OffsetRay(in vec3 p, in vec3 n)
 }
 
 
-//-------------------------------------------------------------------------------------------------
-// Special sampling for compute shader
-// This is the way sampling is done, which can improve texture access
-//
-#ifdef USE_COMPUTE__
-layout(local_size_x = 32, local_size_y = 2) in;
-#extension GL_EXT_shader_8bit_storage : enable  // Using uint_8 ...
-ivec2 SampleSizzled()
+//-----------------------------------------------------------------------
+// Sampling the HDR environment or scene lights
+//-----------------------------------------------------------------------
+vec4 EnvSample(inout vec3 radiance)
 {
-  // Sampling Swizzling
-  // Convert 32x2 to 8x8, where the sampling will follow how invocation are done in a subgroup.
-  // layout(local_size_x = 32, local_size_y = 2) in;
-  ivec2 base   = ivec2(gl_WorkGroupID.xy) * 8;
-  ivec2 subset = ivec2(int(gl_LocalInvocationID.x) & 1, int(gl_LocalInvocationID.x) / 2);
-  subset += gl_LocalInvocationID.x >= 16 ? ivec2(2, -8) : ivec2(0, 0);
-  subset += ivec2(gl_LocalInvocationID.y * 4, 0);
-  return base + subset;
-}
-#elif defined(USE_COMPUTE)
-#extension GL_EXT_shader_8bit_storage : enable
+  vec3  lightDir;
+  float pdf;
 
-layout(local_size_x = 8, local_size_y = 8) in;
-ivec2 SampleSizzled()
-{
-  return ivec2(gl_GlobalInvocationID.xy);
+  // Sun & Sky or HDR
+  if(_sunAndSky.in_use == 1)
+  {
+    // #TODO: find proper light direction + PDF
+    vec3 T, B;
+    CreateCoordinateSystem(_sunAndSky.sun_direction, T, B);
+    vec3 dir;
+    dir.x = rnd(prd.seed) * 0.1;
+    dir.y = rnd(prd.seed) * 0.1;
+    dir.z = sqrt(max(0.0, 1.0 - dir.x * dir.x - dir.y * dir.y));
+
+    lightDir = normalize(T * dir.x + B * dir.y + _sunAndSky.sun_direction * dir.z);
+    radiance = sun_and_sky(_sunAndSky, lightDir);
+    pdf      = 0.5;
+  }
+  else
+  {
+    vec3 randVal = vec3(rnd(prd.seed), rnd(prd.seed), rnd(prd.seed));
+
+    // Sampling the HDR with importance sampling
+    radiance = Environment_sample(  //
+        environmentTexture,         // assuming lat long map
+        environmentSamplingData,    // importance sampling data of the environment map
+        randVal, lightDir, pdf);
+  }
+
+  radiance *= rtxState.hdrMultiplier;
+  return vec4(lightDir, pdf);
 }
-#endif
 
 
 #endif  // SAMPLING_GLSL

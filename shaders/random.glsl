@@ -32,12 +32,14 @@
 #define RAND_LCG 2
 #define RAD_RADINV 3
 
-#define RAND_METHOD RAND_LCG
+#define RAND_METHOD RAND_PCG
 
 
+//-----------------------------------------------------------------------
 // Generate a random unsigned int from two unsigned int values, using 16 pairs
 // of rounds of the Tiny Encryption Algorithm. See Zafar, Olano, and Curtis,
 // "GPU Random Numbers via the Tiny Encryption Algorithm"
+//-----------------------------------------------------------------------
 uint tea(uint val0, uint val1)
 {
   uint v0 = val0;
@@ -54,8 +56,10 @@ uint tea(uint val0, uint val1)
   return v0;
 }
 
+//-----------------------------------------------------------------------
 // Generate a random unsigned int in [0, 2^24) given the previous RNG state
 // using the Numerical Recipes linear congruential generator
+//-----------------------------------------------------------------------
 uint lcg(inout uint prev)
 {
   uint LCG_A = 1664525u;
@@ -64,7 +68,9 @@ uint lcg(inout uint prev)
   return prev & 0x00FFFFFF;
 }
 
+//-----------------------------------------------------------------------
 // https://www.pcg-random.org/
+//-----------------------------------------------------------------------
 uint pcg(inout uint state)
 {
   uint prev = state * 747796405u + 2891336453u;
@@ -73,6 +79,8 @@ uint pcg(inout uint state)
   return (word >> 22u) ^ word;
 }
 
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 uvec2 pcg2d(uvec2 v)
 {
   v = v * 1664525u + 1013904223u;
@@ -91,12 +99,15 @@ uvec2 pcg2d(uvec2 v)
 }
 
 
+//-----------------------------------------------------------------------
+const float pcg_div = (1.0 / float(0xffffffffu));  // 4,294,967,295 max uint32
 // Generate a random float in [0, 1) given the previous RNG state
+//-----------------------------------------------------------------------
 float rnd(inout uint seed)
 {
 #if(RAND_METHOD == RAND_PCG)
   uint val = pcg(seed);
-  return (float(val) * (1.0 / float(0xffffffffu)));
+  return float(val) * pcg_div;
 #endif
 
 #if(RAND_METHOD == RAND_LCG)
@@ -104,6 +115,8 @@ float rnd(inout uint seed)
 #endif
 }
 
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 vec2 rnd2(inout uint prev)
 {
 #if(RAND_METHOD == RAND_PCG)

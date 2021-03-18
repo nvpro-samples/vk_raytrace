@@ -26,7 +26,7 @@
  */
 
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 
 #include "globals.glsl"
@@ -40,10 +40,10 @@
 //-------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------
-// Miss shader for the shadow rayPayloadInNV
+// Miss shader for the shadow rayPayloadInEXT
 //
 
-layout(location = 1) rayPayloadInNV ShadowHitPayload payload;
+layout(location = 1) rayPayloadInEXT ShadowHitPayload payload;
 
 void main()
 {

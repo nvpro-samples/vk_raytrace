@@ -28,7 +28,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : enable
 
-layout(location = 0) in vec2 outUV;
+layout(location = 0) in vec2 uvCoords;
 layout(location = 0) out vec4 fragColor;
 
 layout(set = 0, binding = 0) uniform sampler2D noisyTxt;
@@ -37,30 +37,35 @@ layout(set = 0, binding = 0) uniform sampler2D inImage;
 
 layout(push_constant) uniform _ShaderInfo
 {
-  float key;
-  float Ywhite;
-  float sat;
-  float invGamma;
+  float brightness;
+  float contrast;
+  float saturation;
+  float vignette;
   float avgLum;
   float zoom;
+  vec2  renderingRatio;
 };
 
 #define TONEMAP_UNCHARTED
 #include "tonemapping.glsl"
 
-vec3 toneMapReinhard(vec3 RGB, float logAvgLum)
-{
-  const mat3 RGB2XYZ = mat3(0.4124564, 0.3575761, 0.1804375, 0.2126729, 0.7151522, 0.0721750, 0.0193339, 0.1191920, 0.9503041);
-  vec3  XYZ          = RGB2XYZ * RGB;
-  float Y            = (key / logAvgLum) * XYZ.y;
-  float Yd           = (Y * (1.0 + Y / (Ywhite * Ywhite))) / (1.0 + Y);
-  return pow(RGB / XYZ.y, vec3(sat, sat, sat)) * Yd;
-}
 
 void main()
 {
-  vec4 hdr = texture(inImage, outUV * zoom).rgba;
-  //hdr.rgb       = toneMapReinhard(hdr.rgb, 1.0);
-  fragColor.rgb = toneMap(hdr.rgb, avgLum);
+  vec4 hdr   = texture(inImage, uvCoords * zoom).rgba;
+  vec3 color = toneMap(hdr.rgb, avgLum);
+
+  //contrast
+  color = clamp(mix(vec3(0.5), color, contrast), 0, 1);
+  // brighness
+  color = pow(color, vec3(1.0 / brightness));
+  // saturation
+  vec3 i = vec3(dot(color, vec3(0.299, 0.587, 0.114)));
+  color  = mix(i, color, saturation);
+  // vignette
+  vec2 uv = ((uvCoords * renderingRatio) - 0.5) * 2.0;
+  color *= 1.0 - dot(uv, uv) * vignette;
+
+  fragColor.xyz = color;
   fragColor.a   = hdr.a;
 }

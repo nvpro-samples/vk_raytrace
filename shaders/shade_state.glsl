@@ -45,7 +45,6 @@ struct ShadeState
 };
 
 
-// Return the vertex position
 vec3 getVertex(uint index)
 {
   uint i = 3 * index;
@@ -78,15 +77,17 @@ vec4 getColor(uint index)
               colors[nonuniformEXT(i + 3)]);
 }
 
-ShadeState GetShadeState(in HitState hstate)
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
+ShadeState GetShadeState(in PtPayload hstate)
 {
   ShadeState sstate;
 
   // Retrieve the Primitive mesh buffer information
-  RtPrimitiveLookup pinfo = primInfo[hstate.InstanceCustomIndex];
+  RtPrimitiveLookup pinfo = primInfo[hstate.instanceCustomIndex];
 
   // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
-  const uint indexOffset  = pinfo.indexOffset + (3 * hstate.PrimitiveID);
+  const uint indexOffset  = pinfo.indexOffset + (3 * hstate.primitiveID);
   const uint vertexOffset = pinfo.vertexOffset;           // Vertex offset as defined in glTF
   const uint matIndex     = max(0, pinfo.materialIndex);  // material of primitive mesh
 
@@ -96,23 +97,23 @@ ShadeState GetShadeState(in HitState hstate)
                               indices[nonuniformEXT(indexOffset + 2)]);
   triangleIndex += ivec3(vertexOffset);  // (global)
 
-  const vec3 barycentrics = vec3(1.0 - hstate.bary.x - hstate.bary.y, hstate.bary.x, hstate.bary.y);
+  const vec3 barycentrics = vec3(1.0 - hstate.baryCoord.x - hstate.baryCoord.y, hstate.baryCoord.x, hstate.baryCoord.y);
 
   // Vertex of the triangle
   const vec3 pos0           = getVertex(triangleIndex.x);
   const vec3 pos1           = getVertex(triangleIndex.y);
   const vec3 pos2           = getVertex(triangleIndex.z);
   const vec3 position       = pos0 * barycentrics.x + pos1 * barycentrics.y + pos2 * barycentrics.z;
-  const vec3 world_position = vec3(hstate.ObjectToWorld * vec4(position, 1.0));
+  const vec3 world_position = vec3(hstate.objectToWorld * vec4(position, 1.0));
 
   // Normal
   const vec3 nrm0         = getNormal(triangleIndex.x);
   const vec3 nrm1         = getNormal(triangleIndex.y);
   const vec3 nrm2         = getNormal(triangleIndex.z);
   const vec3 normal       = normalize(nrm0 * barycentrics.x + nrm1 * barycentrics.y + nrm2 * barycentrics.z);
-  const vec3 world_normal = normalize(vec3(normal * hstate.WorldToObject));
+  const vec3 world_normal = normalize(vec3(normal * hstate.worldToObject));
   const vec3 geom_normal  = normalize(cross(pos1 - pos0, pos2 - pos0));
-  const vec3 wgeom_normal = normalize(vec3(geom_normal * hstate.WorldToObject));
+  const vec3 wgeom_normal = normalize(vec3(geom_normal * hstate.worldToObject));
 
 
   // Tangent and Binormal
@@ -121,7 +122,7 @@ ShadeState GetShadeState(in HitState hstate)
   const vec4 tng2     = getTangent(triangleIndex.z);
   vec3       tangent  = (tng0.xyz * barycentrics.x + tng1.xyz * barycentrics.y + tng2.xyz * barycentrics.z);
   tangent.xyz         = normalize(tangent.xyz);
-  vec3 world_tangent  = normalize(vec3(mat4(hstate.ObjectToWorld) * vec4(tangent.xyz, 0)));
+  vec3 world_tangent  = normalize(vec3(mat4(hstate.objectToWorld) * vec4(tangent.xyz, 0)));
   world_tangent       = normalize(world_tangent - dot(world_tangent, world_normal) * world_normal);
   vec3 world_binormal = cross(world_normal, world_tangent) * tng0.w;
 
@@ -137,7 +138,6 @@ ShadeState GetShadeState(in HitState hstate)
   const vec4 col2  = getColor(triangleIndex.z);
   const vec4 color = col0 * barycentrics.x + col1 * barycentrics.y + col2 * barycentrics.z;
 
-
   sstate.normal         = world_normal;
   sstate.geom_normal    = wgeom_normal;
   sstate.position       = world_position;
@@ -152,7 +152,6 @@ ShadeState GetShadeState(in HitState hstate)
   {
     sstate.normal *= -1.0f;
   }
-
 
   return sstate;
 }
