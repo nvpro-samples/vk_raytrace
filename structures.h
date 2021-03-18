@@ -34,23 +34,18 @@
 #ifndef STRUCTURES_H
 #define STRUCTURES_H
 
-// Payload structure
-struct RayPayload
-{
-  vec4 origin;     // Ray origin(xyz), pixelIndex
-  vec4 direction;  // Ray direction(xyz), seed
-  vec4 state;      // baryCENTICS, CustomInstanceID, PrimitiveId, InstanceId
-  vec4 weight;     //
-};
-
 
 // Camera of the scene
-struct CameraMatrices
+struct SceneCamera
 {
-  mat4 view;
-  mat4 proj;
-  mat4 viewInverse;
-  mat4 projInverse;
+  mat4  view;
+  mat4  proj;
+  mat4  viewInverse;
+  mat4  projInverse;
+  float focalDist;
+  float aperture;
+  // Extra
+  int nbLights;
 };
 
 
@@ -62,37 +57,56 @@ struct CameraMatrices
 #define ALPHA_BLEND 2
 struct GltfShadeMaterial
 {
-
+  // 0
   vec4 pbrBaseColorFactor;
-
+  // 4
   int   pbrBaseColorTexture;
   float pbrMetallicFactor;
   float pbrRoughnessFactor;
   int   pbrMetallicRoughnessTexture;
-
-  // KHR_materials_pbrSpecularGlossiness
-  vec4 khrDiffuseFactor;
+  // 8
+  vec4 khrDiffuseFactor;  // KHR_materials_pbrSpecularGlossiness
   vec3 khrSpecularFactor;
   int  khrDiffuseTexture;
-
+  // 16
   int   shadingModel;  // 0: metallic-roughness, 1: specular-glossiness
   float khrGlossinessFactor;
   int   khrSpecularGlossinessTexture;
   int   emissiveTexture;
-
+  // 20
   vec3 emissiveFactor;
   int  alphaMode;
-
+  // 24
   float alphaCutoff;
   int   doubleSided;
   int   normalTexture;
   float normalTextureScale;
-
+  // 28
   mat4 uvTransform;
-  int  unlit;
+  // 32
+  int unlit;
 
-  float anisotropy;
+  float transmissionFactor;
+  int   transmissionTexture;
+
+  float ior;
+  // 36
   vec3  anisotropyDirection;
+  float anisotropy;
+  // 40
+  vec3  attenuationColor;
+  float thicknessFactor;  // 44
+  int   thicknessTexture;
+  float attenuationDistance;
+  // --
+  float clearcoatFactor;
+  float clearcoatRoughness;
+  // 48
+  int clearcoatTexture;
+  int clearcoatRoughnessTexture;
+  int _pad0;
+  int _pad1;
+  // 52
 };
 
 
@@ -124,12 +138,19 @@ const uint
 // Use with PushConstant
 struct RtxState
 {
-  int   frame;                         // Current frame, start at 0
-  int   maxDepth;                      // How deep the path is
-  int   maxSamples;                    // How many samples to do per render
-  float fireflyClampThreshold;         // to cut fireflies
-  float environment_intensity_factor;  // To brightening the scene
-  int   debugging_mode;
+  int   frame;                  // Current frame, start at 0
+  int   maxDepth;               // How deep the path is
+  int   maxSamples;             // How many samples to do per render
+  float fireflyClampThreshold;  // to cut fireflies
+
+  float hdrMultiplier;   // To brightening the scene
+  int   debugging_mode;  //
+  int   pbrMode;         // 0-Disney, 1-Gltf
+  int   _pad0;
+
+  ivec2 size;  // rendering size
+  int   _pad1;
+  int   _pad2;
 };
 
 // Structure used for retrieving the primitive information in the closest hit
@@ -147,4 +168,26 @@ struct InstanceMatrices
   mat4 world2Object;
 };
 
+// KHR_lights_punctual extension.
+// see https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_lights_punctual
+struct Light
+{
+  vec3  direction;
+  float range;
+
+  vec3  color;
+  float intensity;
+
+  vec3  position;
+  float innerConeCos;
+
+  float outerConeCos;
+  int   type;
+
+  vec2 padding;
+};
+
+const int LightType_Directional = 0;
+const int LightType_Point       = 1;
+const int LightType_Spot        = 2;
 #endif

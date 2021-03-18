@@ -26,43 +26,5 @@
  */
 
 #version 460
-#extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_ray_tracing : enable
-// Align structure layout to scalar
-#extension GL_EXT_scalar_block_layout : enable
 
-#include "layouts.glsl"
-#include "sampling.glsl"
-
-
-layout(location = 0) rayPayloadInEXT HitPayload prd;
-
-// Push Constant
-layout(push_constant) uniform _RtxState
-{
-  RtxState rtstate;
-};
-
-
-///////////////////////////////////////////
-vec3 environmentEval(in vec3 dir)
-{
-  vec3 radiance;
-
-  if(_sunAndSky.in_use == 1)
-    radiance = sun_and_sky(_sunAndSky, dir);
-  else
-  {
-    vec2 uv  = GetSphericalUv(dir);  // See sampling.glsl
-    radiance = texture(environmentTexture, uv).rgb;
-  }
-  return radiance.xyz;
-}
-
-
-void main()
-{
-  prd.contribution = environmentEval(gl_WorldRayDirectionEXT.xyz) * rtstate.environment_intensity_factor;
-  prd.contribution *= prd.weight;
-  prd.flags = FLAG_DONE;
-}
+void main() {}

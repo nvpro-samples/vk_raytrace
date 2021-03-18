@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 #include <vulkan/vulkan.hpp>
 
 #define _USE_MATH_DEFINES
-#include <math.h>
+#include <cmath>
 
 #include "fileformats/stb_image.h"
 #include "hdr_sampling.hpp"
@@ -92,8 +92,8 @@ void HdrSampling::loadEnvironment(const std::string& hrdImage)
 
   stbi_image_free(pixels);
 
-  m_debug.setObjectName(m_textures.txtHdr.image, "SkyHdr");
-  m_debug.setObjectName(m_textures.accelImpSmpl.image, "SkyImpSamp");
+  NAME_VK(m_textures.txtHdr.image);
+  NAME_VK(m_textures.accelImpSmpl.image);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -101,13 +101,13 @@ void HdrSampling::loadEnvironment(const std::string& hrdImage)
 //
 float HdrSampling::build_alias_map(const std::vector<float>& data, std::vector<Env_accel>& accel)
 {
-  uint32_t size = static_cast<uint32_t>(data.size());
+  auto size = static_cast<uint32_t>(data.size());
 
   // create qs (normalized)
   float sum = std::accumulate(data.begin(), data.end(), 0.f);
 
   // Ratio against average
-  float fsize = static_cast<float>(size);
+  auto fsize = static_cast<float>(size);
   for(uint32_t i = 0; i < size; ++i)
   {
     accel[i].q     = fsize * data[i] / sum;

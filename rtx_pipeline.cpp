@@ -17,11 +17,11 @@
 #include "scene.hpp"
 #include "tools.hpp"
 
-#include "autogen/shaders/pathtrace.rahit.h"
-#include "autogen/shaders/pathtrace.rchit.h"
-#include "autogen/shaders/pathtrace.rgen.h"
-#include "autogen/shaders/pathtrace.rmiss.h"
-#include "autogen/shaders/pathtraceShadow.rmiss.h"
+#include "autogen/pathtrace.rahit.h"
+#include "autogen/pathtrace.rchit.h"
+#include "autogen/pathtrace.rgen.h"
+#include "autogen/pathtrace.rmiss.h"
+#include "autogen/pathtraceShadow.rmiss.h"
 
 
 void RtxPipeline::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
@@ -94,29 +94,29 @@ void RtxPipeline::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtD
   vk::ShaderModule rahit    = nvvk::createShaderModule(m_device, pathtrace_rahit, sizeof(pathtrace_rahit));
 
   // Raygen
-  stages.push_back({{}, vk::ShaderStageFlagBits::eRaygenKHR, rgen, "main"});
-  group.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  group.setGeneralShader(static_cast<uint32_t>(stages.size()));
   m_rtShaderGroups.push_back(group);
+  stages.push_back({{}, vk::ShaderStageFlagBits::eRaygenKHR, rgen, "main"});
 
   // Miss
-  stages.push_back({{}, vk::ShaderStageFlagBits::eMissKHR, rmiss, "main"});
-  group.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  group.setGeneralShader(static_cast<uint32_t>(stages.size()));
   m_rtShaderGroups.push_back(group);
+  stages.push_back({{}, vk::ShaderStageFlagBits::eMissKHR, rmiss, "main"});
 
   // Miss - Shadow
-  stages.push_back({{}, vk::ShaderStageFlagBits::eMissKHR, rmissShd, "main"});
-  group.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  group.setGeneralShader(static_cast<uint32_t>(stages.size()));
   m_rtShaderGroups.push_back(group);
+  stages.push_back({{}, vk::ShaderStageFlagBits::eMissKHR, rmissShd, "main"});
 
   // Hit Group
   group.setType(vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup);
   group.setGeneralShader(VK_SHADER_UNUSED_KHR);
   for(uint32_t i = 0; i < m_nbHit; i++)
   {
+    group.setClosestHitShader(static_cast<uint32_t>(stages.size()));
     stages.push_back({{}, vk::ShaderStageFlagBits::eClosestHitKHR, rchit, "main"});
-    group.setClosestHitShader(static_cast<uint32_t>(stages.size() - 1));
+    group.setAnyHitShader(static_cast<uint32_t>(stages.size()));
     stages.push_back({{}, vk::ShaderStageFlagBits::eAnyHitKHR, rahit, "main"});
-    group.setAnyHitShader(static_cast<uint32_t>(stages.size() - 1));
     m_rtShaderGroups.push_back(group);
   }
 
@@ -164,7 +164,7 @@ void RtxPipeline::createRtShaderBindingTable()
   m_rtSBTBuffer =
       m_pAlloc->createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                              vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-  m_debug.setObjectName(m_rtSBTBuffer.buffer, std::string("SBT"));
+  NAME_VK(m_rtSBTBuffer.buffer);
 
   // Write the handles in the SBT
   void* mapped = m_pAlloc->map(m_rtSBTBuffer);
@@ -188,8 +188,7 @@ void RtxPipeline::run(const vk::CommandBuffer&              cmdBuf,
                       nvvk::ProfilerVK&                     profiler,
                       const std::vector<vk::DescriptorSet>& descSets)
 {
-  m_debug.beginLabel(cmdBuf, "Ray trace");
-
+  LABEL_SCOPE_VK(cmdBuf);
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0, descSets, {});
@@ -212,7 +211,4 @@ void RtxPipeline::run(const vk::CommandBuffer&              cmdBuf,
   cmdBuf.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2],
                       &strideAddresses[3],          //
                       size.width, size.height, 1);  //
-
-
-  m_debug.endLabel(cmdBuf);
 }

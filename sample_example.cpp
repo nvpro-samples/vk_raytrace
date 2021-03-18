@@ -25,6 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <vulkan/vulkan.hpp>
@@ -39,7 +40,9 @@
 #include "nvvk/shaders_vk.hpp"
 
 #include "binding.h"
-#include "imgui_helper.h"
+#include "imgui/extras/imgui_helper.h"
+#include "imgui/extras/imgui_orient.h"
+//#include "rayquery.hpp"
 #include "rtx_pipeline.hpp"
 #include "sample_example.hpp"
 #include "tools.hpp"
@@ -51,7 +54,6 @@
 #include "fileformats/tiny_gltf.h"
 #include "fileformats/tiny_gltf_freeimage.h"
 
-#include "imgui_orient.h"
 #include "nvml_monitor.hpp"
 
 static NvmlMonitor g_nvml(100, 100);
@@ -63,28 +65,49 @@ static NvmlMonitor g_nvml(100, 100);
 void SampleExample::setup(const vk::Instance&       instance,
                           const vk::Device&         device,
                           const vk::PhysicalDevice& physicalDevice,
-                          uint32_t                  gtcQueueIndex,
-                          uint32_t                  computeQueueIndex)
+                          uint32_t                  gtcQueueIndexFamily,
+                          uint32_t                  computeQueueIndex,
+                          uint32_t                  transferQueueIndex)
 {
-  AppBase::setup(instance, device, physicalDevice, gtcQueueIndex);
+  AppBase::setup(instance, device, physicalDevice, gtcQueueIndexFamily);
 
+  // Memory allocator
   m_memAllocator.init(device, physicalDevice);
   m_memAllocator.setAllocateFlags(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, true);
   m_alloc.init(device, physicalDevice, &m_memAllocator);
   m_debug.setup(m_device);
 
   m_sunAndSky = SunAndSky_default();
+
+  // Compute queues can be use for acceleration structures
   m_picker.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
-  m_scene.setup(m_device, physicalDevice, gtcQueueIndex, &m_alloc);
   m_accelStruct.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
-  m_offscreen.setup(m_device, physicalDevice, gtcQueueIndex, &m_alloc);
-  m_skydome.setup(device, physicalDevice, gtcQueueIndex, &m_alloc);
+
+  // Note: the GTC family queue is used because the nvvk::cmdGenerateMipmaps uses vkCmdBlitImage and this
+  // command requires graphic queue and not only transfer.
+  m_scene.setup(m_device, physicalDevice, gtcQueueIndexFamily, &m_alloc);
+
+  // Transfer queues can be use for the creation of the following assets
+  m_offscreen.setup(m_device, physicalDevice, transferQueueIndex, &m_alloc);
+  m_skydome.setup(device, physicalDevice, transferQueueIndex, &m_alloc);
 
   // Create and setup all renderers
   m_pRender[eRtxPipeline] = new RtxPipeline;
-
+  //  m_pRender[eRayQuery]    = new RayQuery;
   for(auto r : m_pRender)
-    r->setup(m_device, physicalDevice, gtcQueueIndex, &m_alloc);
+    r->setup(m_device, physicalDevice, transferQueueIndex, &m_alloc);
+
+
+  // Default RTX state (push_constant)
+  m_rtxState.frame                 = 0;
+  m_rtxState.maxDepth              = 10;
+  m_rtxState.frame                 = 0;   // Current frame, start at 0
+  m_rtxState.maxDepth              = 10;  // How deep the path is
+  m_rtxState.maxSamples            = 1;   // How many samples to do per render
+  m_rtxState.fireflyClampThreshold = 1;   // to cut fireflies
+  m_rtxState.hdrMultiplier         = 1;   // To brightening the scene
+  m_rtxState.debugging_mode        = 0;   //
+  m_rtxState.pbrMode               = 0;   // 0-Disney, 1-Gltf
 }
 
 
@@ -97,6 +120,7 @@ void SampleExample::loadScene(const std::string& filename)
   m_accelStruct.create(m_scene.getScene(), m_scene.getBuffer(Scene::eVertex).buffer, m_scene.getBuffer(Scene::eIndex).buffer);
 
   m_picker.initialize(m_accelStruct.getTlas());
+  resetFrame();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -110,7 +134,7 @@ void SampleExample::loadEnvironmentHdr(const std::string& hdrFilename)
   LOGI(" --> (%5.3f ms)\n", timer.elapse());
 
   //m_offscreen.m_tReinhard.avgLum = m_skydome.getAverage();
-  m_state.fireflyClampThreshold = m_skydome.getIntegral() * 4.f;  //magic
+  m_rtxState.fireflyClampThreshold = m_skydome.getIntegral() * 4.f;  //magic
 }
 
 
@@ -166,7 +190,10 @@ void SampleExample::loadAssets(const char* filename)
 //
 void SampleExample::updateUniformBuffer(const vk::CommandBuffer& cmdBuf)
 {
-  m_scene.updateCamera(cmdBuf);
+  LABEL_SCOPE_VK(cmdBuf);
+  const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
+
+  m_scene.updateCamera(cmdBuf, aspectRatio);
   cmdBuf.updateBuffer<SunAndSky>(m_sunAndSkyBuffer.buffer, 0, m_sunAndSky);
 }
 
@@ -187,13 +214,13 @@ void SampleExample::updateFrame()
     fov          = f;
   }
 
-  if(m_state.frame < m_maxFrames)
-    m_state.frame++;
+  if(m_rtxState.frame < m_maxFrames)
+    m_rtxState.frame++;
 }
 
 void SampleExample::resetFrame()
 {
-  m_state.frame = -1;
+  m_rtxState.frame = -1;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -205,18 +232,16 @@ void SampleExample::createDescriptorSetLayout()
   using vkDT = vk::DescriptorType;
   using vkSS = vk::ShaderStageFlagBits;
 
-  auto flag = vkSS::eClosestHitKHR | vkSS::eAnyHitKHR | vkSS::eCompute | vkSS::eFragment;
+  auto flag = vkSS::eRaygenKHR | vkSS::eClosestHitKHR | vkSS::eAnyHitKHR | vkSS::eCompute | vkSS::eFragment;
 
   m_bind.addBinding(vkDS(B_SUNANDSKY, vkDT::eUniformBuffer, 1, vkSS::eMissKHR | flag));
-  m_bind.addBinding(vkDS(B_HDR, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitKHR | vkSS::eMissKHR));  // HDR image
-  m_bind.addBinding(vkDS(B_IMPORT_SMPL, vkDT::eCombinedImageSampler, 1, vkSS::eClosestHitKHR));  // importance sampling
+  m_bind.addBinding(vkDS(B_HDR, vkDT::eCombinedImageSampler, 1, vkSS::eRaygenKHR | vkSS::eCompute));  // HDR image
+  m_bind.addBinding(vkDS(B_IMPORT_SMPL, vkDT::eCombinedImageSampler, 1, vkSS::eRaygenKHR | vkSS::eCompute));  // importance sampling
 
 
-  m_descSetLayout = m_bind.createLayout(m_device);
-  m_descPool      = m_bind.createPool(m_device, 1);
-  m_descSet       = nvvk::allocateDescriptorSet(m_device, m_descPool, m_descSetLayout);
-  m_debug.setObjectName(m_descSetLayout, "env");
-  m_debug.setObjectName(m_descSet, "env");
+  m_descPool = m_bind.createPool(m_device, 1);
+  CREATE_NAMED_VK(m_descSetLayout, m_bind.createLayout(m_device));
+  CREATE_NAMED_VK(m_descSet, nvvk::allocateDescriptorSet(m_device, m_descPool, m_descSetLayout));
 
   // Using the environment
   std::vector<vk::WriteDescriptorSet> writes;
@@ -245,7 +270,7 @@ void SampleExample::createUniformBuffer()
   m_sunAndSkyBuffer = m_alloc.createBuffer(sizeof(SunAndSky),
                                            vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                            vk::MemoryPropertyFlagBits::eDeviceLocal);
-  m_debug.setObjectName(m_sunAndSkyBuffer.buffer, "sunsky");
+  NAME_VK(m_sunAndSkyBuffer.buffer);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -286,10 +311,17 @@ void SampleExample::destroyResources()
 void SampleExample::onResize(int /*w*/, int /*h*/)
 {
   m_offscreen.update(m_size);
-  if(m_rndMethod != eRtxPipeline)  // RtxPipeline doesn't care about size, only on run
-    m_pRender[m_rndMethod]->create(
-        m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
   resetFrame();
+}
+
+//--------------------------------------------------------------------------------------------------
+// The size of the rendering area is smaller than the viewport
+// This is the space left in the center view.
+void SampleExample::setRenderRegion(const vk::Rect2D& size)
+{
+  if(m_renderRegion != size)
+    resetFrame();
+  m_renderRegion = size;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -299,30 +331,41 @@ void SampleExample::onResize(int /*w*/, int /*h*/)
 void SampleExample::createOffscreenRender()
 {
   m_offscreen.create(m_size, m_renderPass);
-  m_axis.init(m_device, m_renderPass);
+  m_axis.init(m_device, m_renderPass, 0, 50.0f);
 }
 
 
 void SampleExample::drawPost(vk::CommandBuffer cmdBuf)
 {
-  m_offscreen.m_tReinhard.zoom = m_descaling ? 1.0f / m_descalingLevel : 1.0f;
-  m_offscreen.run(cmdBuf, m_size);
+  LABEL_SCOPE_VK(cmdBuf);
+  m_offscreen.m_tonemapper.zoom           = m_descaling ? 1.0f / m_descalingLevel : 1.0f;
+  auto size                               = nvmath::vec2f(m_size.width, m_size.height);
+  auto area                               = nvmath::vec2f(m_renderRegion.extent.width, m_renderRegion.extent.height);
+  m_offscreen.m_tonemapper.renderingRatio = size / area;
+
+  cmdBuf.setViewport(0, {{static_cast<float>(m_renderRegion.offset.x), static_cast<float>(m_renderRegion.offset.y),
+                          static_cast<float>(m_size.width), static_cast<float>(m_size.height), 0.0f, 1.0f}});
+  cmdBuf.setScissor(0, {m_renderRegion});
+
+  m_offscreen.run(cmdBuf);
   if(m_showAxis)
     m_axis.display(cmdBuf, CameraManip.getMatrix(), m_size);
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Ray tracing / Wavefront
+// Ray tracing
 //////////////////////////////////////////////////////////////////////////
 
 void SampleExample::render(RndMethod method, const vk::CommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler)
 {
+  LABEL_SCOPE_VK(cmdBuf);
   g_nvml.refresh();
 
   // We are done rendering
-  if(m_state.frame >= m_maxFrames)
+  if(m_rtxState.frame >= m_maxFrames)
     return;
 
+  // #TODO - add more rendering engines
   if(method != m_rndMethod)
   {
     LOGI("Switching renderer, from %d to %d \n", m_rndMethod, method);
@@ -335,11 +378,15 @@ void SampleExample::render(RndMethod method, const vk::CommandBuffer& cmdBuf, nv
         m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
   }
 
-  vk::Extent2D render_size = m_size;
+  // Handling de-scaling by reducing the size to render
+  vk::Extent2D render_size = m_renderRegion.extent;
   if(m_descaling)
-    render_size = vk::Extent2D(m_size.width / m_descalingLevel, m_size.height / m_descalingLevel);
+    render_size = vk::Extent2D(render_size.width / m_descalingLevel, render_size.height / m_descalingLevel);
 
-  m_pRender[m_rndMethod]->m_state = m_state;
+  m_rtxState.size = {render_size.width, render_size.height};
+  // State is the push constant structure
+  m_pRender[m_rndMethod]->m_state = m_rtxState;
+  // Running the renderer
   m_pRender[m_rndMethod]->run(cmdBuf, render_size, profiler,
                               {m_accelStruct.getDescSet(), m_offscreen.getDescSet(), m_scene.getDescSet(), m_descSet});
 }
@@ -363,9 +410,9 @@ void SampleExample::titleBar()
   {
     std::stringstream o;
     o << "VK glTF Viewer";
-    o << " | " << m_scene.getSceneName();                     // Scene name
-    o << " | " << m_size.width << "x" << m_size.height;       // resolution
-    o << " | " << static_cast<int>(ImGui::GetIO().Framerate)  // FPS / ms
+    o << " | " << m_scene.getSceneName();                                              // Scene name
+    o << " | " << m_renderRegion.extent.width << "x" << m_renderRegion.extent.height;  // resolution
+    o << " | " << static_cast<int>(ImGui::GetIO().Framerate)                           // FPS / ms
       << " FPS / " << std::setprecision(3) << 1000.F / ImGui::GetIO().Framerate << "ms";
     if(g_nvml.isValid())  // Graphic card, driver
     {
@@ -373,6 +420,8 @@ void SampleExample::titleBar()
       o << " | " << i.name;
       o << " | " << g_nvml.getSysInfo().driverVersion;
     }
+    if(m_rndMethod != eNone && m_pRender[m_rndMethod] != nullptr)
+      o << " | " << m_pRender[m_rndMethod]->name();
     glfwSetWindowTitle(m_window, o.str().c_str());
     dirtyTimer = 0;
   }
@@ -410,7 +459,7 @@ void SampleExample::menuBar()
     if(ImGui::BeginMenu("File"))
     {
       if(ImGui::MenuItem("Open GLTF Scene"))
-        loadAssets(openFilename("GLTF Files\0*.gltf\0Binary\0*.glb\0").c_str());
+        loadAssets(openFilename("GLTF Files\0*.gltf;*.glb\0\0").c_str());
       if(ImGui::MenuItem("Open HDR Environment"))
         loadAssets(openFilename("HDR Files\0*.hdr\0\0").c_str());
       ImGui::Separator();
@@ -425,7 +474,6 @@ void SampleExample::menuBar()
       ImGui::MenuItem("Axis", nullptr, &m_showAxis);
       ImGui::EndMenu();
     }
-    ImGuiH::Panel::style.panel_offset.y = ImGui::GetWindowSize().y;
 
     ImGui::EndMainMenuBar();
   }
@@ -438,7 +486,9 @@ bool SampleExample::guiCamera()
 {
   bool changed{false};
   changed |= ImGuiH::CameraWidget();
-  GuiH::Checkbox("Show Axis", "Show orientation axis on the lower left corner", &m_showAxis);
+  auto& cam = m_scene.getCamera();
+  changed |= GuiH::Slider("Aperture", "", &cam.aperture, nullptr, ImGuiH::Control::Flags::Normal, 0.0f, 0.5f);
+
   return changed;
 }
 
@@ -447,10 +497,10 @@ bool SampleExample::guiRayTracing()
   auto Normal = ImGuiH::Control::Flags::Normal;
   bool changed{false};
 
-  changed |= GuiH::Slider("Max Ray Depth", "", &m_state.maxDepth, nullptr, Normal, 1, 10);
-  changed |= GuiH::Slider("Samples Per Frame", "", &m_state.maxSamples, nullptr, Normal, 1, 10);
+  changed |= GuiH::Slider("Max Ray Depth", "", &m_rtxState.maxDepth, nullptr, Normal, 1, 10);
+  changed |= GuiH::Slider("Samples Per Frame", "", &m_rtxState.maxSamples, nullptr, Normal, 1, 10);
   changed |= GuiH::Slider("Max Iteration ", "", &m_maxFrames, nullptr, Normal, 1, 1000);
-  changed |= GuiH::Selection("Debug Mode", "Display unique values of material", &m_state.debugging_mode, nullptr, Normal,
+  changed |= GuiH::Selection("Debug Mode", "Display unique values of material", &m_rtxState.debugging_mode, nullptr, Normal,
                              {"No Debug", "BaseColor", "Normal", "Metallic", "Emissive", "Alpha", "Roughness",
                               "Textcoord", "Tangent", "Radiance", "Weight", "RayDir"});
 
@@ -460,26 +510,24 @@ bool SampleExample::guiRayTracing()
                           "Value of 1, will not de-scale",
                           &m_descalingLevel, nullptr, Normal, 1, 8);
 
-  GuiH::Info("Frame", "", std::to_string(m_state.frame), GuiH::Flags::Disabled);
+  changed |= GuiH::Selection("Pbr Mode", "PBR material model", &m_rtxState.pbrMode, nullptr, Normal, {"Disney", "Gltf"});
+
+  GuiH::Info("Frame", "", std::to_string(m_rtxState.frame), GuiH::Flags::Disabled);
   return changed;
 }
 
 
 bool SampleExample::guiTonemapper()
 {
-  static Offscreen::TReinhard default_tm;  // default values
-  auto&                       tm = m_offscreen.m_tReinhard;
-  bool                        changed{false};
-
-  // changed |= GuiH::Slider("Brightness", "Brightness adjustment of the output image", &tm.key, &default_tm.key,
-  //                        GuiH::Flags::Normal, 0.00f, 2.00f);
-  // changed |= GuiH::Slider("White Burning", "More or less white", &tm.Ywhite, &default_tm.Ywhite, GuiH::Flags::Normal, 0.001f, 10.00f);
-  // changed |= GuiH::Slider("Saturation", "Color to grey", &tm.sat, &default_tm.sat, GuiH::Flags::Normal, 0.00f, 2.00f);
-
-  // changed |= GuiH::Slider("Luminance", "Average luminance of the scene", &tm.avgLum, &default_tm.avgLum,
-  //                        GuiH::Flags::Normal, 0.001f, 25.00f);
+  static Offscreen::Tonemapper default_tm;  // default values
+  auto&                        tm = m_offscreen.m_tonemapper;
+  bool                         changed{false};
 
   changed |= GuiH::Slider("Exposure", "Scene Exposure", &tm.avgLum, &default_tm.avgLum, GuiH::Flags::Normal, 0.001f, 5.00f);
+  changed |= GuiH::Slider("Brightness", "", &tm.brightness, &default_tm.brightness, GuiH::Flags::Normal, 0.0f, 2.0f);
+  changed |= GuiH::Slider("Contrast", "", &tm.contrast, &default_tm.contrast, GuiH::Flags::Normal, 0.0f, 2.0f);
+  changed |= GuiH::Slider("Saturation", "", &tm.saturation, &default_tm.saturation, GuiH::Flags::Normal, 0.0f, 5.0f);
+  changed |= GuiH::Slider("Vignette", "", &tm.vignette, &default_tm.vignette, GuiH::Flags::Normal, 0.0f, 2.0f);
 
   return false;  // doesn't matter
 }
@@ -490,8 +538,13 @@ bool SampleExample::guiEnvironment()
   bool             changed{false};
 
   changed |= ImGui::Checkbox("Use Sun & Sky", (bool*)&m_sunAndSky.in_use);
-  changed |= GuiH::Slider("Exposure", "Intensity of the environment", &m_state.environment_intensity_factor, nullptr,
+  changed |= GuiH::Slider("Exposure", "Intensity of the environment", &m_rtxState.hdrMultiplier, nullptr,
                           GuiH::Flags::Normal, 0.f, 5.f);
+
+  // Adjusting the up with the camera
+  nvmath::vec3f eye, center, up;
+  CameraManip.getLookat(eye, center, up);
+  m_sunAndSky.y_is_up = (up.y == 1);
 
   if(m_sunAndSky.in_use)
   {
@@ -579,63 +632,46 @@ bool SampleExample::guiStatistics()
 
 bool SampleExample::guiProfiler(nvvk::ProfilerVK& profiler)
 {
-  static int m_avg = 10;
-  //  static double m_statsCpuTime, m_statsGpuTime = 0;
-  static vec2 statRender;
-  static vec2 statTone;
-  static vec2 statUi;
-
-  int avgf = profiler.getTotalFrames();
-  if(avgf % m_avg == m_avg - 1)
+  struct Info
   {
+    vec2  statRender{0.0f, 0.0f};
+    vec2  statTone{0.0f, 0.0f};
+    float frameTime{0.0f};
+  };
+  static Info display;
+  static Info collect;
+
+  // Collecting data
+  static float dirtyCnt = 0.0f;
+  {
+    dirtyCnt++;
     nvh::Profiler::TimerInfo info;
     profiler.getTimerInfo("Render", info);
-    statRender.x = float(info.gpu.average);
-    statRender.y = float(info.cpu.average);
+    collect.statRender.x += float(info.gpu.average / 1000.0f);
+    collect.statRender.y += float(info.cpu.average / 1000.0f);
     profiler.getTimerInfo("Tonemap", info);
-    statTone.x = float(info.gpu.average);
-    statTone.y = float(info.cpu.average);
-    profiler.getTimerInfo("Ui", info);
-    statUi.x = float(info.gpu.average);
-    statUi.y = float(info.cpu.average);
-
-    m_avg = std::max(static_cast<int>(ImGui::GetIO().Framerate / 10.F), 1);  // 10 lookup per second
+    collect.statTone.x += float(info.gpu.average / 1000.0f);
+    collect.statTone.y += float(info.cpu.average / 1000.0f);
+    collect.frameTime += 1000.0f / ImGui::GetIO().Framerate;
   }
 
-  float maxTimeF  = std::max(std::max(statRender.y, statRender.x), 0.0001f);
-  float frameTime = 1000.0f / ImGui::GetIO().Framerate;
-  ImGui::Text("Frame     [ms]: %2.3f", frameTime);
-  ImGui::Text("Render GPU/CPU [ms]: %2.3f  /  %2.3f", statRender.x / 1000.0f, statRender.y / 1000.0f);
-  //  ImGuiH::Text("Scene CPU [ms]: %2.3f", cpuTimeF / 1000.0f);
-  ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x / 2);
-  ImGui::ProgressBar(statRender.x / maxTimeF, ImVec2(0.0f, 0.0f));
-  ImGui::SameLine(0, 0);
-  ImGui::ProgressBar(statRender.y / maxTimeF, ImVec2(0.0f, 0.0f));
-  ImGui::PopItemWidth();
-  ImGui::Text("Tone+UI GPU/CPU [ms]: %2.3f  /  %2.3f", statTone.x / 1000.0f, statTone.y / 1000.0f);
-
-
-  std::vector<std::string> sections = {"Generate", "Extend", "Shade", "Connect", "Finalize"};
-  std::array<float, 5>     values;
-  nvh::Profiler::TimerInfo info;
-  for(size_t i = 0; i < sections.size(); i++)
+  // Averaging display of the data every 0.5 seconds
+  static float dirtyTimer = 1.0f;
+  dirtyTimer += ImGui::GetIO().DeltaTime;
+  if(dirtyTimer >= 0.5f)
   {
-    profiler.getTimerInfo(sections[i].c_str(), info);
-    values[i] = static_cast<float>(info.gpu.average);
+    display.statRender = collect.statRender / dirtyCnt;
+    display.statTone   = collect.statTone / dirtyCnt;
+    display.frameTime  = collect.frameTime / dirtyCnt;
+    dirtyTimer         = 0;
+    dirtyCnt           = 0;
+    collect            = Info{};
   }
 
-
-  // Display histogram only if there is a valid value
-  if(values[0] > 0)
-  {
-    ImGui::PlotHistogram("##histo", values.data(), static_cast<int>(values.size()), 0, nullptr, 0, maxTimeF,
-                         ImVec2(ImGui::GetContentRegionAvail().x, 90.f));
-    std::string s = std::accumulate(sections.begin(), sections.end(), std::string(),
-                                    [](const std::string& a, const std::string& b) -> std::string {
-                                      return a + (a.length() > 0 ? " | " : "") + b;
-                                    });
-    ImGui::Text(s.c_str());
-  }
+  ImGui::Text("Frame     [ms]: %2.3f", display.frameTime);
+  ImGui::Text("Render GPU/CPU [ms]: %2.3f  /  %2.3f", display.statRender.x, display.statRender.y);
+  ImGui::Text("Tone+UI GPU/CPU [ms]: %2.3f  /  %2.3f", display.statTone.x, display.statTone.y);
+  ImGui::ProgressBar(display.statRender.x / display.frameTime);
 
 
   return false;
@@ -804,13 +840,13 @@ void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
     nvvk::CommandPool sc(m_device, m_graphicsQueueIndex);
     vk::CommandBuffer cmdBuf = sc.createCommandBuffer();
 
-    const float aspectRatio = m_size.width / static_cast<float>(m_size.height);
+    const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
     auto        view        = CameraManip.getMatrix();
     auto        proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.1f, 1000.0f);
 
     RayPickerKHR::PickInfo pickInfo;
-    pickInfo.pickX          = float(x) / float(m_size.width);
-    pickInfo.pickY          = float(y) / float(m_size.height);
+    pickInfo.pickX          = float(x - m_renderRegion.offset.x) / float(m_renderRegion.extent.width);
+    pickInfo.pickY          = float(y - m_renderRegion.offset.y) / float(m_renderRegion.extent.height);
     pickInfo.modelViewInv   = nvmath::invert(view);
     pickInfo.perspectiveInv = nvmath::invert(proj);
 

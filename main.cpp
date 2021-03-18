@@ -29,12 +29,12 @@
 #include <array>
 #include <filesystem>
 #include <iostream>
+#include <thread>
 #include <vulkan/vulkan.hpp>
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-#include "imgui.h"
-#include "imgui_helper.h"
-#include "imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/extras/imgui_helper.h"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvh/inputparser.h"
@@ -71,8 +71,8 @@ static int const SAMPLE_HEIGHT = 720;
 int main(int argc, char** argv)
 {
   InputParser parser(argc, argv);
-  std::string sceneFile   = parser.getString("-f", "media/robot-toon.gltf");
-  std::string hdrFilename = parser.getString("-e", R"(media/std_env.hdr)");
+  std::string sceneFile   = parser.getString("-f", "robot_toon/robot-toon.gltf");
+  std::string hdrFilename = parser.getString("-e", "std_env.hdr");
 
 
   // Setup GLFW window
@@ -95,16 +95,15 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  // setup some basic things for the sample, logging file for example
-  NVPSystem system(argv[0], PROJECT_NAME);
+  // Setup logging file
+  //  nvprintSetLogFileName(PROJECT_NAME "_log.txt")
 
   // Search path for shaders and other media
   defaultSearchPaths = {
-      PROJECT_ABSDIRECTORY,
-      PROJECT_ABSDIRECTORY "..",
-      NVPSystem::exePath(),
-      NVPSystem::exePath() + "..",
-      NVPSystem::exePath() + std::string(PROJECT_NAME),
+      NVPSystem::exePath() + PROJECT_NAME,
+      NVPSystem::exePath() + R"(media)",
+      NVPSystem::exePath() + PROJECT_RELDIRECTORY,
+      NVPSystem::exePath() + PROJECT_DOWNLOAD_RELDIRECTORY,
   };
 
 
@@ -112,6 +111,7 @@ int main(int argc, char** argv)
   nvvk::ContextCreateInfo contextInfo(true);
   contextInfo.setVersion(1, 2);
   contextInfo.addInstanceExtension(VK_KHR_SURFACE_EXTENSION_NAME);
+  contextInfo.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #ifdef WIN32
   contextInfo.addInstanceExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #else
@@ -124,7 +124,11 @@ int main(int argc, char** argv)
   contextInfo.addDeviceExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
-  contextInfo.addDeviceExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+
+  vk::PhysicalDeviceShaderClockFeaturesKHR clockFeature;
+  clockFeature.setShaderSubgroupClock(VK_TRUE);
+  clockFeature.setShaderDeviceClock(VK_TRUE);
+  contextInfo.addDeviceExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME, false, &clockFeature);
   // #VKRay: Activate the ray tracing extension
   vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelFeature;
   contextInfo.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false, &accelFeature);
@@ -158,7 +162,8 @@ int main(int argc, char** argv)
   const vk::SurfaceKHR surface = sample.getVkSurface(vkctx.m_instance, window);
   vkctx.setGCTQueueWithPresent(surface);
 
-  sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex, vkctx.m_queueC.familyIndex);
+  sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex,
+               vkctx.m_queueC.familyIndex, vkctx.m_queueT.familyIndex);
   sample.createSwapchain(surface, SAMPLE_WIDTH, SAMPLE_HEIGHT);
   sample.createDepthBuffer();
   sample.createRenderPass();
@@ -223,16 +228,18 @@ int main(int argc, char** argv)
     sample.titleBar();
     sample.menuBar();
 
+    float panelAlpha = 1.0f;
+
     // Show UI window.
     if(sample.showGui())
     {
       ImGuiH::Control::style.ctrlPerc = 0.55f;
-      ImGuiH::Panel::Begin(ImGuiH::Panel::Side::Right);
+      ImGuiH::Panel::Begin(ImGuiH::Panel::Side::Right, panelAlpha);
 
       using Gui = ImGuiH::Control;
       bool changed{false};
-      //      changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
-      //                                     Gui::Flags::Normal, {"RtxPipeline"});
+      //changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
+      //                               Gui::Flags::Normal, {"RtxPipeline", "RayQuery"});
       if(ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
         changed |= sample.guiCamera();
       if(ImGui::CollapsingHeader("Ray Tracing", ImGuiTreeNodeFlags_DefaultOpen))
@@ -243,9 +250,9 @@ int main(int argc, char** argv)
         changed |= sample.guiEnvironment();
       if(ImGui::CollapsingHeader("Stats"))
       {
-        changed |= sample.guiStatistics();
+        Gui::Group<bool>("Scene Info", false, [&] { return sample.guiStatistics(); });
         Gui::Group<bool>("Profiler", false, [&] { return sample.guiProfiler(profiler); });
-        sample.guiGpuMeasures();
+        Gui::Group<bool>("Plot", false, [&] { return sample.guiGpuMeasures(); });
       }
       ImGui::TextWrapped("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
                          ImGui::GetIO().Framerate);
@@ -257,10 +264,21 @@ int main(int argc, char** argv)
       ImGui::End();  // ImGui::Panel::end()
     }
 
+    if(panelAlpha >= 1.0f && sample.showGui())
+    {
+      ImVec2 pos, size;
+      ImGuiH::Panel::CentralDimension(pos, size);
+      sample.setRenderRegion(vk::Rect2D(vk::Offset2D(static_cast<int32_t>(pos.x), static_cast<int32_t>(pos.y)),
+                                        vk::Extent2D(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y))));
+    }
+    else
+    {
+      sample.setRenderRegion(vk::Rect2D({}, sample.getSize()));
+    }
 
     // Clearing screen
     vk::ClearValue clearValues[2];
-    clearValues[0].setColor(std::array<float, 4>({clearColor[0], clearColor[1], clearColor[2], clearColor[3]}));
+    clearValues[0].setColor(std::array<float, 4>({0, 0, 0, 0}));
     clearValues[1].setDepthStencil({1.0f, 0});
 
     // Offscreen render pass
@@ -292,7 +310,7 @@ int main(int argc, char** argv)
       sample.drawPost(cmdBuf);
 
       ImGui::Render();
-      ImGui::RenderDrawDataVK(cmdBuf, ImGui::GetDrawData());
+      ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
       cmdBuf.endRenderPass();
     }
 

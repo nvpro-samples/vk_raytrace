@@ -32,5 +32,6 @@ public:
                       const std::vector<vk::DescriptorSetLayout>& extraDescSetsLayout,
                       Scene*                                      _scene = nullptr)                          = 0;
 
-  RtxState m_state;
+  virtual const std::string name() = 0;
+  RtxState                  m_state;
 };

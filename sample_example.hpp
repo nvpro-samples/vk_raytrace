@@ -37,7 +37,7 @@
     +--------------------------------------------+
     |             SampleExample                  |
     +--------+-----------------------------------+
-    |  Pick  |    RtxPipeline   | other   ? ...     |
+    |  Pick  |    RtxPipeline   | other   ? ...  |
     +--------+---------+-------------------------+
     |       TLAS       |                         |
     +------------------+     Offscreen           |
@@ -79,10 +79,16 @@ public:
   enum RndMethod
   {
     eRtxPipeline,
+    //    eRayQuery,
     eNone,
   };
 
-  void setup(const vk::Instance& instance, const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t queueFamily, uint32_t computeQueueIndex);
+  void setup(const vk::Instance&       instance,
+             const vk::Device&         device,
+             const vk::PhysicalDevice& physicalDevice,
+             uint32_t                  gtcQueueIndexFamily,
+             uint32_t                  computeQueueIndex,
+             uint32_t                  transferQueueIndex);
   void createDescriptorSetLayout();
   void updateHdrDescriptors();
   void loadScene(const std::string& filename);
@@ -146,6 +152,10 @@ public:
   nvvk::Allocator    m_alloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil    m_debug;  // Utility to name objects
 
+
+  vk::Rect2D m_renderRegion;
+  void       setRenderRegion(const vk::Rect2D& size);
+
   // #Post
   void createOffscreenRender();
   void drawPost(vk::CommandBuffer cmdBuf);
@@ -154,7 +164,7 @@ public:
   void render(RndMethod method, const vk::CommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
 
 
-  RtxState    m_state{0 /*frame*/, 5 /*depth*/, 1 /*sample*/, 1 /*firefly*/, 1 /*intensity*/, 0 /*debug mode*/};
+  RtxState    m_rtxState{};
   int         m_maxFrames{1000};
   bool        m_showAxis{true};
   bool        m_descaling{false};

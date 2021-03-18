@@ -27,92 +27,64 @@
 
 #version 460
 #extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_ray_tracing : require  // This is about ray tracing
-
-// Special extensions to debug groups, warps, SM, ...
-#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_EXT_ray_tracing : require            // This is about ray tracing
+#extension GL_KHR_shader_subgroup_basic : require  // Special extensions to debug groups, warps, SM, ...
 #extension GL_NV_shader_sm_builtins : require
-// Align structure layout to scalar
-#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_scalar_block_layout : enable   // Align structure layout to scalar
+#extension GL_EXT_nonuniform_qualifier : enable  // To access unsized descriptor arrays
+#extension GL_ARB_shader_clock : enable          // Using clockARB
 
-#define USE_INIT_PAYLOAD
-#define USE_STOREIMAGE
+#include "../structures.h"
+
+#include "globals.glsl"
 #include "layouts.glsl"
-#include "raycommon.glsl"
+
+layout(location = 0) rayPayloadEXT PtPayload prd;
+layout(location = 1) rayPayloadEXT ShadowHitPayload shadow_payload;
 
 
-layout(location = 0) rayPayloadEXT HitPayload prd;
-// Push Constant
 layout(push_constant) uniform _RtxState
 {
-  RtxState state;
+  RtxState rtxState;
 };
+
+
+#include "traceray_rtx.glsl"
+
+#include "pathtrace.glsl"
+#include "random.glsl"
 
 
 void main()
 {
-  ivec2 sizeImage  = ivec2(gl_LaunchSizeEXT.xy);
-  ivec2 coordImage = ivec2(gl_LaunchIDEXT.xy);
+  ivec2 imageRes    = rtxState.size;
+  ivec2 imageCoords = ivec2(gl_LaunchIDEXT.xy);
 
-  vec3 hitValues = vec3(0);
-  int  smpl      = 0;
-  for(; smpl < state.maxSamples; ++smpl)
+  // Initialize the seed for the random number only once once
+  uvec2 s    = pcg2d(imageCoords * int(clockARB()));
+  uint  seed = s.x + s.y;
+  //prd.seed = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, rtxState.frame * rtxState.maxSamples);
+  prd.seed = seed;
+
+  vec3 pixelColor = vec3(0);
+  for(int smpl = 0; smpl < rtxState.maxSamples; ++smpl)
   {
-
-    prd = InitializePayload(coordImage, sizeImage, cameraMatrices, state.frame * state.maxSamples + smpl);
-
-
-    // Trace the scene
-    uint  rayFlags  = gl_RayFlagsNoneEXT;
-    float tMin      = 0.00001;
-    float tMax      = 1e32;
-    vec3  curWeight = vec3(1);
-
-
-    for(int depth = 0; depth < state.maxDepth; depth++)
-    {
-      prd.contribution = vec3(0);
-
-      traceRayEXT(topLevelAS,        // acceleration structure
-                  rayFlags,          // rayFlags
-                  0xFF,              // cullMask
-                  0,                 // sbtRecordOffset
-                  0,                 // sbtRecordStride
-                  0,                 // missIndex
-                  prd.rayOrigin,     // ray origin
-                  tMin,              // ray min range
-                  prd.rayDirection,  // ray direction
-                  tMax,              // ray max range
-                  0                  // payload (location = 0)
-      );
-
-      // Adding contribution from hit
-      hitValues += prd.contribution;
-
-      // Removing fireflies
-      {
-        float lum = dot(hitValues, vec3(0.212671f, 0.715160f, 0.072169f));
-        if(lum > state.fireflyClampThreshold)
-          hitValues *= state.fireflyClampThreshold / lum;
-      }
-
-      // Russian roulette termination
-      if(depth > 0)
-      {
-        float pcont = max(prd.weight.x, max(prd.weight.y, prd.weight.z));
-        if(rnd(prd.seed) >= pcont)
-          break;
-        prd.weight /= pcont;
-      }
-
-      if(has_flag(prd.flags, FLAG_DONE))
-        break;
-    }
+    pixelColor += samplePixel(imageCoords, imageRes);
   }
 
-  // Average result
-  hitValues = hitValues / state.maxSamples;
+  pixelColor /= rtxState.maxSamples;
 
   // Do accumulation over time
-  StoreResult(resultImage, coordImage, state.frame, hitValues);
+  if(rtxState.frame > 0)
+  {
+    vec3 old_color  = imageLoad(resultImage, imageCoords).xyz;
+    vec3 new_result = mix(old_color, pixelColor, 1.0f / float(rtxState.frame + 1));
+
+    imageStore(resultImage, imageCoords, vec4(new_result, 1.f));
+  }
+  else
+  {
+    // First frame, replace the value in the buffer
+    imageStore(resultImage, imageCoords, vec4(pixelColor, 1.f));
+  }
 }

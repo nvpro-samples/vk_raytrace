@@ -32,21 +32,17 @@
 // Align structure layout to scalar
 #extension GL_EXT_scalar_block_layout : enable
 
-#define USE_ACCEL
-#define USE_RANDOM
-#define USE_SAMPLING
-#define USE_SHADING
-#define USE_SCENE
-#define USE_SUN_AND_SKY
-#include "raycommon.glsl"
 
+#include "globals.glsl"
+#include "layouts.glsl"
 #include "random.glsl"
+#include "raycommon.glsl"
 #include "shade_state.glsl"
 
 hitAttributeEXT vec2 bary;
 
 // Payloads
-layout(location = 0) rayPayloadInEXT HitPayload prd;
+layout(location = 0) rayPayloadInEXT PtPayload prd;
 
 // Push Constant
 layout(push_constant) uniform _RtxState
@@ -58,36 +54,15 @@ layout(push_constant) uniform _RtxState
 void main()
 {
   // Retrieve the Primitive mesh buffer information
-  RtPrimitiveLookup pinfo = primInfo[gl_InstanceCustomIndexEXT];
-
-  // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
-  const uint indexOffset  = pinfo.indexOffset + (3 * gl_PrimitiveID);
-  const uint vertexOffset = pinfo.vertexOffset;           // Vertex offset as defined in glTF
-  const uint matIndex     = max(0, pinfo.materialIndex);  // material of primitive mesh
-
-  // Getting the 3 indices of the triangle (local)
-  ivec3 triangleIndex = ivec3(indices[nonuniformEXT(indexOffset + 0)],  //
-                              indices[nonuniformEXT(indexOffset + 1)],  //
-                              indices[nonuniformEXT(indexOffset + 2)]);
-  triangleIndex += ivec3(vertexOffset);  // (global)
-
-
-  const vec3 pos0 = getVertex(triangleIndex.x);
-  const vec3 pos1 = getVertex(triangleIndex.y);
-  const vec3 pos2 = getVertex(triangleIndex.z);
-  // compute geometry normal and check for back face hit
-  const vec3 geom_normal  = normalize(cross(pos1 - pos0, pos2 - pos0));
-  bool       is_back_face = dot(geom_normal, gl_ObjectRayDirectionEXT) > 0.0f;
-
-  GltfShadeMaterial mat = materials[nonuniformEXT(matIndex)];
-
+  RtPrimitiveLookup pinfo    = primInfo[gl_InstanceCustomIndexEXT];
+  const uint        matIndex = max(0, pinfo.materialIndex);  // material of primitive mesh
+  GltfShadeMaterial mat      = materials[nonuniformEXT(matIndex)];
 
   // back face culling
-  if(mat.doubleSided == 0 && is_back_face)
+  if(mat.doubleSided == 0 && (gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT))
   {
     ignoreIntersectionEXT;  // Terminating (jump statement)
   }
-
 
   // early out if there is no opacity function
   if(mat.alphaMode == ALPHA_OPAQUE)
@@ -95,20 +70,29 @@ void main()
     return;
   }
 
-  // Get the texture coordinate
-  const vec3 barycentrics = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
-  const vec2 uv0          = getTexCoord(triangleIndex.x);
-  const vec2 uv1          = getTexCoord(triangleIndex.y);
-  const vec2 uv2          = getTexCoord(triangleIndex.z);
-  vec2       texcoord0    = uv0 * barycentrics.x + uv1 * barycentrics.y + uv2 * barycentrics.z;
-
-  // Uv Transform
-  texcoord0 = (vec4(texcoord0.xy, 1, 1) * mat.uvTransform).xy;
-
-
   float baseColorAlpha = mat.pbrBaseColorFactor.a;
   if(mat.pbrBaseColorTexture > -1)
   {
+    // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
+    const uint indexOffset  = pinfo.indexOffset + (3 * gl_PrimitiveID);
+    const uint vertexOffset = pinfo.vertexOffset;  // Vertex offset as defined in glTF
+
+    // Getting the 3 indices of the triangle (local)
+    ivec3 triangleIndex = ivec3(indices[nonuniformEXT(indexOffset + 0)],  //
+                                indices[nonuniformEXT(indexOffset + 1)],  //
+                                indices[nonuniformEXT(indexOffset + 2)]);
+    triangleIndex += ivec3(vertexOffset);  // (global)
+
+    // Get the texture coordinate
+    const vec3 barycentrics = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
+    const vec2 uv0          = getTexCoord(triangleIndex.x);
+    const vec2 uv1          = getTexCoord(triangleIndex.y);
+    const vec2 uv2          = getTexCoord(triangleIndex.z);
+    vec2       texcoord0    = uv0 * barycentrics.x + uv1 * barycentrics.y + uv2 * barycentrics.z;
+
+    // Uv Transform
+    texcoord0 = (vec4(texcoord0.xy, 1, 1) * mat.uvTransform).xy;
+
     baseColorAlpha *= texture(texturesMap[nonuniformEXT(mat.pbrBaseColorTexture)], texcoord0).a;
   }
 

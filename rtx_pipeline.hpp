@@ -40,11 +40,12 @@ public:
   void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator) override;
   void destroy() override;
   void create(const vk::Extent2D& size, const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts, Scene* scene) override;
-  void updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts);
-  void run(const vk::CommandBuffer&              cmdBuf,
-           const vk::Extent2D&                   size,
-           nvvk::ProfilerVK&                     profiler,
-           const std::vector<vk::DescriptorSet>& descSets) override;
+  void              updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts);
+  void              run(const vk::CommandBuffer&              cmdBuf,
+                        const vk::Extent2D&                   size,
+                        nvvk::ProfilerVK&                     profiler,
+                        const std::vector<vk::DescriptorSet>& descSets) override;
+  const std::string name() override { return std::string("Rtx"); }
 
 private:
   void createRtShaderBindingTable();

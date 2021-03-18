@@ -16,8 +16,8 @@
 #include "tools.hpp"
 
 
-#include "autogen/shaders/passthrough.vert.h"
-#include "autogen/shaders/post.frag.h"
+#include "autogen/passthrough.vert.h"
+#include "autogen/post.frag.h"
 
 
 void Offscreen::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
@@ -26,6 +26,8 @@ void Offscreen::setup(const vk::Device& device, const vk::PhysicalDevice& physic
   m_pAlloc     = allocator;
   m_queueIndex = familyIndex;
   m_debug.setup(device);
+
+  m_offscreenDepthFormat = nvvk::findDepthFormat(physicalDevice);
 }
 
 
@@ -139,7 +141,7 @@ void Offscreen::createPostPipeline(const vk::RenderPass& renderPass)
   m_device.destroy(m_postPipelineLayout);
 
   // Push constants in the fragment shader
-  vk::PushConstantRange pushConstantRanges = {vk::ShaderStageFlagBits::eFragment, 0, sizeof(TReinhard)};
+  vk::PushConstantRange pushConstantRanges = {vk::ShaderStageFlagBits::eFragment, 0, sizeof(Tonemapper)};
 
   // Creating the pipeline layout
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
@@ -157,8 +159,7 @@ void Offscreen::createPostPipeline(const vk::RenderPass& renderPass)
   pipelineGenerator.addShader(vertexShader, vk::ShaderStageFlagBits::eVertex);
   pipelineGenerator.addShader(fragShader, vk::ShaderStageFlagBits::eFragment);
   pipelineGenerator.rasterizationState.setCullMode(vk::CullModeFlagBits::eNone);
-  m_postPipeline = pipelineGenerator.createPipeline();
-  m_debug.setObjectName(m_postPipeline, "post");
+  CREATE_NAMED_VK(m_postPipeline, pipelineGenerator.createPipeline());
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -194,17 +195,12 @@ void Offscreen::updatePostDescriptorSet() {}
 //--------------------------------------------------------------------------------------------------
 // Draw a full screen quad with the attached image
 //
-void Offscreen::run(vk::CommandBuffer cmdBuf, const vk::Extent2D& size)
+void Offscreen::run(vk::CommandBuffer cmdBuf)
 {
-  m_debug.beginLabel(cmdBuf, "Post");
+  LABEL_SCOPE_VK(cmdBuf);
 
-  cmdBuf.setViewport(0, {vk::Viewport(0, 0, (float)size.width, (float)size.height, 0, 1)});
-  cmdBuf.setScissor(0, {{{0, 0}, {size.width, size.height}}});
-
-  cmdBuf.pushConstants<TReinhard>(m_postPipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, m_tReinhard);
+  cmdBuf.pushConstants<Tonemapper>(m_postPipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, m_tonemapper);
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, m_postPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_postPipelineLayout, 0, m_postDescSet, {});
   cmdBuf.draw(3, 1, 0, 0);
-
-  m_debug.endLabel(cmdBuf);
 }

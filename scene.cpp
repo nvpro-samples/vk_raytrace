@@ -13,7 +13,7 @@
 #include "binding.h"
 #include "fileformats/tiny_gltf.h"
 #include "fileformats/tiny_gltf_freeimage.h"
-#include "imgui_camera_widget.h"
+#include "imgui/extras/imgui_camera_widget.h"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/nvprint.hpp"
 #include "nvvk/commands_vk.hpp"
@@ -48,8 +48,9 @@ bool Scene::load(const std::string& filename)
 
   LOGI("Loading scene: %s", filename.c_str());
   bool        result;
-  std::string extension = fs::path(filename).extension().string();
-  m_sceneName           = fs::path(filename).stem().string();
+  fs::path    fspath(filename);
+  std::string extension = fspath.extension().string();
+  m_sceneName           = fspath.stem().string();
   if(extension == ".gltf")
   {
     // Loading the scene using tinygltf, but don't load textures with it
@@ -114,14 +115,16 @@ bool Scene::load(const std::string& filename)
 
   // Create scene information buffers and copy on the Device
   // vertices, indices, materials and all other scene attributes
-  // We are using a different index (1), to allow loading in a different
-  // queue/thread that the display (0)
-  auto              queue = m_device.getQueue(m_queueFamillyIndex, 1);
-  nvvk::CommandPool cmdBufGet(m_device, m_queueFamillyIndex, vk::CommandPoolCreateFlagBits::eTransient, queue);
+
+  // We are using a different index (1), to allow loading in a different queue/thread than the display (0) is using
+  // Note: the GTC family queue is used because the nvvk::cmdGenerateMipmaps uses vkCmdBlitImage and this
+  // command requires graphic queue and not only transfer.
+  vk::Queue         queue = m_device.getQueue(m_queueFamilyIndex, 1);
+  nvvk::CommandPool cmdBufGet(m_device, m_queueFamilyIndex, vk::CommandPoolCreateFlagBits::eTransient, queue);
   vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
   {
     m_buffers[eCameraMat] =
-        m_pAlloc->createBuffer(sizeof(CameraMatrices), vkBU::eUniformBuffer | vkBU::eTransferDst, vkMP::eDeviceLocal);
+        m_pAlloc->createBuffer(sizeof(SceneCamera), vkBU::eUniformBuffer | vkBU::eTransferDst, vkMP::eDeviceLocal);
     m_buffers[eVertex] = m_pAlloc->createBuffer(cmdBuf, m_gltfScene.m_positions, vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
     m_buffers[eIndex] = m_pAlloc->createBuffer(cmdBuf, m_gltfScene.m_indices, vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
     m_buffers[eNormal]   = m_pAlloc->createBuffer(cmdBuf, m_gltfScene.m_normals, vkBU::eStorageBuffer);
@@ -134,17 +137,17 @@ bool Scene::load(const std::string& filename)
     for(auto& m : m_gltfScene.m_materials)
     {
       GltfShadeMaterial smat;
-      smat.pbrBaseColorFactor           = m.pbrBaseColorFactor;
-      smat.pbrBaseColorTexture          = m.pbrBaseColorTexture;
-      smat.pbrMetallicFactor            = m.pbrMetallicFactor;
-      smat.pbrRoughnessFactor           = m.pbrRoughnessFactor;
-      smat.pbrMetallicRoughnessTexture  = m.pbrMetallicRoughnessTexture;
-      smat.khrDiffuseFactor             = m.khrDiffuseFactor;
-      smat.khrSpecularFactor            = m.khrSpecularFactor;
-      smat.khrDiffuseTexture            = m.khrDiffuseTexture;
+      smat.pbrBaseColorFactor           = m.baseColorFactor;
+      smat.pbrBaseColorTexture          = m.baseColorTexture;
+      smat.pbrMetallicFactor            = m.metallicFactor;
+      smat.pbrRoughnessFactor           = m.roughnessFactor;
+      smat.pbrMetallicRoughnessTexture  = m.metallicRoughnessTexture;
+      smat.khrDiffuseFactor             = m.specularGlossiness.diffuseFactor;
+      smat.khrSpecularFactor            = m.specularGlossiness.specularFactor;
+      smat.khrDiffuseTexture            = m.specularGlossiness.diffuseTexture;
+      smat.khrGlossinessFactor          = m.specularGlossiness.glossinessFactor;
+      smat.khrSpecularGlossinessTexture = m.specularGlossiness.specularGlossinessTexture;
       smat.shadingModel                 = m.shadingModel;
-      smat.khrGlossinessFactor          = m.khrGlossinessFactor;
-      smat.khrSpecularGlossinessTexture = m.khrSpecularGlossinessTexture;
       smat.emissiveTexture              = m.emissiveTexture;
       smat.emissiveFactor               = m.emissiveFactor;
       smat.alphaMode                    = m.alphaMode;
@@ -152,11 +155,21 @@ bool Scene::load(const std::string& filename)
       smat.doubleSided                  = m.doubleSided;
       smat.normalTexture                = m.normalTexture;
       smat.normalTextureScale           = m.normalTextureScale;
-      smat.uvTransform                  = m.uvTransform;
-      smat.unlit                        = m.unlit;
-      smat.anisotropy                   = m.anisotropy;
-      smat.anisotropyDirection          = m.anisotropyDirection;
-
+      smat.uvTransform                  = m.textureTransform.uvTransform;
+      smat.unlit                        = m.unlit.active;
+      smat.transmissionFactor           = m.transmission.factor;
+      smat.transmissionTexture          = m.transmission.texture;
+      smat.anisotropy                   = m.anisotropy.factor;
+      smat.anisotropyDirection          = m.anisotropy.direction;
+      smat.ior                          = m.ior.ior;
+      smat.attenuationColor             = m.volume.attenuationColor;
+      smat.thicknessFactor              = m.volume.thicknessFactor;
+      smat.thicknessTexture             = m.volume.thicknessTexture;
+      smat.attenuationDistance          = m.volume.attenuationDistance;
+      smat.clearcoatFactor              = m.clearcoat.factor;
+      smat.clearcoatRoughness           = m.clearcoat.roughnessFactor;
+      smat.clearcoatTexture             = m.clearcoat.texture;
+      smat.clearcoatRoughnessTexture    = m.clearcoat.roughnessTexture;
 
       shadeMaterials.emplace_back(smat);
     }
@@ -181,19 +194,52 @@ bool Scene::load(const std::string& filename)
     m_buffers[ePrimLookup] = m_pAlloc->createBuffer(cmdBuf, primLookup, vk::BufferUsageFlagBits::eStorageBuffer);
 
     // Debugging names
-    m_debug.setObjectName(m_buffers[eCameraMat].buffer, "cameraMat");
-    m_debug.setObjectName(m_buffers[eVertex].buffer, "Vertex");
-    m_debug.setObjectName(m_buffers[eIndex].buffer, "Index");
-    m_debug.setObjectName(m_buffers[eNormal].buffer, "Normal");
-    m_debug.setObjectName(m_buffers[eTexCoord].buffer, "TexCoord");
-    m_debug.setObjectName(m_buffers[eTangent].buffer, "Tangents");
-    m_debug.setObjectName(m_buffers[eColor].buffer, "Color");
-    m_debug.setObjectName(m_buffers[eMaterial].buffer, "Material");
-    m_debug.setObjectName(m_buffers[eMatrix].buffer, "Matrix");
-    m_debug.setObjectName(m_buffers[ePrimLookup].buffer, "PrimLookup");
+    NAME_VK(m_buffers[eCameraMat].buffer);
+    NAME_VK(m_buffers[eVertex].buffer);
+    NAME_VK(m_buffers[eIndex].buffer);
+    NAME_VK(m_buffers[eNormal].buffer);
+    NAME_VK(m_buffers[eTexCoord].buffer);
+    NAME_VK(m_buffers[eTangent].buffer);
+    NAME_VK(m_buffers[eColor].buffer);
+    NAME_VK(m_buffers[eMaterial].buffer);
+    NAME_VK(m_buffers[eMatrix].buffer);
+    NAME_VK(m_buffers[ePrimLookup].buffer);
 
     // Creates all textures found
     createTextureImages(cmdBuf, tmodel);
+
+
+    // Lights
+    //if(m_gltfScene.m_lights.empty() == false)
+    {
+      std::vector<Light> all_lights;
+      for(const auto& l_gltf : m_gltfScene.m_lights)
+      {
+        Light l;
+        l.position     = l_gltf.worldMatrix * nvmath::vec4f(0, 0, 0, 1);
+        l.direction    = l_gltf.worldMatrix * nvmath::vec4f(0, 0, -1, 0);
+        l.color        = nvmath::vec3f(l_gltf.light.color[0], l_gltf.light.color[1], l_gltf.light.color[2]);
+        l.innerConeCos = static_cast<float>(cos(l_gltf.light.spot.innerConeAngle));
+        l.outerConeCos = static_cast<float>(cos(l_gltf.light.spot.outerConeAngle));
+        l.range        = static_cast<float>(l_gltf.light.range);
+        l.intensity    = static_cast<float>(l_gltf.light.intensity);
+        if(l_gltf.light.type == "point")
+          l.type = LightType_Point;
+        else if(l_gltf.light.type == "directional")
+          l.type = LightType_Directional;
+        else if(l_gltf.light.type == "spot")
+          l.type = LightType_Spot;
+        all_lights.emplace_back(l);
+      }
+
+      if(all_lights.empty())  // Cannot be null
+        all_lights.emplace_back(Light{});
+      m_buffers[eLights] = m_pAlloc->createBuffer(cmdBuf, all_lights, vk::BufferUsageFlagBits::eStorageBuffer);
+      NAME_VK(m_buffers[eLights].buffer);
+    }
+    m_camera.nbLights = static_cast<int>(m_gltfScene.m_lights.size());
+
+    // Finalizing the command buffer
     cmdBufGet.submitAndWait(cmdBuf);
     m_pAlloc->finalizeAndReleaseStaging();
   }
@@ -215,12 +261,27 @@ void Scene::destroy()
     b = {};
   }
 
+  for(auto& i : m_images)
+  {
+    m_pAlloc->destroy(i.first);
+    i = {};
+  }
+
+  for(size_t i = 0; i < m_defaultTextures.size(); i++)
+  {
+    size_t last_index = m_defaultTextures[m_defaultTextures.size() - 1 - i];
+    m_pAlloc->destroy(m_textures[last_index]);
+    m_textures.erase(m_textures.begin() + last_index);
+  }
+
   for(auto& t : m_textures)
   {
-    m_pAlloc->destroy(t);
+    vkDestroyImageView(m_device, t.descriptor.imageView, nullptr);
     t = {};
   }
   m_textures.clear();
+  m_images.clear();
+  m_defaultTextures.clear();
 
   m_device.destroy(m_descPool);
   m_device.destroy(m_descSetLayout);
@@ -280,11 +341,23 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
   vk::Format format = vk::Format::eB8G8R8A8Unorm;
 
   // Make dummy image(1,1), needed as we cannot have an empty array
+  auto addDefaultImage = [this, cmdBuf]() {
+    std::array<uint8_t, 4> white           = {255, 255, 255, 255};
+    vk::ImageCreateInfo    imageCreateInfo = nvvk::makeImage2DCreateInfo(vk::Extent2D{1, 1});
+    nvvk::Image            image           = m_pAlloc->createImage(cmdBuf, 4, white.data(), imageCreateInfo);
+    m_images.push_back({image, imageCreateInfo});
+    m_debug.setObjectName(m_images.back().first.image, "dummy");
+  };
+
+
+  // Make dummy texture/image(1,1), needed as we cannot have an empty array
   auto addDefaultTexture = [this, cmdBuf]() {
+    m_defaultTextures.push_back(m_textures.size());
     std::array<uint8_t, 4> white = {255, 255, 255, 255};
     m_textures.emplace_back(m_pAlloc->createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(vk::Extent2D{1, 1}), {}));
     m_debug.setObjectName(m_textures.back().image, "dummy");
   };
+
 
   if(gltfModel.images.empty())
   {
@@ -293,28 +366,46 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
     return;
   }
 
-  m_textures.reserve(gltfModel.textures.size());
-  for(size_t i = 0; i < gltfModel.textures.size(); i++)
+
+  // Creating all images
+  m_images.reserve(gltfModel.images.size());
+  for(size_t i = 0; i < gltfModel.images.size(); i++)
   {
-    int sourceImage = gltfModel.textures[i].source;
-    if(sourceImage >= gltfModel.images.size() || sourceImage < 0)
-    {
-      // Incorrect source image
-      addDefaultTexture();
-      continue;
-    }
+    size_t sourceImage = i;
 
     auto& gltfimage = gltfModel.images[sourceImage];
     if(gltfimage.width == -1 || gltfimage.height == -1 || gltfimage.image.empty())
     {
       // Image not present or incorrectly loaded (image.empty)
-      addDefaultTexture();
+      addDefaultImage();
       continue;
     }
 
     void*        buffer     = &gltfimage.image[0];
     VkDeviceSize bufferSize = gltfimage.image.size();
     auto         imgSize    = vk::Extent2D(gltfimage.width, gltfimage.height);
+
+    // Creating an image, the sampler and generating mipmaps
+    vk::ImageCreateInfo imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, vkIU::eSampled, true);
+    nvvk::Image         image           = m_pAlloc->createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
+    nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
+    m_images.push_back({image, imageCreateInfo});
+
+    NAME_IDX_VK(m_images[i].first.image, i);
+  }
+
+  // Creating the textures using the above images
+  m_textures.reserve(gltfModel.textures.size());
+  for(size_t i = 0; i < gltfModel.textures.size(); i++)
+  {
+    int sourceImage = gltfModel.textures[i].source;
+
+    if(sourceImage >= gltfModel.images.size() || sourceImage < 0)
+    {
+      // Incorrect source image
+      addDefaultTexture();
+      continue;
+    }
 
     // Sampler
     vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
@@ -324,17 +415,11 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
       auto gltfSampler  = gltfModel.samplers[gltfModel.textures[i].sampler];
       samplerCreateInfo = gltfSamplerToVulkan(gltfSampler);
     }
+    std::pair<nvvk::Image, vk::ImageCreateInfo>& image = m_images[sourceImage];
+    vk::ImageViewCreateInfo ivInfo                     = nvvk::makeImageViewCreateInfo(image.first.image, image.second);
+    m_textures.emplace_back(m_pAlloc->createTexture(image.first, ivInfo, samplerCreateInfo));
 
-    // Creating an image, the sampler and generating mipmaps
-    vk::ImageCreateInfo imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, vkIU::eSampled, true);
-
-    nvvk::Image image = m_pAlloc->createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
-    nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
-    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
-    m_textures.emplace_back(m_pAlloc->createTexture(image, ivInfo, samplerCreateInfo));
-
-
-    m_debug.setObjectName(m_textures[i].image, std::string("Txt" + std::to_string(i)).c_str());
+    NAME_IDX_VK(m_textures[i].image, i);
   }
 }
 
@@ -344,7 +429,7 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
 void Scene::createDescriptorSet()
 {
   auto nbTextures = static_cast<uint32_t>(m_textures.size());
-  auto flag       = vkSS::eClosestHitKHR | vkSS::eAnyHitKHR | vkSS::eCompute | vkSS::eFragment;
+  auto flag       = vkSS::eRaygenKHR | vkSS::eClosestHitKHR | vkSS::eAnyHitKHR | vkSS::eCompute | vkSS::eFragment;
 
   nvvk::DescriptorSetBindings bind;
   bind.addBinding(vkDS(B_CAMERA, vkDT::eUniformBuffer, 1, vkSS::eRaygenKHR | flag));
@@ -358,24 +443,24 @@ void Scene::createDescriptorSet()
   bind.addBinding(vkDS(B_MATRICES, vkDT::eStorageBuffer, 1, flag));
   bind.addBinding(vkDS(B_TEXTURES, vkDT::eCombinedImageSampler, nbTextures, flag));
   bind.addBinding(vkDS(B_PRIMLOOKUP, vkDT::eStorageBuffer, 1, flag));
+  bind.addBinding(vkDS(B_LIGHTS, vkDT::eStorageBuffer, 1, flag));
 
-  m_descSetLayout = bind.createLayout(m_device);
-  m_descPool      = bind.createPool(m_device, 1);
-  m_descSet       = nvvk::allocateDescriptorSet(m_device, m_descPool, m_descSetLayout);
-  m_debug.setObjectName(m_descSetLayout, "scene");
-  m_debug.setObjectName(m_descSet, "scene");
+  m_descPool = bind.createPool(m_device, 1);
+  CREATE_NAMED_VK(m_descSetLayout, bind.createLayout(m_device));
+  CREATE_NAMED_VK(m_descSet, nvvk::allocateDescriptorSet(m_device, m_descPool, m_descSetLayout));
 
-  std::array<vk::DescriptorBufferInfo, 11> dbi;
+  std::array<vk::DescriptorBufferInfo, eLast_elem> dbi;
   dbi[B_CAMERA]     = vk::DescriptorBufferInfo{m_buffers[eCameraMat].buffer, 0, VK_WHOLE_SIZE};
   dbi[B_VERTICES]   = vk::DescriptorBufferInfo{m_buffers[eVertex].buffer, 0, VK_WHOLE_SIZE};
   dbi[B_INDICES]    = vk::DescriptorBufferInfo{m_buffers[eIndex].buffer, 0, VK_WHOLE_SIZE};
   dbi[B_NORMALS]    = vk::DescriptorBufferInfo{m_buffers[eNormal].buffer, 0, VK_WHOLE_SIZE};
   dbi[B_TEXCOORDS]  = vk::DescriptorBufferInfo{m_buffers[eTexCoord].buffer, 0, VK_WHOLE_SIZE};
-  dbi[B_MATERIALS]  = vk::DescriptorBufferInfo{m_buffers[eMaterial].buffer, 0, VK_WHOLE_SIZE};
-  dbi[B_MATRICES]   = vk::DescriptorBufferInfo{m_buffers[eMatrix].buffer, 0, VK_WHOLE_SIZE};
   dbi[B_TANGENTS]   = vk::DescriptorBufferInfo{m_buffers[eTangent].buffer, 0, VK_WHOLE_SIZE};
   dbi[B_COLORS]     = vk::DescriptorBufferInfo{m_buffers[eColor].buffer, 0, VK_WHOLE_SIZE};
+  dbi[B_MATERIALS]  = vk::DescriptorBufferInfo{m_buffers[eMaterial].buffer, 0, VK_WHOLE_SIZE};
+  dbi[B_MATRICES]   = vk::DescriptorBufferInfo{m_buffers[eMatrix].buffer, 0, VK_WHOLE_SIZE};
   dbi[B_PRIMLOOKUP] = vk::DescriptorBufferInfo{m_buffers[ePrimLookup].buffer, 0, VK_WHOLE_SIZE};
+  dbi[B_LIGHTS]     = vk::DescriptorBufferInfo{m_buffers[eLights].buffer, 0, VK_WHOLE_SIZE};
 
   std::vector<vk::WriteDescriptorSet> writes;
   writes.emplace_back(bind.makeWrite(m_descSet, B_CAMERA, &dbi[B_CAMERA]));
@@ -388,6 +473,7 @@ void Scene::createDescriptorSet()
   writes.emplace_back(bind.makeWrite(m_descSet, B_MATERIALS, &dbi[B_MATERIALS]));
   writes.emplace_back(bind.makeWrite(m_descSet, B_MATRICES, &dbi[B_MATRICES]));
   writes.emplace_back(bind.makeWrite(m_descSet, B_PRIMLOOKUP, &dbi[B_PRIMLOOKUP]));
+  writes.emplace_back(bind.makeWrite(m_descSet, B_LIGHTS, &dbi[B_LIGHTS]));
 
   // All texture samplers
   std::vector<vk::DescriptorImageInfo> diit;
@@ -402,15 +488,17 @@ void Scene::createDescriptorSet()
 //--------------------------------------------------------------------------------------------------
 // Updating camera matrix
 //
-void Scene::updateCamera(const vk::CommandBuffer& cmdBuf)
+void Scene::updateCamera(const vk::CommandBuffer& cmdBuf, float aspectRatio)
 {
-  const float aspectRatio = CameraManip.getWidth() / static_cast<float>(CameraManip.getHeight());
+  m_camera.view        = CameraManip.getMatrix();
+  m_camera.proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.001f, 100000.0f);
+  m_camera.viewInverse = nvmath::invert(m_camera.view);
+  m_camera.projInverse = nvmath::invert(m_camera.proj);
 
-  CameraMatrices hostUBO = {};
-  hostUBO.view           = CameraManip.getMatrix();
-  hostUBO.proj           = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.001f, 100000.0f);
-  hostUBO.viewInverse    = nvmath::invert(hostUBO.view);
-  hostUBO.projInverse    = nvmath::invert(hostUBO.proj);
+  // Focal is the interest point
+  nvmath::vec3f eye, center, up;
+  CameraManip.getLookat(eye, center, up);
+  m_camera.focalDist = nvmath::length(center - eye);
 
   // UBO on the device
   vk::Buffer deviceUBO = m_buffers[eCameraMat].buffer;
@@ -420,20 +508,20 @@ void Scene::updateCamera(const vk::CommandBuffer& cmdBuf)
   beforeBarrier.setSrcAccessMask(vk::AccessFlagBits::eShaderRead);
   beforeBarrier.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
   beforeBarrier.setBuffer(deviceUBO);
-  beforeBarrier.setSize(sizeof hostUBO);
+  beforeBarrier.setSize(sizeof m_camera);
   cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eRayTracingShaderKHR,
                          vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits::eDeviceGroup, {}, {beforeBarrier}, {});
 
   // Schedule the host-to-device upload. (hostUBO is copied into the cmd
   // buffer so it is okay to deallocate when the function returns).
-  cmdBuf.updateBuffer<CameraMatrices>(deviceUBO, 0, hostUBO);
+  cmdBuf.updateBuffer<SceneCamera>(deviceUBO, 0, m_camera);
 
   // Making sure the updated UBO will be visible.
   vk::BufferMemoryBarrier afterBarrier;
   afterBarrier.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite);
   afterBarrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
   afterBarrier.setBuffer(deviceUBO);
-  afterBarrier.setSize(sizeof hostUBO);
+  afterBarrier.setSize(sizeof m_camera);
   cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
                          vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eRayTracingShaderKHR,
                          vk::DependencyFlagBits::eDeviceGroup, {}, {afterBarrier}, {});
