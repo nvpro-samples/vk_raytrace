@@ -211,6 +211,10 @@ vec3 PathTrace(Ray r)
     // Color at vertices
     state.mat.albedo *= sstate.color;
 
+    // Debugging info
+    if(rtxState.debugging_mode != 0)
+      return DebugInfo(state);
+
     // KHR_materials_unlit
     if(state.mat.unlit)
     {
@@ -262,9 +266,6 @@ vec3 PathTrace(Ray r)
     }
 #endif
 
-    // Debugging info
-    if(rtxState.debugging_mode != 0)
-      return DebugInfo(state);
 
     // Next ray
     r.direction = bsdfSampleRec.L;
