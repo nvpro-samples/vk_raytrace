@@ -867,6 +867,11 @@ void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
     nvmath::vec3f eye, center, up;
     CameraManip.getLookat(eye, center, up);
     CameraManip.setLookat(eye, worldPos, up, false);
+
+
+    auto& prim = m_scene.getScene().m_primMeshes[pr.instanceCustomIndex];
+    LOGI("Hit(%d): %s\n", pr.instanceCustomIndex, prim.name.c_str());
+    LOGI(" - PrimId(%d)\n", pr.primitiveID);
   }
   else if(key == GLFW_KEY_R)
   {
