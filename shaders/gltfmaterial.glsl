@@ -27,7 +27,7 @@ vec4 SRGBtoLINEAR(vec4 srgbIn)
 void GetMetallicRoughness(inout State state, in GltfShadeMaterial material)
 {
   // KHR_materials_ior
-  float dielectricSpecular = (state.mat.ior - 1) / (state.mat.ior + 1);
+  float dielectricSpecular = (material.ior - 1) / (material.ior + 1);
   dielectricSpecular *= dielectricSpecular;
 
   float perceptualRoughness = 0.0;
