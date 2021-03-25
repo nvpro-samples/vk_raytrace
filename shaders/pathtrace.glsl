@@ -53,7 +53,7 @@ vec3 DebugInfo(in State state)
     case eRoughness:
       return vec3(state.mat.roughness);
     case eTextcoord:
-      return vec3(state.texCoord, 1);
+      return vec3(state.texCoord, 0);
     case eTangent:
       return vec3(state.tangent.xyz + vec3(1)) * .5;
   };
@@ -79,7 +79,8 @@ VisibilityContribution DirectLight(in Ray r, in State state)
   vec3  lightDir;
 
   VisibilityContribution contrib;
-  contrib.visible = false;
+  contrib.radiance = vec3(0);
+  contrib.visible  = false;
 
   // keep it simple and use either point light or environment light, each with the same
   // probability. If the environment factor is zero, we always use the point light
@@ -175,6 +176,18 @@ vec3 PathTrace(Ray r)
     // Hitting the environment
     if(prd.hitT == INFINITY)
     {
+      if(rtxState.debugging_mode != eNoDebug)
+      {
+        if(depth != rtxState.maxDepth - 1)
+          return vec3(0);
+        if(rtxState.debugging_mode == eRadiance)
+          return radiance;
+        else if(rtxState.debugging_mode == eWeight)
+          return throughput;
+        else if(rtxState.debugging_mode == eRayDir)
+          return (r.direction + vec3(1)) * 0.5;
+      }
+
       vec3 env;
       if(_sunAndSky.in_use == 1)
         env = sun_and_sky(_sunAndSky, r.direction);
@@ -212,7 +225,7 @@ vec3 PathTrace(Ray r)
     state.mat.albedo *= sstate.color;
 
     // Debugging info
-    if(rtxState.debugging_mode != 0)
+    if(rtxState.debugging_mode != eNoDebug && rtxState.debugging_mode < eRadiance)
       return DebugInfo(state);
 
     // KHR_materials_unlit
@@ -254,6 +267,18 @@ vec3 PathTrace(Ray r)
     {
       break;
     }
+
+    // Debugging info
+    if(rtxState.debugging_mode != eNoDebug && (depth == rtxState.maxDepth - 1))
+    {
+      if(rtxState.debugging_mode == eRadiance)
+        return vcontrib.radiance;
+      else if(rtxState.debugging_mode == eWeight)
+        return throughput;
+      else if(rtxState.debugging_mode == eRayDir)
+        return (bsdfSampleRec.L + vec3(1)) * 0.5;
+    }
+
 
 #ifdef RR
     // Russian roulette
