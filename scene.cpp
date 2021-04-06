@@ -30,7 +30,12 @@ using vkSS = vk::ShaderStageFlagBits;
 using vkIU = vk::ImageUsageFlagBits;
 
 
-namespace fs = std::filesystem;
+// Use std::experimental::filesystem for pre-2017 Visual Studio Compilers
+#if defined( _MSC_VER ) && ( _MSC_VER < 1910 ) // Pre-Visual Studio 2017
+    namespace fs = std::experimental::filesystem;
+#else
+    namespace fs = std::filesystem;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Loading a GLTF Scene, allocate buffers and create descriptor set for all resources

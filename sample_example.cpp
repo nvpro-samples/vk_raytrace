@@ -30,6 +30,11 @@
 #include <sstream>
 #include <vulkan/vulkan.hpp>
 
+#if defined( _WIN32 )
+    #include <Windows.h>
+    #include <commdlg.h>
+#endif
+
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvh/nvprint.hpp"
@@ -154,9 +159,15 @@ void SampleExample::loadAssets(const char* filename)
   std::thread([&, sfile]() {
     LOGI("Loading: %s\n", sfile.c_str());
 
+    // Use std::experimental::filesystem for pre-2017 Visual Studio Compilers
+    #if defined( _MSC_VER ) && ( _MSC_VER < 1910 ) // Pre-Visual Studio 2017
+      namespace stdfs = std::experimental::filesystem;
+    #else
+      namespace stdfs = std::filesystem;
+    #endif
+
     // Supporting only GLTF and HDR files
-    namespace fs          = std::filesystem;
-    std::string extension = fs::path(sfile).extension().string();
+    std::string extension = stdfs::path(sfile).extension().string();
     if(extension == ".gltf" || extension == ".glb")
     {
       m_busyReasonText = "Loading scene ";
@@ -432,7 +443,7 @@ void SampleExample::menuBar()
   auto openFilename = [](const char* filter) {
 #ifdef _WIN32
     char         filename[MAX_PATH];
-    OPENFILENAME ofn;
+    OPENFILENAMEA ofn;
     ZeroMemory(&filename, sizeof(filename));
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
