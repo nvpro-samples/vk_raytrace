@@ -25,18 +25,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vulkan/vulkan.hpp>
-
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <numeric>
+#include <vulkan/vulkan.hpp>
 
 #include "fileformats/stb_image.h"
 #include "hdr_sampling.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
-#include <numeric>
-
 
 /*
  * HDR sampling is loading an HDR image and creating an acceleration structure for 
