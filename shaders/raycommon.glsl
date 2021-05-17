@@ -1,28 +1,20 @@
-/* Copyright (c) 2014-2018, NVIDIA CORPORATION. All rights reserved.
+/*
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of NVIDIA CORPORATION nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef RAYCOMMON_GLSL
@@ -38,5 +30,31 @@ vec3 IntegerToColor(uint val)
   return vec3(sin(freq * val) * .5 + .5);
 }
 
+
+// utility for temperature
+float fade(float low, float high, float value)
+{
+  float mid   = (low + high) * 0.5;
+  float range = (high - low) * 0.5;
+  float x     = 1.0 - clamp(abs(mid - value) / range, 0.0, 1.0);
+  return smoothstep(0.0, 1.0, x);
+}
+
+// Return a cold-hot color based on intensity [0-1]
+vec3 temperature(float intensity)
+{
+  const vec3 blue   = vec3(0.0, 0.0, 1.0);
+  const vec3 cyan   = vec3(0.0, 1.0, 1.0);
+  const vec3 green  = vec3(0.0, 1.0, 0.0);
+  const vec3 yellow = vec3(1.0, 1.0, 0.0);
+  const vec3 red    = vec3(1.0, 0.0, 0.0);
+
+  vec3 color = (fade(-0.25, 0.25, intensity) * blue    //
+                + fade(0.0, 0.5, intensity) * cyan     //
+                + fade(0.25, 0.75, intensity) * green  //
+                + fade(0.5, 1.0, intensity) * yellow   //
+                + smoothstep(0.75, 1.0, intensity) * red);
+  return color;
+}
 
 #endif  // RAYCOMMON_GLSL

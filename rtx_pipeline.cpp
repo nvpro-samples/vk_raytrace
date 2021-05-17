@@ -1,12 +1,22 @@
 /*
-* Copyright (c) 2014-2020, NVIDIA CORPORATION.  All rights reserved.
-*
-* NVIDIA CORPORATION and its licensors retain all intellectual property
-* and proprietary rights in and to this software, related documentation
-* and any modifications thereto.  Any use, reproduction, disclosure or
-* distribution of this software and related documentation without an express
-* license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 
 #include "vulkan/vulkan.hpp"
 
@@ -24,7 +34,7 @@
 #include "autogen/pathtraceShadow.rmiss.h"
 
 
-void RtxPipeline::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
+void RtxPipeline::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
   m_device     = device;
   m_pAlloc     = allocator;
@@ -35,11 +45,13 @@ void RtxPipeline::setup(const vk::Device& device, const vk::PhysicalDevice& phys
   auto properties =
       physicalDevice.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
   m_rtProperties = properties.get<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
+
+  m_stbWrapper.setup(device, familyIndex, allocator, m_rtProperties);
 }
 
 void RtxPipeline::destroy()
 {
-  m_pAlloc->destroy(m_rtSBTBuffer);
+  m_stbWrapper.destroy();
 
   m_device.destroy(m_rtPipelineLayout);
   m_device.destroy(m_rtPipeline);
@@ -56,22 +68,19 @@ void RtxPipeline::create(const vk::Extent2D& size, const std::vector<vk::Descrip
 
   m_nbHit = 1;  //scene->getStat().nbMaterials;
 
-  updatePipeline(rtDescSetLayouts);
-  createRtShaderBindingTable();
+  createPipelineLayout(rtDescSetLayouts);
+  createPipeline();
   timer.print();
 }
 
 
 //--------------------------------------------------------------------------------------------------
-// Pipeline for the ray tracer: all shaders, raygen, chit, miss
+// The layout has a push constant and the incoming descriptors are:
+// acceleration structure, offscreen image, scene data, hdr
 //
-void RtxPipeline::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts)
+void RtxPipeline::createPipelineLayout(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts)
 {
-  m_device.destroy(m_rtPipeline);
   m_device.destroy(m_rtPipelineLayout);
-  m_rtShaderGroups.clear();
-
-  // --- Pipeline Layout ----
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
   vk::PushConstantRange pushConstant{vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
                                          | vk::ShaderStageFlagBits::eMissKHR,
@@ -81,7 +90,16 @@ void RtxPipeline::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtD
   pipelineLayoutCreateInfo.setSetLayoutCount(static_cast<uint32_t>(rtDescSetLayouts.size()));
   pipelineLayoutCreateInfo.setPSetLayouts(rtDescSetLayouts.data());
   m_rtPipelineLayout = m_device.createPipelineLayout(pipelineLayoutCreateInfo);
+}
 
+
+//--------------------------------------------------------------------------------------------------
+// Pipeline for the ray tracer: all shaders, raygen, chit, miss
+//
+void RtxPipeline::createPipeline()
+{
+  m_device.destroy(m_rtPipeline);
+  m_rtShaderGroups.clear();
 
   // --- Shaders ---
   std::vector<vk::PipelineShaderStageCreateInfo> stages;
@@ -115,8 +133,11 @@ void RtxPipeline::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtD
   {
     group.setClosestHitShader(static_cast<uint32_t>(stages.size()));
     stages.push_back({{}, vk::ShaderStageFlagBits::eClosestHitKHR, rchit, "main"});
-    group.setAnyHitShader(static_cast<uint32_t>(stages.size()));
-    stages.push_back({{}, vk::ShaderStageFlagBits::eAnyHitKHR, rahit, "main"});
+    if(m_enableAnyhit)
+    {
+      group.setAnyHitShader(static_cast<uint32_t>(stages.size()));
+      stages.push_back({{}, vk::ShaderStageFlagBits::eAnyHitKHR, rahit, "main"});
+    }
     m_rtShaderGroups.push_back(group);
   }
 
@@ -131,7 +152,12 @@ void RtxPipeline::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtD
 
   rayPipelineInfo.setMaxPipelineRayRecursionDepth(2);  // Ray depth
   rayPipelineInfo.setLayout(m_rtPipelineLayout);
-  m_rtPipeline = static_cast<const vk::Pipeline&>(m_device.createRayTracingPipelineKHR({}, {}, rayPipelineInfo));
+
+  auto resultValue = m_device.createRayTracingPipelineKHR({}, {}, rayPipelineInfo);
+  m_rtPipeline = resultValue.value;
+
+  // --- SBT ---
+  m_stbWrapper.create(m_rtPipeline, rayPipelineInfo);
 
   // --- Clean up ---
   m_device.destroy(rgen);
@@ -139,45 +165,6 @@ void RtxPipeline::updatePipeline(const std::vector<vk::DescriptorSetLayout>& rtD
   m_device.destroy(rmissShd);
   m_device.destroy(rchit);
   m_device.destroy(rahit);
-}
-
-//--------------------------------------------------------------------------------------------------
-// The Shader Binding Table (SBT)
-// - getting all shader handles and writing them in a SBT buffer
-// - Besides exception, this could be always done like this
-//   See how the SBT buffer is used in run()
-//
-void RtxPipeline::createRtShaderBindingTable()
-{
-  m_pAlloc->destroy(m_rtSBTBuffer);
-
-  auto     groupCount       = static_cast<uint32_t>(m_rtShaderGroups.size());  // 3 shaders: raygen, miss, chit
-  uint32_t groupHandleSize  = m_rtProperties.shaderGroupHandleSize;            // Size of a program identifier
-  uint32_t groupSizeAligned = nvh::align_up(groupHandleSize, m_rtProperties.shaderGroupBaseAlignment);
-
-  // Fetch all the shader handles used in the pipeline, so that they can be written in the SBT
-  uint32_t sbtSize = groupCount * groupSizeAligned;
-
-  std::vector<uint8_t> shaderHandleStorage(sbtSize);
-  auto result = m_device.getRayTracingShaderGroupHandlesKHR(m_rtPipeline, 0, groupCount, sbtSize, shaderHandleStorage.data());
-  // Write the handles in the SBT
-  m_rtSBTBuffer =
-      m_pAlloc->createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress,
-                             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-  NAME_VK(m_rtSBTBuffer.buffer);
-
-  // Write the handles in the SBT
-  void* mapped = m_pAlloc->map(m_rtSBTBuffer);
-  auto* pData  = reinterpret_cast<uint8_t*>(mapped);
-  for(uint32_t g = 0; g < groupCount; g++)
-  {
-    memcpy(pData, shaderHandleStorage.data() + g * groupHandleSize, groupHandleSize);  // raygen
-    pData += groupSizeAligned;
-  }
-  m_pAlloc->unmap(m_rtSBTBuffer);
-
-
-  m_pAlloc->finalizeAndReleaseStaging();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -197,18 +184,12 @@ void RtxPipeline::run(const vk::CommandBuffer&              cmdBuf,
                                      | vk::ShaderStageFlagBits::eMissKHR,
                                  0, m_state);
 
-  // Size of a program identifier
-  uint32_t groupSize   = nvh::align_up(m_rtProperties.shaderGroupHandleSize, m_rtProperties.shaderGroupBaseAlignment);
-  uint32_t groupStride = groupSize;
-  vk::DeviceAddress sbtAddress = m_device.getBufferAddress({m_rtSBTBuffer.buffer});
+  auto regions = m_stbWrapper.getRegions();
+  cmdBuf.traceRaysKHR(regions[0], regions[1], regions[2], regions[3], size.width, size.height, 1);
+}
 
-  using Stride = vk::StridedDeviceAddressRegionKHR;
-  std::array<Stride, 4> strideAddresses{Stride{sbtAddress + 0u * groupSize, groupStride, groupSize * 1},  // raygen
-                                        Stride{sbtAddress + 1u * groupSize, groupStride, groupSize * 2},  // miss
-                                        Stride{sbtAddress + 3u * groupSize, groupStride, groupSize * 1},  // hit
-                                        Stride{0u, 0u, 0u}};
-
-  cmdBuf.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2],
-                      &strideAddresses[3],          //
-                      size.width, size.height, 1);  //
+void RtxPipeline::useAnyHit(bool enable)
+{
+  m_enableAnyhit = enable;
+  createPipeline();
 }

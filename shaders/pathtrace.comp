@@ -19,14 +19,14 @@
 
 
 #version 460
-#extension GL_GOOGLE_include_directive : enable         // To be able to use #include
-#extension GL_EXT_ray_tracing : require                 // This is about ray tracing
-#extension GL_KHR_shader_subgroup_basic : require       // Special extensions to debug groups, warps, SM, ...
-#extension GL_EXT_scalar_block_layout : enable          // Align structure layout to scalar
-#extension GL_EXT_nonuniform_qualifier : enable         // To access unsized descriptor arrays
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 #extension GL_ARB_shader_clock : enable                 // Using clockARB
 #extension GL_EXT_shader_image_load_formatted : enable  // The folowing extension allow to pass images as function parameters
-#extension GL_EXT_scalar_block_layout : enable          // Usage of 'scalar' block layout
 
 #extension GL_NV_shader_sm_builtins : require     // Debug - gl_WarpIDNV, gl_SMIDNV
 #extension GL_ARB_gpu_shader_int64 : enable       // Debug - heatmap value
@@ -34,44 +34,68 @@
 
 #include "../structures.h"
 
-#include "globals.glsl"
-#include "layouts.glsl"
-
-layout(location = 0) rayPayloadEXT PtPayload prd;
-layout(location = 1) rayPayloadEXT ShadowHitPayload shadow_payload;
-
-
 layout(push_constant) uniform _RtxState
 {
   RtxState rtxState;
 };
 
 
-#include "traceray_rtx.glsl"
+#include "globals.glsl"
 
-#include "pathtrace.glsl"
+PtPayload        prd;
+ShadowHitPayload shadow_payload;
+
+#include "layouts.glsl"
 #include "random.glsl"
 #include "raycommon.glsl"
+#include "traceray_rq.glsl"
 
+#include "pathtrace.glsl"
 
+#define FIREFLIES 1
+
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+#ifndef SWIZZLED
+layout(local_size_x = 8, local_size_y = 8) in;
+#else
+layout(local_size_x = 32, local_size_y = 2) in;
+#extension GL_EXT_shader_8bit_storage : enable  // Using uint_8 ...
+ivec2 SampleSizzled()
+{
+  // Sampling Swizzling
+  // Convert 32x2 to 8x8, where the sampling will follow how invocation are done in a subgroup.
+  // layout(local_size_x = 32, local_size_y = 2) in;
+  ivec2 base   = ivec2(gl_WorkGroupID.xy) * 8;
+  ivec2 subset = ivec2(int(gl_LocalInvocationID.x) & 1, int(gl_LocalInvocationID.x) / 2);
+  subset += gl_LocalInvocationID.x >= 16 ? ivec2(2, -8) : ivec2(0, 0);
+  subset += ivec2(gl_LocalInvocationID.y * 4, 0);
+  return base + subset;
+}
+#endif
+
+//
+//--------------------------------------------------------------------------------------------------
+//
+//
 void main()
 {
   uint64_t start = clockRealtimeEXT();  // Debug - Heatmap
 
   ivec2 imageRes    = rtxState.size;
-  ivec2 imageCoords = ivec2(gl_LaunchIDEXT.xy);
+  ivec2 imageCoords = ivec2(gl_GlobalInvocationID.xy);  //SampleSizzled();
 
-  // Initialize the seed for the random number
+  // Initialize the seed for the random number only once once
   // uvec2 s    = pcg2d(imageCoords * int(clockARB()));
-  // uint  seed = s.x + s.y;
-  prd.seed = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, rtxState.frame * rtxState.maxSamples);
+  // prd.seed = s.x + s.y;
+  prd.seed = tea(rtxState.size.x * gl_GlobalInvocationID.y + gl_GlobalInvocationID.x, rtxState.frame * rtxState.maxSamples);
 
+  // Sampling the pixel
   vec3 pixelColor = vec3(0);
   for(int smpl = 0; smpl < rtxState.maxSamples; ++smpl)
   {
-    pixelColor += samplePixel(imageCoords, imageRes);  // See pathtrace.glsl
+    pixelColor += samplePixel(imageCoords, ivec2(imageRes));
   }
-
   pixelColor /= rtxState.maxSamples;
 
   // Debug - Heatmap
@@ -87,12 +111,12 @@ void main()
     // pixelColor = temperature(float(gl_SMIDNV) / float(gl_SMCountNV - 1)) * float(gl_WarpIDNV) / float(gl_WarpsPerSMNV - 1);
   }
 
-  // Do accumulation over time
+  // Saving pixel color
   if(rtxState.frame > 0)
   {
+    // Do accumulation over time
     vec3 old_color  = imageLoad(resultImage, imageCoords).xyz;
     vec3 new_result = mix(old_color, pixelColor, 1.0f / float(rtxState.frame + 1));
-
     imageStore(resultImage, imageCoords, vec4(new_result, 1.f));
   }
   else

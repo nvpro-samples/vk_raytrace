@@ -1,35 +1,40 @@
-/* Copyright (c) 2014-2018, NVIDIA CORPORATION. All rights reserved.
+/*
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of NVIDIA CORPORATION nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
  */
+
 
 #ifndef SHADE_STATE_GLSL
 #define SHADE_STATE_GLSL
 
 
+#include "compress.glsl"
 #include "layouts.glsl"
+
+//-----------------------------------------------------------------------
+// Return the tangent and binormal from the incoming normal
+//-----------------------------------------------------------------------
+void CreateTangent(in vec3 N, out vec3 Nt, out vec3 Nb)
+{
+  Nt = normalize(((abs(N.z) > 0.99999f) ? vec3(-N.x * N.y, 1.0f - N.y * N.y, -N.y * N.z) :
+                                          vec3(-N.x * N.z, -N.y * N.z, 1.0f - N.z * N.z)));
+  Nb = cross(Nt, N);
+}
+
 
 // Shading information used by the material
 struct ShadeState
@@ -44,37 +49,10 @@ struct ShadeState
   uint matIndex;
 };
 
-
-vec3 getVertex(uint index)
+/// Resetting the LSB of the V component (used by tangent handiness)
+vec2 decode_texture(vec2 t)
 {
-  uint i = 3 * index;
-  return vec3(vertices[nonuniformEXT(i + 0)], vertices[nonuniformEXT(i + 1)], vertices[nonuniformEXT(i + 2)]);
-}
-
-vec3 getNormal(uint index)
-{
-  uint i = 3 * index;
-  return vec3(normals[nonuniformEXT(i + 0)], normals[nonuniformEXT(i + 1)], normals[nonuniformEXT(i + 2)]);
-}
-
-vec2 getTexCoord(uint index)
-{
-  uint i = 2 * index;
-  return vec2(texcoord0[nonuniformEXT(i + 0)], texcoord0[nonuniformEXT(i + 1)]);
-}
-
-vec4 getTangent(uint index)
-{
-  uint i = 4 * index;
-  return vec4(tangents[nonuniformEXT(i + 0)], tangents[nonuniformEXT(i + 1)], tangents[nonuniformEXT(i + 2)],
-              tangents[nonuniformEXT(i + 3)]);
-}
-
-vec4 getColor(uint index)
-{
-  uint i = 4 * index;
-  return vec4(colors[nonuniformEXT(i + 0)], colors[nonuniformEXT(i + 1)], colors[nonuniformEXT(i + 2)],
-              colors[nonuniformEXT(i + 3)]);
+  return vec2(t.x, uintBitsToFloat(floatBitsToUint(t.y) & ~1));
 }
 
 //-----------------------------------------------------------------------
@@ -83,60 +61,63 @@ ShadeState GetShadeState(in PtPayload hstate)
 {
   ShadeState sstate;
 
-  // Retrieve the Primitive mesh buffer information
-  RtPrimitiveLookup pinfo = primInfo[hstate.instanceCustomIndex];
+  const uint idGeo  = hstate.instanceCustomIndex;  // Geometry of this instance
+  const uint idPrim = hstate.primitiveID;          // Triangle ID
+  const vec3 bary   = vec3(1.0 - hstate.baryCoord.x - hstate.baryCoord.y, hstate.baryCoord.x, hstate.baryCoord.y);
 
-  // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
-  const uint indexOffset  = pinfo.indexOffset + (3 * hstate.primitiveID);
-  const uint vertexOffset = pinfo.vertexOffset;           // Vertex offset as defined in glTF
-  const uint matIndex     = max(0, pinfo.materialIndex);  // material of primitive mesh
+  // Indices of this triangle primitive.
+  uvec3 tri = indices[nonuniformEXT(idGeo)].i[idPrim];
 
-  // Getting the 3 indices of the triangle (local)
-  ivec3 triangleIndex = ivec3(indices[nonuniformEXT(indexOffset + 0)],  //
-                              indices[nonuniformEXT(indexOffset + 1)],  //
-                              indices[nonuniformEXT(indexOffset + 2)]);
-  triangleIndex += ivec3(vertexOffset);  // (global)
+  // All vertex attributes of the triangle.
+  VertexAttributes attr0 = vertex[nonuniformEXT(idGeo)].v[tri.x];
+  VertexAttributes attr1 = vertex[nonuniformEXT(idGeo)].v[tri.y];
+  VertexAttributes attr2 = vertex[nonuniformEXT(idGeo)].v[tri.z];
 
-  const vec3 barycentrics = vec3(1.0 - hstate.baryCoord.x - hstate.baryCoord.y, hstate.baryCoord.x, hstate.baryCoord.y);
+  // Getting the material index on this geometry
+  const uint matIndex = max(0, geoInfo[idGeo].materialIndex);  // material of primitive mesh
 
   // Vertex of the triangle
-  const vec3 pos0           = getVertex(triangleIndex.x);
-  const vec3 pos1           = getVertex(triangleIndex.y);
-  const vec3 pos2           = getVertex(triangleIndex.z);
-  const vec3 position       = pos0 * barycentrics.x + pos1 * barycentrics.y + pos2 * barycentrics.z;
+  const vec3 pos0           = attr0.position.xyz;
+  const vec3 pos1           = attr1.position.xyz;
+  const vec3 pos2           = attr2.position.xyz;
+  const vec3 position       = pos0 * bary.x + pos1 * bary.y + pos2 * bary.z;
   const vec3 world_position = vec3(hstate.objectToWorld * vec4(position, 1.0));
 
   // Normal
-  const vec3 nrm0         = getNormal(triangleIndex.x);
-  const vec3 nrm1         = getNormal(triangleIndex.y);
-  const vec3 nrm2         = getNormal(triangleIndex.z);
-  const vec3 normal       = normalize(nrm0 * barycentrics.x + nrm1 * barycentrics.y + nrm2 * barycentrics.z);
-  const vec3 world_normal = normalize(vec3(normal * hstate.worldToObject));
-  const vec3 geom_normal  = normalize(cross(pos1 - pos0, pos2 - pos0));
-  const vec3 wgeom_normal = normalize(vec3(geom_normal * hstate.worldToObject));
-
+  vec3 nrm0         = decompress_unit_vec(attr0.normal);
+  vec3 nrm1         = decompress_unit_vec(attr1.normal);
+  vec3 nrm2         = decompress_unit_vec(attr2.normal);
+  vec3 normal       = normalize(nrm0 * bary.x + nrm1 * bary.y + nrm2 * bary.z);
+  vec3 world_normal = normalize(vec3(normal * hstate.worldToObject));
+  vec3 geom_normal  = normalize(cross(pos1 - pos0, pos2 - pos0));
+  vec3 wgeom_normal = normalize(vec3(geom_normal * hstate.worldToObject));
 
   // Tangent and Binormal
-  const vec4 tng0     = getTangent(triangleIndex.x);
-  const vec4 tng1     = getTangent(triangleIndex.y);
-  const vec4 tng2     = getTangent(triangleIndex.z);
-  vec3       tangent  = (tng0.xyz * barycentrics.x + tng1.xyz * barycentrics.y + tng2.xyz * barycentrics.z);
+  float h0 = (floatBitsToInt(attr0.texcoord.y) & 1) == 1 ? 1.0f : -1.0f;  // Handiness stored in the less
+  float h1 = (floatBitsToInt(attr1.texcoord.y) & 1) == 1 ? 1.0f : -1.0f;  // significative bit of the
+  float h2 = (floatBitsToInt(attr2.texcoord.y) & 1) == 1 ? 1.0f : -1.0f;  // texture coord V
+
+  const vec4 tng0     = vec4(decompress_unit_vec(attr0.tangent.x), h0);
+  const vec4 tng1     = vec4(decompress_unit_vec(attr1.tangent.x), h1);
+  const vec4 tng2     = vec4(decompress_unit_vec(attr2.tangent.x), h2);
+  vec3       tangent  = (tng0.xyz * bary.x + tng1.xyz * bary.y + tng2.xyz * bary.z);
   tangent.xyz         = normalize(tangent.xyz);
   vec3 world_tangent  = normalize(vec3(mat4(hstate.objectToWorld) * vec4(tangent.xyz, 0)));
   world_tangent       = normalize(world_tangent - dot(world_tangent, world_normal) * world_normal);
   vec3 world_binormal = cross(world_normal, world_tangent) * tng0.w;
 
   // TexCoord
-  const vec2 uv0       = getTexCoord(triangleIndex.x);
-  const vec2 uv1       = getTexCoord(triangleIndex.y);
-  const vec2 uv2       = getTexCoord(triangleIndex.z);
-  const vec2 texcoord0 = uv0 * barycentrics.x + uv1 * barycentrics.y + uv2 * barycentrics.z;
+
+  const vec2 uv0       = decode_texture(attr0.texcoord);
+  const vec2 uv1       = decode_texture(attr1.texcoord);
+  const vec2 uv2       = decode_texture(attr2.texcoord);
+  const vec2 texcoord0 = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
 
   // Colors
-  const vec4 col0  = getColor(triangleIndex.x);
-  const vec4 col1  = getColor(triangleIndex.y);
-  const vec4 col2  = getColor(triangleIndex.z);
-  const vec4 color = col0 * barycentrics.x + col1 * barycentrics.y + col2 * barycentrics.z;
+  const vec4 col0  = unpackUnorm4x8(attr0.color);  // RGBA in uint to 4 x float
+  const vec4 col1  = unpackUnorm4x8(attr1.color);
+  const vec4 col2  = unpackUnorm4x8(attr2.color);
+  const vec4 color = col0 * bary.x + col1 * bary.y + col2 * bary.z;
 
   sstate.normal         = world_normal;
   sstate.geom_normal    = wgeom_normal;

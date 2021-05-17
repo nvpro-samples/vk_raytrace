@@ -1,29 +1,23 @@
-/* Copyright (c) 2014-2018, NVIDIA CORPORATION. All rights reserved.
+/*
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of NVIDIA CORPORATION nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
  */
+
+#define VMA_IMPLEMENTATION
 
 #include <iomanip>
 #include <iostream>
@@ -40,18 +34,14 @@
 #include "nvvk/shaders_vk.hpp"
 
 #include "binding.h"
-#include "imgui/extras/imgui_helper.h"
-#include "imgui/extras/imgui_orient.h"
-//#include "rayquery.hpp"
+#include "imgui/imgui_helper.h"
+#include "imgui/imgui_orient.h"
+#include "rayquery.hpp"
 #include "rtx_pipeline.hpp"
 #include "sample_example.hpp"
 #include "tools.hpp"
 
 
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "fileformats/tiny_gltf.h"
 #include "fileformats/tiny_gltf_freeimage.h"
 
 #include "nvml_monitor.hpp"
@@ -71,10 +61,9 @@ void SampleExample::setup(const vk::Instance&       instance,
 {
   AppBase::setup(instance, device, physicalDevice, gtcQueueIndexFamily);
 
-  // Memory allocator
-  m_memAllocator.init(device, physicalDevice);
-  m_memAllocator.setAllocateFlags(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, true);
-  m_alloc.init(device, physicalDevice, &m_memAllocator);
+  // Memory allocator for buffers and images
+  m_alloc.init(instance, device, physicalDevice);
+
   m_debug.setup(m_device);
 
   m_sunAndSky = SunAndSky_default();
@@ -93,9 +82,11 @@ void SampleExample::setup(const vk::Instance&       instance,
 
   // Create and setup all renderers
   m_pRender[eRtxPipeline] = new RtxPipeline;
-  //  m_pRender[eRayQuery]    = new RayQuery;
+  m_pRender[eRayQuery]    = new RayQuery;
   for(auto r : m_pRender)
+  {
     r->setup(m_device, physicalDevice, transferQueueIndex, &m_alloc);
+  }
 
 
   // Default RTX state (push_constant)
@@ -107,7 +98,10 @@ void SampleExample::setup(const vk::Instance&       instance,
   m_rtxState.fireflyClampThreshold = 1;   // to cut fireflies
   m_rtxState.hdrMultiplier         = 1;   // To brightening the scene
   m_rtxState.debugging_mode        = 0;   //
-  m_rtxState.pbrMode               = 0;   // 0-Disney, 1-Gltf
+  m_rtxState.pbrMode               = 0;   // 0-Disney, 1-glTF
+
+  m_rtxState.minHeatmap = 0;
+  m_rtxState.maxHeatmap = 65000;
 }
 
 
@@ -117,9 +111,9 @@ void SampleExample::setup(const vk::Instance&       instance,
 void SampleExample::loadScene(const std::string& filename)
 {
   m_scene.load(filename);
-  m_accelStruct.create(m_scene.getScene(), m_scene.getBuffer(Scene::eVertex).buffer, m_scene.getBuffer(Scene::eIndex).buffer);
+  m_accelStruct.create(m_scene.getScene(), m_scene.getBuffers(Scene::eVertex), m_scene.getBuffers(Scene::eIndex));
 
-  m_picker.initialize(m_accelStruct.getTlas());
+  m_picker.setTlas(m_accelStruct.getTlas());
   resetFrame();
 }
 
@@ -302,7 +296,6 @@ void SampleExample::destroyResources()
 
   // Memory
   m_alloc.deinit();
-  m_memAllocator.deinit();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -500,10 +493,6 @@ bool SampleExample::guiRayTracing()
   changed |= GuiH::Slider("Max Ray Depth", "", &m_rtxState.maxDepth, nullptr, Normal, 1, 10);
   changed |= GuiH::Slider("Samples Per Frame", "", &m_rtxState.maxSamples, nullptr, Normal, 1, 10);
   changed |= GuiH::Slider("Max Iteration ", "", &m_maxFrames, nullptr, Normal, 1, 1000);
-  changed |= GuiH::Selection("Debug Mode", "Display unique values of material", &m_rtxState.debugging_mode, nullptr, Normal,
-                             {"No Debug", "BaseColor", "Normal", "Metallic", "Emissive", "Alpha", "Roughness",
-                              "Textcoord", "Tangent", "Radiance", "Weight", "RayDir"});
-
   changed |= GuiH::Slider("De-scaling ",
                           "Reduce resolution while navigating.\n"
                           "Speeding up rendering while camera moves.\n"
@@ -511,6 +500,44 @@ bool SampleExample::guiRayTracing()
                           &m_descalingLevel, nullptr, Normal, 1, 8);
 
   changed |= GuiH::Selection("Pbr Mode", "PBR material model", &m_rtxState.pbrMode, nullptr, Normal, {"Disney", "Gltf"});
+
+  static bool bAnyHit = true;
+  if(GuiH::Checkbox("Enable AnyHit",
+                    "AnyHit is used for double sided, cutout opacity, but can be slower when all objects are opaque", &bAnyHit, nullptr))
+  {
+    auto rtx = dynamic_cast<RtxPipeline*>(m_pRender[m_rndMethod]);
+    m_device.waitIdle();  // cannot run while changing this
+    rtx->useAnyHit(bAnyHit);
+    changed = true;
+  }
+
+  GuiH::Group<bool>("Debugging", false, [&] {
+    changed |= GuiH::Selection("Debug Mode", "Display unique values of material", &m_rtxState.debugging_mode, nullptr, Normal,
+                               {
+                                   "No Debug",
+                                   "BaseColor",
+                                   "Normal",
+                                   "Metallic",
+                                   "Emissive",
+                                   "Alpha",
+                                   "Roughness",
+                                   "TexCoord",
+                                   "Tangent",
+                                   "Radiance",
+                                   "Weight",
+                                   "RayDir",
+                                   "HeatMap",
+                               });
+
+    if(m_rtxState.debugging_mode == eHeatmap)
+    {
+      changed |= GuiH::Drag("Min Heat map", "Minimum timing value, below this value it will be blue",
+                            &m_rtxState.minHeatmap, nullptr, Normal, 0, 1'000'000, 100);
+      changed |= GuiH::Drag("Max Heat map", "Maximum timing value, above this value it will be red",
+                            &m_rtxState.maxHeatmap, nullptr, Normal, 0, 1'000'000, 100);
+    }
+    return changed;
+  });
 
   GuiH::Info("Frame", "", std::to_string(m_rtxState.frame), GuiH::Flags::Disabled);
   return changed;
@@ -529,7 +556,7 @@ bool SampleExample::guiTonemapper()
   changed |= GuiH::Slider("Saturation", "", &tm.saturation, &default_tm.saturation, GuiH::Flags::Normal, 0.0f, 5.0f);
   changed |= GuiH::Slider("Vignette", "", &tm.vignette, &default_tm.vignette, GuiH::Flags::Normal, 0.0f, 2.0f);
 
-  return false;  // doesn't matter
+  return false;  // no need to restart the renderer
 }
 
 bool SampleExample::guiEnvironment()
@@ -710,12 +737,12 @@ bool SampleExample::guiGpuMeasures()
       << "Memory: " << memoryNumbers(m.memory[offset]) << "/" << memoryNumbers(float(i.max_mem), 0) << "\n"  //
       << "Load: " << m.load[offset];
 
-    float mem = m.memory[offset] / float(i.max_mem) * 100.f;
-    char  desc[64];
-    sprintf(desc, "%s: \n- Load: %2.0f%s \n- Mem: %2.0f%s", i.name.c_str(), m.load[offset], "%%", mem, "%%");
-    ImGuiH::Control::Custom(desc, o.str().c_str(), [&]() {
+    float                mem = m.memory[offset] / float(i.max_mem) * 100.f;
+    std::array<char, 64> desc;
+    sprintf(desc.data(), "%s: \n- Load: %2.0f%s \n- Mem: %2.0f%s", i.name.c_str(), m.load[offset], "%%", mem, "%%");
+    ImGuiH::Control::Custom(desc.data(), o.str().c_str(), [&]() {
       ImGui::ImPlotMulti datas[2];
-      datas[0].plot_type     = ImGuiPlotType_Area;
+      datas[0].plot_type     = static_cast<ImGuiPlotType>(ImGuiPlotType_Area);
       datas[0].name          = "Load";
       datas[0].color         = ImColor(0.07f, 0.9f, 0.06f, 1.0f);
       datas[0].thickness     = 1.5;
@@ -833,45 +860,7 @@ void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
   }
   else if(key == GLFW_KEY_SPACE)
   {
-    double x, y;
-    glfwGetCursorPos(m_window, &x, &y);
-
-    // Set the camera as to see the model
-    nvvk::CommandPool sc(m_device, m_graphicsQueueIndex);
-    vk::CommandBuffer cmdBuf = sc.createCommandBuffer();
-
-    const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
-    auto        view        = CameraManip.getMatrix();
-    auto        proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.1f, 1000.0f);
-
-    RayPickerKHR::PickInfo pickInfo;
-    pickInfo.pickX          = float(x - m_renderRegion.offset.x) / float(m_renderRegion.extent.width);
-    pickInfo.pickY          = float(y - m_renderRegion.offset.y) / float(m_renderRegion.extent.height);
-    pickInfo.modelViewInv   = nvmath::invert(view);
-    pickInfo.perspectiveInv = nvmath::invert(proj);
-
-
-    m_picker.run(cmdBuf, pickInfo);
-    sc.submitAndWait(cmdBuf);
-
-    RayPickerKHR::PickResult pr = m_picker.getResult();
-
-    if(pr.instanceID == ~0)
-    {
-      LOGI("Not Hit\n");
-      return;
-    }
-
-    nvmath::vec3 worldPos = pr.worldRayOrigin + pr.worldRayDirection * pr.hitT;
-    // Set the interest position
-    nvmath::vec3f eye, center, up;
-    CameraManip.getLookat(eye, center, up);
-    CameraManip.setLookat(eye, worldPos, up, false);
-
-
-    auto& prim = m_scene.getScene().m_primMeshes[pr.instanceCustomIndex];
-    LOGI("Hit(%d): %s\n", pr.instanceCustomIndex, prim.name.c_str());
-    LOGI(" - PrimId(%d)\n", pr.primitiveID);
+    screenPicking();
   }
   else if(key == GLFW_KEY_R)
   {
@@ -879,11 +868,53 @@ void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
   }
 }
 
+void SampleExample::screenPicking()
+{
+  double x, y;
+  glfwGetCursorPos(m_window, &x, &y);
+
+  // Set the camera as to see the model
+  nvvk::CommandPool sc(m_device, m_graphicsQueueIndex);
+  vk::CommandBuffer cmdBuf = sc.createCommandBuffer();
+
+  const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
+  auto        view        = CameraManip.getMatrix();
+  auto        proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.1f, 1000.0f);
+
+  nvvk::RayPickerKHR::PickInfo pickInfo;
+  pickInfo.pickX          = float(x - m_renderRegion.offset.x) / float(m_renderRegion.extent.width);
+  pickInfo.pickY          = float(y - m_renderRegion.offset.y) / float(m_renderRegion.extent.height);
+  pickInfo.modelViewInv   = nvmath::invert(view);
+  pickInfo.perspectiveInv = nvmath::invert(proj);
+
+
+  m_picker.run(cmdBuf, pickInfo);
+  sc.submitAndWait(cmdBuf);
+
+  nvvk::RayPickerKHR::PickResult pr = m_picker.getResult();
+
+  if(pr.instanceID == ~0)
+  {
+    LOGI("Nothing Hit\n");
+    return;
+  }
+
+  nvmath::vec3 worldPos = pr.worldRayOrigin + pr.worldRayDirection * pr.hitT;
+  // Set the interest position
+  nvmath::vec3f eye, center, up;
+  CameraManip.getLookat(eye, center, up);
+  CameraManip.setLookat(eye, worldPos, up, false);
+
+
+  auto& prim = m_scene.getScene().m_primMeshes[pr.instanceCustomIndex];
+  LOGI("Hit(%d): %s\n", pr.instanceCustomIndex, prim.name.c_str());
+  LOGI(" - PrimId(%d)\n", pr.primitiveID);
+}
+
 void SampleExample::onFileDrop(const char* filename)
 {
   loadAssets(filename);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 // Window callback when the mouse move
@@ -909,5 +940,11 @@ void SampleExample::onMouseButton(int button, int action, int mods)
   {
     m_descaling = false;
     resetFrame();
+  }
+
+  auto& IO = ImGui::GetIO();
+  if(IO.MouseDownWasDoubleClick[0])
+  {
+    screenPicking();
   }
 }

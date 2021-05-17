@@ -65,8 +65,7 @@ Setup
 -----
 
 ~~~~ 
-git clone https://github.com/nvpro-samples/shared_sources.git
-git clone https://github.com/nvpro-samples/shared_external.git
+git clone --recursive --shallow-submodules https://github.com/nvpro-samples/nvpro_core.git
 git clone https://github.com/nvpro-samples/vk_raytracing.git
 ~~~~
 

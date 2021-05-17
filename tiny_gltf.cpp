@@ -18,18 +18,13 @@
  */
 
 
-#version 450
-layout(location = 0) out vec2 outUV;
+// Visual Studio warnings
+#ifdef _MSC_VER
+#pragma warning(disable : 4996)  // 'This function or variable may be unsafe': strcpy, strdup, sprintf, vsnprintf, sscanf, fopen
+#endif
 
-
-out gl_PerVertex
-{
-  vec4 gl_Position;
-};
-
-
-void main()
-{
-  outUV       = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-  gl_Position = vec4(outUV * 2.0f - 1.0f, 1.0f, 1.0f);
-}
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define TINYGLTF_NO_EXTERNAL_IMAGE
+#include "tiny_gltf.h"

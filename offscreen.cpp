@@ -1,16 +1,27 @@
 /*
-* Copyright (c) 2014-2020, NVIDIA CORPORATION.  All rights reserved.
-*
-* NVIDIA CORPORATION and its licensors retain all intellectual property
-* and proprietary rights in and to this software, related documentation
-* and any modifications thereto.  Any use, reproduction, disclosure or
-* distribution of this software and related documentation without an express
-* license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 
 #include "offscreen.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvvk/commands_vk.hpp"
+#include "nvvk/images_vk.hpp"
 #include "nvvk/pipeline_vk.hpp"
 #include "nvvk/renderpasses_vk.hpp"
 #include "tools.hpp"
@@ -20,7 +31,7 @@
 #include "autogen/post.frag.h"
 
 
-void Offscreen::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
+void Offscreen::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
   m_device     = device;
   m_pAlloc     = allocator;
@@ -63,7 +74,7 @@ void Offscreen::update(const vk::Extent2D& size)
 //
 void Offscreen::createOffscreenRender(const vk::Extent2D& size)
 {
-  if(m_offscreenColor.image)
+  if(m_offscreenColor.image != VK_NULL_HANDLE)
   {
     m_pAlloc->destroy(m_offscreenColor);
     m_pAlloc->destroy(m_offscreenDepth);
@@ -176,8 +187,11 @@ void Offscreen::createPostDescriptor()
 
   m_device.destroy(m_postDescSetLayout);
   m_device.destroy(m_postDescPool);
-  m_postDescSetLayoutBind.addBinding(vkDS(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment | vkSS::eCompute | vkSS::eRaygenKHR));
-  m_postDescSetLayoutBind.addBinding(vkDS(1, vkDT::eStorageImage, 1, vkSS::eFragment | vkSS::eCompute | vkSS::eRaygenKHR));
+
+  // This descriptor is passed to the RTX pipeline
+  // Ray tracing will write to the binding 1, but the fragment shader will be using binding 0, so it can use a sampler too.
+  m_postDescSetLayoutBind.addBinding(vkDS(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_postDescSetLayoutBind.addBinding(vkDS(1, vkDT::eStorageImage, 1, vkSS::eCompute | vkSS::eRaygenKHR));
   m_postDescSetLayout = m_postDescSetLayoutBind.createLayout(m_device);
   m_postDescPool      = m_postDescSetLayoutBind.createPool(m_device);
   m_postDescSet       = nvvk::allocateDescriptorSet(m_device, m_postDescPool, m_postDescSetLayout);
