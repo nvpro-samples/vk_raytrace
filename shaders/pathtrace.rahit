@@ -1,36 +1,29 @@
-/* Copyright (c) 2014-2018, NVIDIA CORPORATION. All rights reserved.
+/*
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of NVIDIA CORPORATION nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
  */
+
 
 #version 460
 #extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_ray_tracing : require          // This is about ray tracing
-#extension GL_EXT_nonuniform_qualifier : enable  // To access unsized descriptor arrays
-// Align structure layout to scalar
-#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_ray_tracing : require                 // This is about ray tracing
+#extension GL_EXT_nonuniform_qualifier : enable         // To access unsized descriptor arrays
+#extension GL_EXT_scalar_block_layout : enable          // Align structure layout to scalar
+#extension GL_EXT_shader_image_load_formatted : enable  // The folowing extension allow to pass images as function parameters
 
 
 #include "globals.glsl"
@@ -54,40 +47,42 @@ layout(push_constant) uniform _RtxState
 void main()
 {
   // Retrieve the Primitive mesh buffer information
-  RtPrimitiveLookup pinfo    = primInfo[gl_InstanceCustomIndexEXT];
+  InstanceData      pinfo    = geoInfo[gl_InstanceCustomIndexEXT];
   const uint        matIndex = max(0, pinfo.materialIndex);  // material of primitive mesh
   GltfShadeMaterial mat      = materials[nonuniformEXT(matIndex)];
 
+  // (Not needed, check flags in accelstrct.cpp)
   // back face culling
-  if(mat.doubleSided == 0 && (gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT))
-  {
-    ignoreIntersectionEXT;  // Terminating (jump statement)
-  }
-
+  // if(mat.doubleSided == 0 && (gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT))
+  // {
+  //   ignoreIntersectionEXT;  // Terminating (jump statement)
+  // }
+  //
   // early out if there is no opacity function
-  if(mat.alphaMode == ALPHA_OPAQUE)
-  {
-    return;
-  }
+  // if(mat.alphaMode == ALPHA_OPAQUE)
+  // {
+  //   return;
+  // }
 
   float baseColorAlpha = mat.pbrBaseColorFactor.a;
   if(mat.pbrBaseColorTexture > -1)
   {
-    // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
-    const uint indexOffset  = pinfo.indexOffset + (3 * gl_PrimitiveID);
-    const uint vertexOffset = pinfo.vertexOffset;  // Vertex offset as defined in glTF
+    const uint idGeo  = gl_InstanceCustomIndexEXT;  // Geometry of this instance
+    const uint idPrim = gl_PrimitiveID;             // Triangle ID
 
-    // Getting the 3 indices of the triangle (local)
-    ivec3 triangleIndex = ivec3(indices[nonuniformEXT(indexOffset + 0)],  //
-                                indices[nonuniformEXT(indexOffset + 1)],  //
-                                indices[nonuniformEXT(indexOffset + 2)]);
-    triangleIndex += ivec3(vertexOffset);  // (global)
+    // Indices of this triangle primitive.
+    uvec3 tri = indices[nonuniformEXT(idGeo)].i[idPrim];
+
+    // All vertex attributes of the triangle.
+    VertexAttributes attr0 = vertex[nonuniformEXT(idGeo)].v[tri.x];
+    VertexAttributes attr1 = vertex[nonuniformEXT(idGeo)].v[tri.y];
+    VertexAttributes attr2 = vertex[nonuniformEXT(idGeo)].v[tri.z];
 
     // Get the texture coordinate
     const vec3 barycentrics = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
-    const vec2 uv0          = getTexCoord(triangleIndex.x);
-    const vec2 uv1          = getTexCoord(triangleIndex.y);
-    const vec2 uv2          = getTexCoord(triangleIndex.z);
+    const vec2 uv0          = attr0.texcoord;
+    const vec2 uv1          = attr1.texcoord;
+    const vec2 uv2          = attr2.texcoord;
     vec2       texcoord0    = uv0 * barycentrics.x + uv1 * barycentrics.y + uv2 * barycentrics.z;
 
     // Uv Transform

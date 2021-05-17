@@ -1,53 +1,34 @@
-/* Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+/*
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of NVIDIA CORPORATION nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 
-#include <array>
-#include <filesystem>
-#include <iostream>
 #include <thread>
 #include <vulkan/vulkan.hpp>
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/extras/imgui_helper.h"
+#include "backends/imgui_impl_glfw.h"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvh/inputparser.h"
-#include "nvpsystem.hpp"
-#include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
-#include "nvvk/profiler_vk.hpp"
 #include "sample_example.hpp"
 
-
-//////////////////////////////////////////////////////////////////////////
-#define UNUSED(x) (void)(x)
-//////////////////////////////////////////////////////////////////////////
 
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
@@ -74,10 +55,9 @@ int main(int argc, char** argv)
   std::string sceneFile   = parser.getString("-f", "robot_toon/robot-toon.gltf");
   std::string hdrFilename = parser.getString("-e", "std_env.hdr");
 
-
   // Setup GLFW window
   glfwSetErrorCallback(onErrorCallback);
-  if(!glfwInit())
+  if(glfwInit() == GLFW_FALSE)
   {
     return 1;
   }
@@ -89,7 +69,7 @@ int main(int argc, char** argv)
   CameraManip.setLookat({2.0, 2.0, -5.0}, {-1.0, 2.0, -1.0}, {0.000, 1.000, 0.000});
 
   // Setup Vulkan
-  if(!glfwVulkanSupported())
+  if(glfwVulkanSupported() == GLFW_FALSE)
   {
     printf("GLFW: Vulkan Not Supported\n");
     return 1;
@@ -145,23 +125,20 @@ int main(int argc, char** argv)
 
   // Creating Vulkan base application
   nvvk::Context vkctx{};
-  vkctx.ignoreDebugMessage(0x99fb7dfd);  // dstAccelerationStructure
-  vkctx.ignoreDebugMessage(0x45e8716f);  // dstAccelerationStructure
   vkctx.initInstance(contextInfo);
-  // Find all compatible devices
-  auto compatibleDevices = vkctx.getCompatibleDevices(contextInfo);
+  auto compatibleDevices = vkctx.getCompatibleDevices(contextInfo);  // Find all compatible devices
   assert(!compatibleDevices.empty());
-  // Use a compatible device
-  vkctx.initDevice(compatibleDevices[0], contextInfo);
+  vkctx.initDevice(compatibleDevices[0], contextInfo);  // Use first compatible device
 
-
-  // Create example
+  //
   SampleExample sample;
 
   // Window need to be opened to get the surface on which to draw
   const vk::SurfaceKHR surface = sample.getVkSurface(vkctx.m_instance, window);
   vkctx.setGCTQueueWithPresent(surface);
+  sample.setupGlfwCallbacks(window);
 
+  // Create example
   sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex,
                vkctx.m_queueC.familyIndex, vkctx.m_queueT.familyIndex);
   sample.createSwapchain(surface, SAMPLE_WIDTH, SAMPLE_HEIGHT);
@@ -170,11 +147,12 @@ int main(int argc, char** argv)
   sample.createFrameBuffers();
 
   // Setup Imgui
-
-  sample.initGUI(0);  // Using sub-pass 0
+  sample.initGUI();
   sample.createOffscreenRender();
+  ImGui_ImplGlfw_InitForVulkan(window, true);
 
-  // Creation of the example
+
+  // Creation of the example - loading scene in separate thread
   sample.loadEnvironmentHdr(nvh::findFile(hdrFilename, defaultSearchPaths, true));
   sample.m_busy = true;
   std::thread([&] {
@@ -186,32 +164,29 @@ int main(int argc, char** argv)
   }).detach();
 
 
-  nvmath::vec4f clearColor(1);
-
-
+  // It is possible to have various back-ends
   SampleExample::RndMethod renderMethod = SampleExample::eRtxPipeline;
 
-
-  sample.setupGlfwCallbacks(window);
-  ImGui_ImplGlfw_InitForVulkan(window, true);
-
-
+  // Profiler measure the execution time on the GPU
   nvvk::ProfilerVK profiler;
   std::string      profilerStats;
-
   profiler.init(vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
   profiler.setLabelUsage(true);  // depends on VK_EXT_debug_utils
 
   // Main loop
-  while(!glfwWindowShouldClose(window))
+  while(glfwWindowShouldClose(window) == GLFW_FALSE)
   {
     glfwPollEvents();
     if(sample.isMinimized())
       continue;
 
-    profiler.beginFrame();
+    // Start the Dear ImGui frame
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
 
     // Start rendering the scene
+    profiler.beginFrame();
     sample.prepareFrame();
     sample.updateFrame();
 
@@ -221,16 +196,12 @@ int main(int argc, char** argv)
 
     cmdBuf.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
-    // Start the Dear ImGui frame
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
+    // UI
     sample.titleBar();
     sample.menuBar();
 
+    // Show UI panel window.
     float panelAlpha = 1.0f;
-
-    // Show UI window.
     if(sample.showGui())
     {
       ImGuiH::Control::style.ctrlPerc = 0.55f;
@@ -238,8 +209,8 @@ int main(int argc, char** argv)
 
       using Gui = ImGuiH::Control;
       bool changed{false};
-      //changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
-      //                               Gui::Flags::Normal, {"RtxPipeline", "RayQuery"});
+      changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
+                                     Gui::Flags::Normal, {"RtxPipeline", "RayQuery"});
       if(ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
         changed |= sample.guiCamera();
       if(ImGui::CollapsingHeader("Ray Tracing", ImGuiTreeNodeFlags_DefaultOpen))
@@ -257,13 +228,15 @@ int main(int argc, char** argv)
       ImGui::TextWrapped("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
                          ImGui::GetIO().Framerate);
 
-      // generic print to string
-
       if(changed)
+      {
         sample.resetFrame();
+      }
+
       ImGui::End();  // ImGui::Panel::end()
     }
 
+    // Rendering region is different if the side panel is visible
     if(panelAlpha >= 1.0f && sample.showGui())
     {
       ImVec2 pos, size;
@@ -277,7 +250,7 @@ int main(int argc, char** argv)
     }
 
     // Clearing screen
-    vk::ClearValue clearValues[2];
+    std::array<vk::ClearValue, 2> clearValues;
     clearValues[0].setColor(std::array<float, 4>({0, 0, 0, 0}));
     clearValues[1].setDepthStencil({1.0f, 0});
 
@@ -285,14 +258,14 @@ int main(int argc, char** argv)
     if(sample.isBusy() == false)
     {
       auto sec = profiler.timeRecurring("Render", cmdBuf);
-      // Updating camera buffer
-      sample.updateUniformBuffer(cmdBuf);
 
-      // Rendering Scene
-      sample.render(renderMethod, cmdBuf, profiler);
+      sample.updateUniformBuffer(cmdBuf);             // Updating camera buffer
+      sample.render(renderMethod, cmdBuf, profiler);  // Rendering Scene
     }
     else
-      sample.showBusyWindow();
+    {
+      sample.showBusyWindow();  // Busy while loading scene
+    }
 
     // Rendering pass: tone mapper, UI
     {
@@ -300,7 +273,7 @@ int main(int argc, char** argv)
 
       vk::RenderPassBeginInfo postRenderPassBeginInfo;
       postRenderPassBeginInfo.setClearValueCount(2);
-      postRenderPassBeginInfo.setPClearValues(clearValues);
+      postRenderPassBeginInfo.setPClearValues(clearValues.data());
       postRenderPassBeginInfo.setRenderPass(sample.getRenderPass());
       postRenderPassBeginInfo.setFramebuffer(sample.getFramebuffers()[curFrame]);
       postRenderPassBeginInfo.setRenderArea({{}, sample.getSize()});

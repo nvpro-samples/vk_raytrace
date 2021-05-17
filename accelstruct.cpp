@@ -1,32 +1,26 @@
-/* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+/*
+ * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of NVIDIA CORPORATION nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION
+ * SPDX-License-Identifier: Apache-2.0
  */
+
 
 #include "accelstruct.hpp"
 #include "nvvk/raytraceKHR_vk.hpp"
+#include "structures.h"
 #include "tools.hpp"
 
 
@@ -41,7 +35,7 @@
  */
 
 
-void AccelStructure::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::Allocator* allocator)
+void AccelStructure::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
   m_device     = device;
   m_pAlloc     = allocator;
@@ -57,15 +51,13 @@ void AccelStructure::destroy()
   m_device.destroy(m_rtDescSetLayout);
 }
 
-void AccelStructure::create(nvh::GltfScene& gltfScene, vk::Buffer vertex, vk::Buffer index)
+void AccelStructure::create(nvh::GltfScene& gltfScene, const std::vector<nvvk::Buffer>& vertex, const std::vector<nvvk::Buffer>& index)
 {
   MilliTimer timer;
   LOGI("Create acceleration structure \n");
   destroy();  // reset
 
-  m_vertexBuffer = vertex;
-  m_indexBuffer  = index;
-  createBottomLevelAS(gltfScene);
+  createBottomLevelAS(gltfScene, vertex, index);
   createTopLevelAS(gltfScene);
   createRtDescriptorSet();
   timer.print();
@@ -75,16 +67,16 @@ void AccelStructure::create(nvh::GltfScene& gltfScene, vk::Buffer vertex, vk::Bu
 //--------------------------------------------------------------------------------------------------
 // Converting a GLTF primitive in the Raytracing Geometry used for the BLAS
 //
-nvvk::RaytracingBuilderKHR::BlasInput AccelStructure::primitiveToGeometry(const nvh::GltfPrimMesh& prim)
+nvvk::RaytracingBuilderKHR::BlasInput AccelStructure::primitiveToGeometry(const nvh::GltfPrimMesh& prim, vk::Buffer vertex, vk::Buffer index)
 {
   // Building part
-  vk::DeviceAddress vertexAddress = m_device.getBufferAddress({m_vertexBuffer});
-  vk::DeviceAddress indexAddress  = m_device.getBufferAddress({m_indexBuffer});
+  vk::DeviceAddress vertexAddress = m_device.getBufferAddress({vertex});
+  vk::DeviceAddress indexAddress  = m_device.getBufferAddress({index});
 
   vk::AccelerationStructureGeometryTrianglesDataKHR triangles;
   triangles.setVertexFormat(vk::Format::eR32G32B32Sfloat);
   triangles.setVertexData(vertexAddress);
-  triangles.setVertexStride(sizeof(nvmath::vec3f));
+  triangles.setVertexStride(sizeof(VertexAttributes));
   triangles.setIndexType(vk::IndexType::eUint32);
   triangles.setIndexData(indexAddress);
   triangles.setTransformData({});
@@ -97,9 +89,9 @@ nvvk::RaytracingBuilderKHR::BlasInput AccelStructure::primitiveToGeometry(const 
   asGeom.geometry.setTriangles(triangles);
 
   vk::AccelerationStructureBuildRangeInfoKHR offset;
-  offset.setFirstVertex(prim.vertexOffset);
+  offset.setFirstVertex(0);
   offset.setPrimitiveCount(prim.indexCount / 3);
-  offset.setPrimitiveOffset(prim.firstIndex * sizeof(uint32_t));
+  offset.setPrimitiveOffset(0);
   offset.setTransformOffset(0);
 
   nvvk::RaytracingBuilderKHR::BlasInput input;
@@ -111,15 +103,19 @@ nvvk::RaytracingBuilderKHR::BlasInput AccelStructure::primitiveToGeometry(const 
 //--------------------------------------------------------------------------------------------------
 //
 //
-void AccelStructure::createBottomLevelAS(nvh::GltfScene& gltfScene)
+void AccelStructure::createBottomLevelAS(nvh::GltfScene&                  gltfScene,
+                                         const std::vector<nvvk::Buffer>& vertex,
+                                         const std::vector<nvvk::Buffer>& index)
 {
   // BLAS - Storing each primitive in a geometry
+  uint32_t                                           prim_idx{0};
   std::vector<nvvk::RaytracingBuilderKHR::BlasInput> allBlas;
   allBlas.reserve(gltfScene.m_primMeshes.size());
-  for(auto& primMesh : gltfScene.m_primMeshes)
+  for(nvh::GltfPrimMesh& primMesh : gltfScene.m_primMeshes)
   {
-    auto geo = primitiveToGeometry(primMesh);
+    auto geo = primitiveToGeometry(primMesh, vertex[prim_idx].buffer, index[prim_idx].buffer);
     allBlas.push_back({geo});
+    prim_idx++;
   }
   LOGI(" BLAS(%d)", allBlas.size());
   m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
@@ -133,15 +129,27 @@ void AccelStructure::createTopLevelAS(nvh::GltfScene& gltfScene)
 {
   std::vector<nvvk::RaytracingBuilderKHR::Instance> tlas;
   tlas.reserve(gltfScene.m_nodes.size());
-  uint32_t instID = 0;
+
   for(auto& node : gltfScene.m_nodes)
   {
+    // Flags
+    VkGeometryInstanceFlagsKHR flags{};
+    nvh::GltfPrimMesh&         primMesh = gltfScene.m_primMeshes[node.primMesh];
+    nvh::GltfMaterial&         mat      = gltfScene.m_materials[primMesh.materialIndex];
+    
+    // Always opaque, no need to use anyhit (faster)
+    if(mat.alphaMode == 0 || (mat.baseColorFactor.w == 1.0f && mat.baseColorTexture == -1))
+      flags |= VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR;
+    // Need to skip the cull flag in traceray_rtx for double sided materials
+    if(mat.doubleSided == 1)
+      flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+
     nvvk::RaytracingBuilderKHR::Instance rayInst;
     rayInst.transform        = node.worldMatrix;
     rayInst.instanceCustomId = node.primMesh;  // gl_InstanceCustomIndexEXT: to find which primitive
     rayInst.blasId           = node.primMesh;
-    rayInst.flags            = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-    rayInst.hitGroupId = 0;  //gltfScene.m_primMeshes[node.primMesh].materialIndex;  // We will use the same hit group for all objects
+    rayInst.flags            = flags;
+    rayInst.hitGroupId       = 0;  // We will use the same hit group for all objects
     tlas.emplace_back(rayInst);
   }
   LOGI(" TLAS(%d)", tlas.size());

@@ -25,19 +25,15 @@
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
-#include "nvvk/sbtwrapper_vk.hpp"
-#include "nvvk/profiler_vk.hpp"
 
 using namespace nvmath;
+#include "nvvk/profiler_vk.hpp"
 #include "renderer.h"
 #include "structures.h"
 
-using nvvk::SBTWrapper;
-
-
 /*
 
-Creating the RtCore renderer 
+Creating the Compute ray query renderer 
 * Requiring:  
   - Acceleration structure (AccelSctruct / Tlas)
   - An image (Post StoreImage)
@@ -48,39 +44,29 @@ Creating the RtCore renderer
   - create
   - run
 */
-class RtxPipeline : public Renderer
+class RayQuery : public Renderer
 {
 public:
   void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator) override;
   void destroy() override;
   void create(const vk::Extent2D& size, const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts, Scene* scene) override;
-  void run(const vk::CommandBuffer&              cmdBuf,
-           const vk::Extent2D&                   size,
-           nvvk::ProfilerVK&                     profiler,
-           const std::vector<vk::DescriptorSet>& descSets) override;
-  void useAnyHit(bool enable);
-
-  const std::string name() override { return std::string("Rtx"); }
+  void              run(const vk::CommandBuffer&              cmdBuf,
+                        const vk::Extent2D&                   size,
+                        nvvk::ProfilerVK&                     profiler,
+                        const std::vector<vk::DescriptorSet>& descSets) override;
+  const std::string name() override { return std::string("RQ"); }
 
 private:
-  void createPipeline();
-  void createPipelineLayout(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts);
-
-
-  uint32_t m_nbHit{1};
-  bool     m_enableAnyhit{true};
+  uint32_t m_nbHit;
 
 private:
   // Setup
   nvvk::ResourceAllocator* m_pAlloc;  // Allocator for buffer, images, acceleration structures
-  nvvk::DebugUtil          m_debug;   // Utility to name objects
-  vk::Device               m_device;
-  uint32_t                 m_queueIndex;
+  nvvk::DebugUtil  m_debug;   // Utility to name objects
+  vk::Device       m_device;
+  uint32_t         m_queueIndex;
 
 
-  vk::PhysicalDeviceRayTracingPipelinePropertiesKHR   m_rtProperties;
-  std::vector<vk::RayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
-  vk::PipelineLayout                                  m_rtPipelineLayout;
-  vk::Pipeline                                        m_rtPipeline;
-  SBTWrapper                                          m_stbWrapper;
+  vk::PipelineLayout m_pipelineLayout;
+  vk::Pipeline       m_pipeline;
 };
