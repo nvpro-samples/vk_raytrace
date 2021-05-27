@@ -28,7 +28,6 @@
 #include "nvvk/images_vk.hpp"
 #include <array>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 
 //--------------------------------------------------------------------------------------------------
 // Load an environment image (HDR) and create an acceleration structure for
@@ -38,7 +37,7 @@ class HdrSampling
 public:
   HdrSampling() = default;
 
-  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator);
+  void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator);
   void loadEnvironment(const std::string& hrdImage);
 
 
@@ -62,7 +61,7 @@ private:
     float    _padding{0.f};
   };
 
-  vk::Device       m_device;
+  VkDevice       m_device;
   uint32_t         m_queueIndex{0};
   nvvk::ResourceAllocator* m_alloc{nullptr};
   nvvk::DebugUtil  m_debug;
@@ -72,5 +71,5 @@ private:
 
 
   float build_alias_map(const std::vector<float>& data, std::vector<Env_accel>& accel);
-  void  createEnvironmentAccelTexture(const float* pixels, vk::Extent2D& size, nvvk::Texture& accelTex);
+  void  createEnvironmentAccelTexture(const float* pixels, VkExtent2D& size, nvvk::Texture& accelTex);
 };

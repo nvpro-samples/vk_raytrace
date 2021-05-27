@@ -16,7 +16,8 @@ message(STATUS "Processing Project ${PROJNAME}:")
 # C++ target and defines
 set(CMAKE_CXX_STANDARD 17)
 add_executable(${PROJNAME})
-if(${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
+
+if(MSVC)
     add_definitions(/wd26812)  # 'enum class' over 'enum'
     add_definitions(/wd26451)  # Arithmetic overflow, casting 4 byte value to 8 byte value
 endif()

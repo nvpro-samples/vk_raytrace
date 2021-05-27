@@ -22,7 +22,6 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <vulkan/vulkan.hpp>
 
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
@@ -52,14 +51,14 @@ static NvmlMonitor g_nvml(100, 100);
 // Keep the handle on the device
 // Initialize the tool to do all our allocations: buffers, images
 //
-void SampleExample::setup(const vk::Instance&       instance,
-                          const vk::Device&         device,
-                          const vk::PhysicalDevice& physicalDevice,
-                          uint32_t                  gtcQueueIndexFamily,
-                          uint32_t                  computeQueueIndex,
-                          uint32_t                  transferQueueIndex)
+void SampleExample::setup(const VkInstance&       instance,
+                          const VkDevice&         device,
+                          const VkPhysicalDevice& physicalDevice,
+                          uint32_t                gtcQueueIndexFamily,
+                          uint32_t                computeQueueIndex,
+                          uint32_t                transferQueueIndex)
 {
-  AppBase::setup(instance, device, physicalDevice, gtcQueueIndexFamily);
+  AppBaseVk::setup(instance, device, physicalDevice, gtcQueueIndexFamily);
 
   // Memory allocator for buffers and images
   m_alloc.init(instance, device, physicalDevice);
@@ -143,7 +142,7 @@ void SampleExample::loadAssets(const char* filename)
 
   // Need to stop current rendering
   m_busy = true;
-  m_device.waitIdle();
+  vkDeviceWaitIdle(m_device);
 
   std::thread([&, sfile]() {
     LOGI("Loading: %s\n", sfile.c_str());
@@ -182,13 +181,13 @@ void SampleExample::loadAssets(const char* filename)
 //--------------------------------------------------------------------------------------------------
 // Called at each frame to update the environment (sun&sky)
 //
-void SampleExample::updateUniformBuffer(const vk::CommandBuffer& cmdBuf)
+void SampleExample::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 {
   LABEL_SCOPE_VK(cmdBuf);
   const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
 
   m_scene.updateCamera(cmdBuf, aspectRatio);
-  cmdBuf.updateBuffer<SunAndSky>(m_sunAndSkyBuffer.buffer, 0, m_sunAndSky);
+  vkCmdUpdateBuffer(cmdBuf, m_sunAndSkyBuffer.buffer, 0, sizeof(SunAndSky), &m_sunAndSky);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -222,15 +221,13 @@ void SampleExample::resetFrame()
 //
 void SampleExample::createDescriptorSetLayout()
 {
-  using vkDS = vk::DescriptorSetLayoutBinding;
-  using vkDT = vk::DescriptorType;
-  using vkSS = vk::ShaderStageFlagBits;
+  VkShaderStageFlags flags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
+                             | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-  auto flag = vkSS::eRaygenKHR | vkSS::eClosestHitKHR | vkSS::eAnyHitKHR | vkSS::eCompute | vkSS::eFragment;
 
-  m_bind.addBinding(vkDS(B_SUNANDSKY, vkDT::eUniformBuffer, 1, vkSS::eMissKHR | flag));
-  m_bind.addBinding(vkDS(B_HDR, vkDT::eCombinedImageSampler, 1, vkSS::eRaygenKHR | vkSS::eCompute));  // HDR image
-  m_bind.addBinding(vkDS(B_IMPORT_SMPL, vkDT::eCombinedImageSampler, 1, vkSS::eRaygenKHR | vkSS::eCompute));  // importance sampling
+  m_bind.addBinding({B_SUNANDSKY, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_MISS_BIT_KHR | flags});
+  m_bind.addBinding({B_HDR, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, flags});          // HDR image
+  m_bind.addBinding({B_IMPORT_SMPL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, flags});  // importance sampling
 
 
   m_descPool = m_bind.createPool(m_device, 1);
@@ -238,21 +235,22 @@ void SampleExample::createDescriptorSetLayout()
   CREATE_NAMED_VK(m_descSet, nvvk::allocateDescriptorSet(m_device, m_descPool, m_descSetLayout));
 
   // Using the environment
-  std::vector<vk::WriteDescriptorSet> writes;
-  vk::DescriptorBufferInfo            sunskyDesc{m_sunAndSkyBuffer.buffer, 0, VK_WHOLE_SIZE};
+  std::vector<VkWriteDescriptorSet> writes;
+  VkDescriptorBufferInfo            sunskyDesc{m_sunAndSkyBuffer.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_bind.makeWrite(m_descSet, B_SUNANDSKY, &sunskyDesc));
   writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_textures.txtHdr.descriptor));
   writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &m_skydome.m_textures.accelImpSmpl.descriptor));
 
-  m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+  vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 void SampleExample::updateHdrDescriptors()
 {
-  std::vector<vk::WriteDescriptorSet> writes;
+  std::vector<VkWriteDescriptorSet> writes;
   writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_textures.txtHdr.descriptor));
   writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &m_skydome.m_textures.accelImpSmpl.descriptor));
-  m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+
+  vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -261,9 +259,8 @@ void SampleExample::updateHdrDescriptors()
 //
 void SampleExample::createUniformBuffer()
 {
-  m_sunAndSkyBuffer = m_alloc.createBuffer(sizeof(SunAndSky),
-                                           vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                           vk::MemoryPropertyFlagBits::eDeviceLocal);
+  m_sunAndSkyBuffer = m_alloc.createBuffer(sizeof(SunAndSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   NAME_VK(m_sunAndSkyBuffer.buffer);
 }
 
@@ -276,8 +273,8 @@ void SampleExample::destroyResources()
   m_alloc.destroy(m_sunAndSkyBuffer);
 
   // Descriptors
-  m_device.destroy(m_descPool);
-  m_device.destroy(m_descSetLayout);
+  vkDestroyDescriptorPool(m_device, m_descPool, nullptr);
+  vkDestroyDescriptorSetLayout(m_device, m_descSetLayout, nullptr);
 
   // Other
   m_picker.destroy();
@@ -310,9 +307,9 @@ void SampleExample::onResize(int /*w*/, int /*h*/)
 //--------------------------------------------------------------------------------------------------
 // The size of the rendering area is smaller than the viewport
 // This is the space left in the center view.
-void SampleExample::setRenderRegion(const vk::Rect2D& size)
+void SampleExample::setRenderRegion(const VkRect2D& size)
 {
-  if(m_renderRegion != size)
+  if(memcmp(&m_renderRegion, &size, sizeof(VkRect2D)) != 0)
     resetFrame();
   m_renderRegion = size;
 }
@@ -328,7 +325,7 @@ void SampleExample::createOffscreenRender()
 }
 
 
-void SampleExample::drawPost(vk::CommandBuffer cmdBuf)
+void SampleExample::drawPost(VkCommandBuffer cmdBuf)
 {
   LABEL_SCOPE_VK(cmdBuf);
   m_offscreen.m_tonemapper.zoom           = m_descaling ? 1.0f / m_descalingLevel : 1.0f;
@@ -336,9 +333,17 @@ void SampleExample::drawPost(vk::CommandBuffer cmdBuf)
   auto area                               = nvmath::vec2f(m_renderRegion.extent.width, m_renderRegion.extent.height);
   m_offscreen.m_tonemapper.renderingRatio = size / area;
 
-  cmdBuf.setViewport(0, {{static_cast<float>(m_renderRegion.offset.x), static_cast<float>(m_renderRegion.offset.y),
-                          static_cast<float>(m_size.width), static_cast<float>(m_size.height), 0.0f, 1.0f}});
-  cmdBuf.setScissor(0, {m_renderRegion});
+  VkViewport viewport{static_cast<float>(m_renderRegion.offset.x),
+                      static_cast<float>(m_renderRegion.offset.y),
+                      static_cast<float>(m_size.width),
+                      static_cast<float>(m_size.height),
+                      0.0f,
+                      1.0f};
+  vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+
+  VkRect2D scissor{{0, 0}, {m_renderRegion.extent.width, m_renderRegion.extent.height}};
+  vkCmdSetScissor(cmdBuf, 0, 1, &scissor);
+
 
   m_offscreen.run(cmdBuf);
   if(m_showAxis)
@@ -349,7 +354,7 @@ void SampleExample::drawPost(vk::CommandBuffer cmdBuf)
 // Ray tracing
 //////////////////////////////////////////////////////////////////////////
 
-void SampleExample::render(RndMethod method, const vk::CommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler)
+void SampleExample::render(RndMethod method, const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler)
 {
   LABEL_SCOPE_VK(cmdBuf);
   g_nvml.refresh();
@@ -362,7 +367,7 @@ void SampleExample::render(RndMethod method, const vk::CommandBuffer& cmdBuf, nv
   if(method != m_rndMethod)
   {
     LOGI("Switching renderer, from %d to %d \n", m_rndMethod, method);
-    m_device.waitIdle();  // cannot destroy while in use
+    vkDeviceWaitIdle(m_device);  // cannot destroy while in use
     if(m_rndMethod != eNone)
       m_pRender[m_rndMethod]->destroy();
     m_rndMethod = method;
@@ -372,9 +377,9 @@ void SampleExample::render(RndMethod method, const vk::CommandBuffer& cmdBuf, nv
   }
 
   // Handling de-scaling by reducing the size to render
-  vk::Extent2D render_size = m_renderRegion.extent;
+  VkExtent2D render_size = m_renderRegion.extent;
   if(m_descaling)
-    render_size = vk::Extent2D(render_size.width / m_descalingLevel, render_size.height / m_descalingLevel);
+    render_size = VkExtent2D{render_size.width / m_descalingLevel, render_size.height / m_descalingLevel};
 
   m_rtxState.size = {render_size.width, render_size.height};
   // State is the push constant structure
@@ -506,7 +511,7 @@ bool SampleExample::guiRayTracing()
                     "AnyHit is used for double sided, cutout opacity, but can be slower when all objects are opaque", &bAnyHit, nullptr))
   {
     auto rtx = dynamic_cast<RtxPipeline*>(m_pRender[m_rndMethod]);
-    m_device.waitIdle();  // cannot run while changing this
+    vkDeviceWaitIdle(m_device);  // cannot run while changing this
     rtx->useAnyHit(bAnyHit);
     changed = true;
   }
@@ -848,7 +853,7 @@ void SampleExample::showBusyWindow()
 //
 void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
 {
-  nvvk::AppBase::onKeyboard(key, scancode, action, mods);
+  nvvk::AppBaseVk::onKeyboard(key, scancode, action, mods);
 
   if(action == GLFW_RELEASE)
     return;
@@ -875,7 +880,7 @@ void SampleExample::screenPicking()
 
   // Set the camera as to see the model
   nvvk::CommandPool sc(m_device, m_graphicsQueueIndex);
-  vk::CommandBuffer cmdBuf = sc.createCommandBuffer();
+  VkCommandBuffer   cmdBuf = sc.createCommandBuffer();
 
   const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
   auto        view        = CameraManip.getMatrix();
@@ -922,7 +927,7 @@ void SampleExample::onFileDrop(const char* filename)
 //
 void SampleExample::onMouseMotion(int x, int y)
 {
-  AppBase::onMouseMotion(x, y);
+  AppBaseVk::onMouseMotion(x, y);
 
   if(ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard)
     return;
@@ -935,7 +940,7 @@ void SampleExample::onMouseMotion(int x, int y)
 
 void SampleExample::onMouseButton(int button, int action, int mods)
 {
-  AppBase::onMouseButton(button, action, mods);
+  AppBaseVk::onMouseButton(button, action, mods);
   if((m_inputs.lmb || m_inputs.rmb || m_inputs.mmb) == false && action == GLFW_RELEASE && m_descaling == true)
   {
     m_descaling = false;

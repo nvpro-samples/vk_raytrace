@@ -19,7 +19,6 @@
 
 
 #pragma once
-#include "vulkan/vulkan.hpp"
 
 #include "nvmath/nvmath_glsltypes.h"
 #include "nvvk/resourceallocator_vk.hpp"
@@ -47,13 +46,13 @@ Creating the Compute ray query renderer
 class RayQuery : public Renderer
 {
 public:
-  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator) override;
+  void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator) override;
   void destroy() override;
-  void create(const vk::Extent2D& size, const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts, Scene* scene) override;
-  void              run(const vk::CommandBuffer&              cmdBuf,
-                        const vk::Extent2D&                   size,
+  void create(const VkExtent2D& size, const std::vector<VkDescriptorSetLayout>& rtDescSetLayouts, Scene* scene) override;
+  void              run(const VkCommandBuffer&              cmdBuf,
+                        const VkExtent2D&                   size,
                         nvvk::ProfilerVK&                     profiler,
-                        const std::vector<vk::DescriptorSet>& descSets) override;
+                        const std::vector<VkDescriptorSet>& descSets) override;
   const std::string name() override { return std::string("RQ"); }
 
 private:
@@ -63,10 +62,10 @@ private:
   // Setup
   nvvk::ResourceAllocator* m_pAlloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil  m_debug;   // Utility to name objects
-  vk::Device       m_device;
+  VkDevice       m_device;
   uint32_t         m_queueIndex;
 
 
-  vk::PipelineLayout m_pipelineLayout;
-  vk::Pipeline       m_pipeline;
+  VkPipelineLayout m_pipelineLayout{VK_NULL_HANDLE};
+  VkPipeline       m_pipeline{VK_NULL_HANDLE};
 };

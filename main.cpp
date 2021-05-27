@@ -19,8 +19,6 @@
 
 
 #include <thread>
-#include <vulkan/vulkan.hpp>
-VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 #include "backends/imgui_impl_glfw.h"
 #include "nvh/cameramanipulator.hpp"
@@ -105,16 +103,14 @@ int main(int argc, char** argv)
   contextInfo.addDeviceExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
 
-  vk::PhysicalDeviceShaderClockFeaturesKHR clockFeature;
-  clockFeature.setShaderSubgroupClock(VK_TRUE);
-  clockFeature.setShaderDeviceClock(VK_TRUE);
+  VkPhysicalDeviceShaderClockFeaturesKHR clockFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME, false, &clockFeature);
   // #VKRay: Activate the ray tracing extension
-  vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelFeature;
+  VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false, &accelFeature);
-  vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature;
+  VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);
-  vk::PhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures;
+  VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME, false, &rayQueryFeatures);
 
   contextInfo.addDeviceExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
@@ -134,7 +130,7 @@ int main(int argc, char** argv)
   SampleExample sample;
 
   // Window need to be opened to get the surface on which to draw
-  const vk::SurfaceKHR surface = sample.getVkSurface(vkctx.m_instance, window);
+  const VkSurfaceKHR surface = sample.getVkSurface(vkctx.m_instance, window);
   vkctx.setGCTQueueWithPresent(surface);
   sample.setupGlfwCallbacks(window);
 
@@ -191,10 +187,12 @@ int main(int argc, char** argv)
     sample.updateFrame();
 
     // Start command buffer of this frame
-    auto                     curFrame = sample.getCurFrame();
-    const vk::CommandBuffer& cmdBuf   = sample.getCommandBuffers()[curFrame];
+    auto                   curFrame = sample.getCurFrame();
+    const VkCommandBuffer& cmdBuf   = sample.getCommandBuffers()[curFrame];
 
-    cmdBuf.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cmdBuf, &beginInfo);
 
     // UI
     sample.titleBar();
@@ -241,18 +239,18 @@ int main(int argc, char** argv)
     {
       ImVec2 pos, size;
       ImGuiH::Panel::CentralDimension(pos, size);
-      sample.setRenderRegion(vk::Rect2D(vk::Offset2D(static_cast<int32_t>(pos.x), static_cast<int32_t>(pos.y)),
-                                        vk::Extent2D(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y))));
+      sample.setRenderRegion(VkRect2D{VkOffset2D{static_cast<int32_t>(pos.x), static_cast<int32_t>(pos.y)},
+                                      VkExtent2D{static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)}});
     }
     else
     {
-      sample.setRenderRegion(vk::Rect2D({}, sample.getSize()));
+      sample.setRenderRegion(VkRect2D{{}, sample.getSize()});
     }
 
     // Clearing screen
-    std::array<vk::ClearValue, 2> clearValues;
-    clearValues[0].setColor(std::array<float, 4>({0, 0, 0, 0}));
-    clearValues[1].setDepthStencil({1.0f, 0});
+    std::array<VkClearValue, 2> clearValues;
+    clearValues[0].color        = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
 
     // Offscreen render pass
     if(sample.isBusy() == false)
@@ -271,33 +269,34 @@ int main(int argc, char** argv)
     {
       auto sec = profiler.timeRecurring("Tonemap", cmdBuf);
 
-      vk::RenderPassBeginInfo postRenderPassBeginInfo;
-      postRenderPassBeginInfo.setClearValueCount(2);
-      postRenderPassBeginInfo.setPClearValues(clearValues.data());
-      postRenderPassBeginInfo.setRenderPass(sample.getRenderPass());
-      postRenderPassBeginInfo.setFramebuffer(sample.getFramebuffers()[curFrame]);
-      postRenderPassBeginInfo.setRenderArea({{}, sample.getSize()});
+      VkRenderPassBeginInfo postRenderPassBeginInfo{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+      postRenderPassBeginInfo.clearValueCount = 2;
+      postRenderPassBeginInfo.pClearValues    = clearValues.data();
+      postRenderPassBeginInfo.renderPass      = sample.getRenderPass();
+      postRenderPassBeginInfo.framebuffer     = sample.getFramebuffers()[curFrame];
+      postRenderPassBeginInfo.renderArea      = {{}, sample.getSize()};
 
-      cmdBuf.beginRenderPass(postRenderPassBeginInfo, vk::SubpassContents::eInline);
+      vkCmdBeginRenderPass(cmdBuf, &postRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
       // Rendering tonemapper
       sample.drawPost(cmdBuf);
 
       ImGui::Render();
       ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
-      cmdBuf.endRenderPass();
+      vkCmdEndRenderPass(cmdBuf);
     }
 
     profiler.endFrame();
 
     // Submit for display
-    cmdBuf.end();
+    vkEndCommandBuffer(cmdBuf);
     sample.submitFrame();
 
     CameraManip.updateAnim();
   }
 
   // Cleanup
-  sample.getDevice().waitIdle();
+  vkDeviceWaitIdle(sample.getDevice());
   sample.destroyResources();
   sample.destroy();
   profiler.deinit();
