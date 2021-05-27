@@ -19,7 +19,6 @@
 
 
 #pragma once
-#include "vulkan/vulkan.hpp"
 
 #include "nvmath/nvmath_glsltypes.h"
 #include "nvvk/resourceallocator_vk.hpp"
@@ -51,20 +50,17 @@ Creating the RtCore renderer
 class RtxPipeline : public Renderer
 {
 public:
-  void setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator) override;
+  void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator) override;
   void destroy() override;
-  void create(const vk::Extent2D& size, const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts, Scene* scene) override;
-  void run(const vk::CommandBuffer&              cmdBuf,
-           const vk::Extent2D&                   size,
-           nvvk::ProfilerVK&                     profiler,
-           const std::vector<vk::DescriptorSet>& descSets) override;
+  void create(const VkExtent2D& size, const std::vector<VkDescriptorSetLayout>& rtDescSetLayouts, Scene* scene) override;
+  void run(const VkCommandBuffer& cmdBuf, const VkExtent2D& size, nvvk::ProfilerVK& profiler, const std::vector<VkDescriptorSet>& descSets) override;
   void useAnyHit(bool enable);
 
   const std::string name() override { return std::string("Rtx"); }
 
 private:
   void createPipeline();
-  void createPipelineLayout(const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts);
+  void createPipelineLayout(const std::vector<VkDescriptorSetLayout>& rtDescSetLayouts);
 
 
   uint32_t m_nbHit{1};
@@ -74,13 +70,12 @@ private:
   // Setup
   nvvk::ResourceAllocator* m_pAlloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil          m_debug;   // Utility to name objects
-  vk::Device               m_device;
-  uint32_t                 m_queueIndex;
+  VkDevice                 m_device;
+  uint32_t                 m_queueIndex{0};
 
 
-  vk::PhysicalDeviceRayTracingPipelinePropertiesKHR   m_rtProperties;
-  std::vector<vk::RayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
-  vk::PipelineLayout                                  m_rtPipelineLayout;
-  vk::Pipeline                                        m_rtPipeline;
-  SBTWrapper                                          m_stbWrapper;
+  VkPhysicalDeviceRayTracingPipelinePropertiesKHR   m_rtProperties{};
+  VkPipelineLayout                                  m_rtPipelineLayout{VK_NULL_HANDLE};
+  VkPipeline                                        m_rtPipeline{VK_NULL_HANDLE};
+  SBTWrapper                                        m_stbWrapper;
 };

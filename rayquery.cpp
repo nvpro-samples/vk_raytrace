@@ -17,9 +17,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
-#include "vulkan/vulkan.hpp"
-
 #include "nvh/alignment.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvvk/shaders_vk.hpp"
@@ -31,7 +28,7 @@
 //--------------------------------------------------------------------------------------------------
 //
 //
-void RayQuery::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
+void RayQuery::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
   m_device     = device;
   m_pAlloc     = allocator;
@@ -44,40 +41,42 @@ void RayQuery::setup(const vk::Device& device, const vk::PhysicalDevice& physica
 //
 void RayQuery::destroy()
 {
-  m_device.destroy(m_pipelineLayout);
-  m_device.destroy(m_pipeline);
-  m_pipelineLayout = vk::PipelineLayout{};
-  m_pipeline       = vk::Pipeline{};
+  vkDestroyPipeline(m_device, m_pipeline, nullptr);
+  vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
+
+  m_pipelineLayout = VK_NULL_HANDLE;
+  m_pipeline       = VK_NULL_HANDLE;
 }
 
 //--------------------------------------------------------------------------------------------------
 // Creation of the RQ pipeline
 //
-void RayQuery::create(const vk::Extent2D& size, const std::vector<vk::DescriptorSetLayout>& rtDescSetLayouts, Scene* scene)
+void RayQuery::create(const VkExtent2D& size, const std::vector<VkDescriptorSetLayout>& rtDescSetLayouts, Scene* scene)
 {
   MilliTimer timer;
   LOGI("Create Ray Query Pipeline");
 
-  std::vector<vk::PushConstantRange> push_constants;
-  push_constants.push_back({vk::ShaderStageFlagBits::eCompute, 0, sizeof(RtxState)});
+  std::vector<VkPushConstantRange> push_constants;
+  push_constants.push_back({VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(RtxState)});
 
-  vk::PipelineLayoutCreateInfo layout_info;
-  layout_info.setPushConstantRangeCount(static_cast<uint32_t>(push_constants.size()));
-  layout_info.setPPushConstantRanges(push_constants.data());
-  layout_info.setSetLayoutCount(static_cast<uint32_t>(rtDescSetLayouts.size()));
-  layout_info.setPSetLayouts(rtDescSetLayouts.data());
-  m_pipelineLayout = m_device.createPipelineLayout(layout_info);
+  VkPipelineLayoutCreateInfo layout_info{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+  layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_constants.size());
+  layout_info.pPushConstantRanges    = push_constants.data();
+  layout_info.setLayoutCount         = static_cast<uint32_t>(rtDescSetLayouts.size());
+  layout_info.pSetLayouts            = rtDescSetLayouts.data();
+  vkCreatePipelineLayout(m_device, &layout_info, nullptr, &m_pipelineLayout);
 
-  vk::ComputePipelineCreateInfo computePipelineCreateInfo{{}, {}, m_pipelineLayout};
+  VkComputePipelineCreateInfo computePipelineCreateInfo{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+  computePipelineCreateInfo.layout       = m_pipelineLayout;
+  computePipelineCreateInfo.stage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   computePipelineCreateInfo.stage.module = nvvk::createShaderModule(m_device, pathtrace_comp, sizeof(pathtrace_comp));
-  computePipelineCreateInfo.stage.stage  = vk::ShaderStageFlagBits::eCompute;
+  computePipelineCreateInfo.stage.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
   computePipelineCreateInfo.stage.pName  = "main";
 
-  auto resultValue = m_device.createComputePipeline({}, computePipelineCreateInfo);
-  m_pipeline = resultValue.value;
-  m_debug.setObjectName(m_pipeline, "RayQuery");
-  m_device.destroy(computePipelineCreateInfo.stage.module);
+  vkCreateComputePipelines(m_device, {}, 1, &computePipelineCreateInfo, nullptr, &m_pipeline);
 
+  m_debug.setObjectName(m_pipeline, "RayQuery");
+  vkDestroyShaderModule(m_device, computePipelineCreateInfo.stage.module, nullptr);
   timer.print();
 }
 
@@ -86,18 +85,16 @@ void RayQuery::create(const vk::Extent2D& size, const std::vector<vk::Descriptor
 // Executing the Ray Query compute shader
 //
 #define GROUP_SIZE 8  // Same group size as in compute shader
-void RayQuery::run(const vk::CommandBuffer&              cmdBuf,
-                   const vk::Extent2D&                   size,
-                   nvvk::ProfilerVK&                     profiler,
-                   const std::vector<vk::DescriptorSet>& descSets)
+void RayQuery::run(const VkCommandBuffer& cmdBuf, const VkExtent2D& size, nvvk::ProfilerVK& profiler, const std::vector<VkDescriptorSet>& descSets)
 {
   // Preparing for the compute shader
-  cmdBuf.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline);
-  cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout, 0, descSets, {});
+  vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
+  vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0,
+                          static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
 
   // Sending the push constant information
-  cmdBuf.pushConstants(m_pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(RtxState), &m_state);
+  vkCmdPushConstants(cmdBuf, m_pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(RtxState), &m_state);
 
   // Dispatching the shader
-  cmdBuf.dispatch((size.width + (GROUP_SIZE - 1)) / GROUP_SIZE, (size.height + (GROUP_SIZE - 1)) / GROUP_SIZE, 1);
+  vkCmdDispatch(cmdBuf, (size.width + (GROUP_SIZE - 1)) / GROUP_SIZE, (size.height + (GROUP_SIZE - 1)) / GROUP_SIZE, 1);
 }

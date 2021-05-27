@@ -18,7 +18,6 @@
  */
 
 
-
 #include "scene.hpp"
 #include "binding.h"
 #include "fileformats/tiny_gltf_freeimage.h"
@@ -34,17 +33,9 @@
 #include "tools.hpp"
 
 
-using vkBU = vk::BufferUsageFlagBits;
-using vkMP = vk::MemoryPropertyFlagBits;
-using vkDS = vk::DescriptorSetLayoutBinding;
-using vkDT = vk::DescriptorType;
-using vkSS = vk::ShaderStageFlagBits;
-using vkIU = vk::ImageUsageFlagBits;
-
-
 namespace fs = std::filesystem;
 
-void Scene::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
+void Scene::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
   m_device           = device;
   m_pAlloc           = allocator;
@@ -85,12 +76,15 @@ bool Scene::load(const std::string& filename)
   // Note: the GTC family queue is used because the nvvk::cmdGenerateMipmaps uses vkCmdBlitImage and this
   // command requires graphic queue and not only transfer.
   LOGI("Create Buffers\n");
-  vk::Queue         queue = m_device.getQueue(m_queueFamilyIndex, 1);
-  nvvk::CommandPool cmdBufGet(m_device, m_queueFamilyIndex, vk::CommandPoolCreateFlagBits::eTransient, queue);
-  vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+  VkQueue queue;
+  vkGetDeviceQueue(m_device, m_queueFamilyIndex, 1, &queue);
+
+  nvvk::CommandPool cmdBufGet(m_device, m_queueFamilyIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, queue);
+  VkCommandBuffer   cmdBuf = cmdBufGet.createCommandBuffer();
 
   // Create camera buffer
-  m_buffer[eCameraMat] = m_pAlloc->createBuffer(sizeof(SceneCamera), vkBU::eUniformBuffer | vkBU::eTransferDst, vkMP::eDeviceLocal);
+  m_buffer[eCameraMat] = m_pAlloc->createBuffer(sizeof(SceneCamera), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   NAME_VK(m_buffer[eCameraMat].buffer);
 
   createMaterialBuffer(cmdBuf, gltf);
@@ -170,7 +164,7 @@ bool Scene::loadGltfScene(const std::string& filename, tinygltf::Model& tmodel)
 //--------------------------------------------------------------------------------------------------
 // Information per instance/geometry (currently only material)
 //
-void Scene::createInstanceDataBuffer(vk::CommandBuffer cmdBuf, nvh::GltfScene& gltf)
+void Scene::createInstanceDataBuffer(VkCommandBuffer cmdBuf, nvh::GltfScene& gltf)
 {
   std::vector<InstanceData> instData;
   for(auto& primMesh : gltf.m_primMeshes)
@@ -193,7 +187,7 @@ void Scene::createInstanceDataBuffer(vk::CommandBuffer cmdBuf, nvh::GltfScene& g
 // The handiness of the tangent is stored in the less significant bit of the V component of the tcoord.
 // Color is encoded on 32bit
 //
-void Scene::createVertexBuffer(vk::CommandBuffer cmdBuf, const nvh::GltfScene& gltf)
+void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf)
 {
   LOGI(" - Create %d Vertex Buffers", gltf.m_primMeshes.size());
   MilliTimer timer;
@@ -306,7 +300,7 @@ void Scene::setCameraFromScene(const std::string& filename, const nvh::GltfScene
 //--------------------------------------------------------------------------------------------------
 // Create a buffer of all lights
 //
-void Scene::createLightBuffer(vk::CommandBuffer cmdBuf, const nvh::GltfScene& gltf)
+void Scene::createLightBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf)
 {
   std::vector<Light> all_lights;
   for(const auto& l_gltf : gltf.m_lights)
@@ -338,7 +332,7 @@ void Scene::createLightBuffer(vk::CommandBuffer cmdBuf, const nvh::GltfScene& gl
 // Create a buffer of all materials
 // Most parameters are supported, and GltfShadeMaterial is GLSL packed compliant
 //
-void Scene::createMaterialBuffer(vk::CommandBuffer cmdBuf, const nvh::GltfScene& gltf)
+void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf)
 {
   LOGI(" - Create %d Material Buffer", gltf.m_materials.size());
   MilliTimer timer;
@@ -438,50 +432,50 @@ void Scene::destroy()
   m_textures.clear();
 
 
-  m_device.destroy(m_descPool);
-  m_device.destroy(m_descSetLayout);
+  vkDestroyDescriptorPool(m_device, m_descPool, nullptr);
+  vkDestroyDescriptorSetLayout(m_device, m_descSetLayout, nullptr);
 
   m_gltf          = {};
   m_stats         = {};
-  m_descPool      = vk::DescriptorPool();
-  m_descSetLayout = vk::DescriptorSetLayout();
-  m_descSet       = vk::DescriptorSet();
+  m_descPool      = VkDescriptorPool();
+  m_descSetLayout = VkDescriptorSetLayout();
+  m_descSet       = VkDescriptorSet();
 }
 
 //--------------------------------------------------------------------------------------------------
 // Return the Vulkan sampler based on the glTF sampler information
 //
-vk::SamplerCreateInfo gltfSamplerToVulkan(tinygltf::Sampler& tsampler)
+VkSamplerCreateInfo gltfSamplerToVulkan(tinygltf::Sampler& tsampler)
 {
-  vk::SamplerCreateInfo vk_sampler;
+  VkSamplerCreateInfo vk_sampler;
 
-  std::map<int, vk::Filter> filters;
-  filters[9728] = vk::Filter::eNearest;  // NEAREST
-  filters[9729] = vk::Filter::eLinear;   // LINEAR
-  filters[9984] = vk::Filter::eNearest;  // NEAREST_MIPMAP_NEAREST
-  filters[9985] = vk::Filter::eLinear;   // LINEAR_MIPMAP_NEAREST
-  filters[9986] = vk::Filter::eNearest;  // NEAREST_MIPMAP_LINEAR
-  filters[9987] = vk::Filter::eLinear;   // LINEAR_MIPMAP_LINEAR
+  std::map<int, VkFilter> filters;
+  filters[9728] = VK_FILTER_NEAREST;  // NEAREST
+  filters[9729] = VK_FILTER_LINEAR;   // LINEAR
+  filters[9984] = VK_FILTER_NEAREST;  // NEAREST_MIPMAP_NEAREST
+  filters[9985] = VK_FILTER_LINEAR;   // LINEAR_MIPMAP_NEAREST
+  filters[9986] = VK_FILTER_NEAREST;  // NEAREST_MIPMAP_LINEAR
+  filters[9987] = VK_FILTER_LINEAR;   // LINEAR_MIPMAP_LINEAR
 
-  std::map<int, vk::SamplerMipmapMode> mipmap;
-  mipmap[9728] = vk::SamplerMipmapMode::eNearest;  // NEAREST
-  mipmap[9729] = vk::SamplerMipmapMode::eNearest;  // LINEAR
-  mipmap[9984] = vk::SamplerMipmapMode::eNearest;  // NEAREST_MIPMAP_NEAREST
-  mipmap[9985] = vk::SamplerMipmapMode::eNearest;  // LINEAR_MIPMAP_NEAREST
-  mipmap[9986] = vk::SamplerMipmapMode::eLinear;   // NEAREST_MIPMAP_LINEAR
-  mipmap[9987] = vk::SamplerMipmapMode::eLinear;   // LINEAR_MIPMAP_LINEAR
+  std::map<int, VkSamplerMipmapMode> mipmap;
+  mipmap[9728] = VK_SAMPLER_MIPMAP_MODE_NEAREST;  // NEAREST
+  mipmap[9729] = VK_SAMPLER_MIPMAP_MODE_NEAREST;  // LINEAR
+  mipmap[9984] = VK_SAMPLER_MIPMAP_MODE_NEAREST;  // NEAREST_MIPMAP_NEAREST
+  mipmap[9985] = VK_SAMPLER_MIPMAP_MODE_NEAREST;  // LINEAR_MIPMAP_NEAREST
+  mipmap[9986] = VK_SAMPLER_MIPMAP_MODE_LINEAR;   // NEAREST_MIPMAP_LINEAR
+  mipmap[9987] = VK_SAMPLER_MIPMAP_MODE_LINEAR;   // LINEAR_MIPMAP_LINEAR
 
-  std::map<int, vk::SamplerAddressMode> addressMode;
-  addressMode[33071] = vk::SamplerAddressMode::eClampToEdge;
-  addressMode[33648] = vk::SamplerAddressMode::eMirroredRepeat;
-  addressMode[10497] = vk::SamplerAddressMode::eRepeat;
+  std::map<int, VkSamplerAddressMode> addressMode;
+  addressMode[33071] = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  addressMode[33648] = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+  addressMode[10497] = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-  vk_sampler.setMagFilter(filters[tsampler.magFilter]);
-  vk_sampler.setMinFilter(filters[tsampler.minFilter]);
-  vk_sampler.setMipmapMode(mipmap[tsampler.minFilter]);
+  vk_sampler.magFilter  = filters[tsampler.magFilter];
+  vk_sampler.minFilter  = filters[tsampler.minFilter];
+  vk_sampler.mipmapMode = mipmap[tsampler.minFilter];
 
-  vk_sampler.setAddressModeU(addressMode[tsampler.wrapS]);
-  vk_sampler.setAddressModeV(addressMode[tsampler.wrapT]);
+  vk_sampler.addressModeU = addressMode[tsampler.wrapS];
+  vk_sampler.addressModeV = addressMode[tsampler.wrapT];
 
   // Always allow LOD
   vk_sampler.maxLod = FLT_MAX;
@@ -492,17 +486,17 @@ vk::SamplerCreateInfo gltfSamplerToVulkan(tinygltf::Sampler& tsampler)
 //--------------------------------------------------------------------------------------------------
 // Uploading all textures and images to the GPU
 //
-void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfModel)
+void Scene::createTextureImages(VkCommandBuffer cmdBuf, tinygltf::Model& gltfModel)
 {
   LOGI(" - Create %d Textures, %d Images", gltfModel.textures.size(), gltfModel.images.size());
   MilliTimer timer;
 
-  vk::Format format = vk::Format::eB8G8R8A8Unorm;
+  VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
 
   // Make dummy image(1,1), needed as we cannot have an empty array
   auto addDefaultImage = [this, cmdBuf]() {
     std::array<uint8_t, 4> white           = {255, 255, 255, 255};
-    vk::ImageCreateInfo    imageCreateInfo = nvvk::makeImage2DCreateInfo(vk::Extent2D{1, 1});
+    VkImageCreateInfo      imageCreateInfo = nvvk::makeImage2DCreateInfo(VkExtent2D{1, 1});
     nvvk::Image            image           = m_pAlloc->createImage(cmdBuf, 4, white.data(), imageCreateInfo);
     m_images.push_back({image, imageCreateInfo});
     m_debug.setObjectName(m_images.back().first.image, "dummy");
@@ -512,7 +506,7 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
   auto addDefaultTexture = [this, cmdBuf]() {
     m_defaultTextures.push_back(m_textures.size());
     std::array<uint8_t, 4> white = {255, 255, 255, 255};
-    m_textures.emplace_back(m_pAlloc->createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(vk::Extent2D{1, 1}), {}));
+    m_textures.emplace_back(m_pAlloc->createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(VkExtent2D{1, 1}), {}));
     m_debug.setObjectName(m_textures.back().image, "dummy");
   };
 
@@ -540,11 +534,11 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
 
     void*        buffer     = &gltfimage.image[0];
     VkDeviceSize bufferSize = gltfimage.image.size();
-    auto         imgSize    = vk::Extent2D(gltfimage.width, gltfimage.height);
+    auto         imgSize    = VkExtent2D{(uint32_t)gltfimage.width, (uint32_t)gltfimage.height};
 
     // Creating an image, the sampler and generating mipmaps
-    vk::ImageCreateInfo imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, vkIU::eSampled, true);
-    nvvk::Image         image           = m_pAlloc->createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
+    VkImageCreateInfo imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+    nvvk::Image       image           = m_pAlloc->createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
     // nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
     m_images.push_back({image, imageCreateInfo});
 
@@ -565,15 +559,18 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
     }
 
     // Sampler
-    vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
+    VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    samplerCreateInfo.minFilter  = VK_FILTER_LINEAR;
+    samplerCreateInfo.magFilter  = VK_FILTER_LINEAR;
+    samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     if(gltfModel.textures[i].sampler > -1)
     {
       // Retrieve the texture sampler
       auto gltfSampler  = gltfModel.samplers[gltfModel.textures[i].sampler];
       samplerCreateInfo = gltfSamplerToVulkan(gltfSampler);
     }
-    std::pair<nvvk::Image, vk::ImageCreateInfo>& image = m_images[sourceImage];
-    vk::ImageViewCreateInfo ivInfo                     = nvvk::makeImageViewCreateInfo(image.first.image, image.second);
+    std::pair<nvvk::Image, VkImageCreateInfo>& image  = m_images[sourceImage];
+    VkImageViewCreateInfo                      ivInfo = nvvk::makeImageViewCreateInfo(image.first.image, image.second);
     m_textures.emplace_back(m_pAlloc->createTexture(image.first, ivInfo, samplerCreateInfo));
 
     NAME_IDX_VK(m_textures[i].image, i);
@@ -588,42 +585,43 @@ void Scene::createTextureImages(vk::CommandBuffer cmdBuf, tinygltf::Model& gltfM
 //
 void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
 {
-  auto flag       = vkSS::eRaygenKHR | vkSS::eClosestHitKHR | vkSS::eAnyHitKHR | vkSS::eCompute | vkSS::eFragment;
+  VkShaderStageFlags flag = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
+                            | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   auto nb_meshes  = static_cast<uint32_t>(gltf.m_primMeshes.size());
   auto nbTextures = static_cast<uint32_t>(m_textures.size());
 
   nvvk::DescriptorSetBindings bind;
-  bind.addBinding(vkDS(B_CAMERA, vkDT::eUniformBuffer, 1, vkSS::eRaygenKHR | flag));
-  bind.addBinding(vkDS(B_VERTEX, vkDT::eStorageBuffer, nb_meshes, flag));
-  bind.addBinding(vkDS(B_INDICES, vkDT::eStorageBuffer, nb_meshes, flag));
-  bind.addBinding(vkDS(B_MATERIALS, vkDT::eStorageBuffer, 1, flag));
-  bind.addBinding(vkDS(B_TEXTURES, vkDT::eCombinedImageSampler, nbTextures, flag));
-  bind.addBinding(vkDS(B_INSTDATA, vkDT::eStorageBuffer, 1, flag));
-  bind.addBinding(vkDS(B_LIGHTS, vkDT::eStorageBuffer, 1, flag));
+  bind.addBinding({B_CAMERA, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, flag});
+  bind.addBinding({B_VERTEX, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nb_meshes, flag});
+  bind.addBinding({B_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nb_meshes, flag});
+  bind.addBinding({B_MATERIALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
+  bind.addBinding({B_TEXTURES, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTextures, flag});
+  bind.addBinding({B_INSTDATA, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
+  bind.addBinding({B_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
 
   m_descPool = bind.createPool(m_device, 1);
   CREATE_NAMED_VK(m_descSetLayout, bind.createLayout(m_device));
   CREATE_NAMED_VK(m_descSet, nvvk::allocateDescriptorSet(m_device, m_descPool, m_descSetLayout));
 
-  std::array<vk::DescriptorBufferInfo, 5> dbi;
-  dbi[eCameraMat] = vk::DescriptorBufferInfo{m_buffer[eCameraMat].buffer, 0, VK_WHOLE_SIZE};
-  dbi[eMaterial]  = vk::DescriptorBufferInfo{m_buffer[eMaterial].buffer, 0, VK_WHOLE_SIZE};
-  dbi[eInstData]  = vk::DescriptorBufferInfo{m_buffer[eInstData].buffer, 0, VK_WHOLE_SIZE};
-  dbi[eLights]    = vk::DescriptorBufferInfo{m_buffer[eLights].buffer, 0, VK_WHOLE_SIZE};
+  std::array<VkDescriptorBufferInfo, 5> dbi;
+  dbi[eCameraMat] = VkDescriptorBufferInfo{m_buffer[eCameraMat].buffer, 0, VK_WHOLE_SIZE};
+  dbi[eMaterial]  = VkDescriptorBufferInfo{m_buffer[eMaterial].buffer, 0, VK_WHOLE_SIZE};
+  dbi[eInstData]  = VkDescriptorBufferInfo{m_buffer[eInstData].buffer, 0, VK_WHOLE_SIZE};
+  dbi[eLights]    = VkDescriptorBufferInfo{m_buffer[eLights].buffer, 0, VK_WHOLE_SIZE};
 
   // array of buffers/images
-  std::vector<vk::DescriptorBufferInfo> v_info;
-  std::vector<vk::DescriptorBufferInfo> i_info;
-  std::vector<vk::DescriptorImageInfo>  t_info;
+  std::vector<VkDescriptorBufferInfo> v_info;
+  std::vector<VkDescriptorBufferInfo> i_info;
+  std::vector<VkDescriptorImageInfo>  t_info;
   for(auto i = 0U; i < nb_meshes; i++)
   {
-    v_info.push_back(vk::DescriptorBufferInfo{m_buffers[eVertex][i].buffer, 0, VK_WHOLE_SIZE});
-    i_info.push_back(vk::DescriptorBufferInfo{m_buffers[eIndex][i].buffer, 0, VK_WHOLE_SIZE});
+    v_info.push_back(VkDescriptorBufferInfo{m_buffers[eVertex][i].buffer, 0, VK_WHOLE_SIZE});
+    i_info.push_back(VkDescriptorBufferInfo{m_buffers[eIndex][i].buffer, 0, VK_WHOLE_SIZE});
   }
   for(auto& texture : m_textures)
     t_info.emplace_back(texture.descriptor);
 
-  std::vector<vk::WriteDescriptorSet> writes;
+  std::vector<VkWriteDescriptorSet> writes;
   writes.emplace_back(bind.makeWrite(m_descSet, B_CAMERA, &dbi[eCameraMat]));
   writes.emplace_back(bind.makeWrite(m_descSet, B_MATERIALS, &dbi[eMaterial]));
   writes.emplace_back(bind.makeWrite(m_descSet, B_INSTDATA, &dbi[eInstData]));
@@ -633,13 +631,13 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
   writes.emplace_back(bind.makeWriteArray(m_descSet, B_TEXTURES, t_info.data()));
 
   // Writing the information
-  m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+  vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 //--------------------------------------------------------------------------------------------------
 // Updating camera matrix
 //
-void Scene::updateCamera(const vk::CommandBuffer& cmdBuf, float aspectRatio)
+void Scene::updateCamera(const VkCommandBuffer& cmdBuf, float aspectRatio)
 {
   m_camera.view        = CameraManip.getMatrix();
   m_camera.proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.001f, 100000.0f);
@@ -652,28 +650,29 @@ void Scene::updateCamera(const vk::CommandBuffer& cmdBuf, float aspectRatio)
   m_camera.focalDist = nvmath::length(center - eye);
 
   // UBO on the device
-  vk::Buffer deviceUBO = m_buffer[eCameraMat].buffer;
+  VkBuffer deviceUBO = m_buffer[eCameraMat].buffer;
 
   // Ensure that the modified UBO is not visible to previous frames.
-  vk::BufferMemoryBarrier beforeBarrier;
-  beforeBarrier.setSrcAccessMask(vk::AccessFlagBits::eShaderRead);
-  beforeBarrier.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
-  beforeBarrier.setBuffer(deviceUBO);
-  beforeBarrier.setSize(sizeof m_camera);
-  cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eRayTracingShaderKHR,
-                         vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits::eDeviceGroup, {}, {beforeBarrier}, {});
+  VkBufferMemoryBarrier beforeBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+  beforeBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  beforeBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  beforeBarrier.buffer        = deviceUBO;
+  beforeBarrier.size          = sizeof(m_camera);
+  vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_DEVICE_GROUP_BIT, 0, nullptr, 1, &beforeBarrier, 0, nullptr);
+
 
   // Schedule the host-to-device upload. (hostUBO is copied into the cmd
   // buffer so it is okay to deallocate when the function returns).
-  cmdBuf.updateBuffer<SceneCamera>(deviceUBO, 0, m_camera);
+  vkCmdUpdateBuffer(cmdBuf, deviceUBO, 0, sizeof(SceneCamera), &m_camera);
 
   // Making sure the updated UBO will be visible.
-  vk::BufferMemoryBarrier afterBarrier;
-  afterBarrier.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite);
-  afterBarrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
-  afterBarrier.setBuffer(deviceUBO);
-  afterBarrier.setSize(sizeof m_camera);
-  cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                         vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eRayTracingShaderKHR,
-                         vk::DependencyFlagBits::eDeviceGroup, {}, {afterBarrier}, {});
+  VkBufferMemoryBarrier afterBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+  afterBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  afterBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  afterBarrier.buffer        = deviceUBO;
+  afterBarrier.size          = sizeof(m_camera);
+  vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                       VK_DEPENDENCY_DEVICE_GROUP_BIT, 0, nullptr, 1, &afterBarrier, 0, nullptr);
 }

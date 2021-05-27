@@ -22,7 +22,6 @@
 #include "hdr_sampling.hpp"
 #include "nvvk/gizmos_vk.hpp"
 #include "renderer.h"
-#include <vulkan/vulkan.hpp>
 
 /*
 
@@ -56,7 +55,7 @@ typedef nvvk::ResourceAllocatorDedicated Allocator;
 #define CPP  // For sun_and_sky
 
 #include "nvh/gltfscene.hpp"
-#include "nvvk/appbase_vkpp.hpp"
+#include "nvvk/appbase_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/profiler_vk.hpp"
 #include "nvvk/raytraceKHR_vk.hpp"
@@ -77,7 +76,7 @@ typedef nvvk::ResourceAllocatorDedicated Allocator;
 // - Rendering is done in an offscreen framebuffer
 // - The image of the framebuffer is displayed in post-process in a full-screen quad
 //
-class SampleExample : public nvvk::AppBase
+class SampleExample : public nvvk::AppBaseVk
 {
 public:
   enum RndMethod
@@ -87,9 +86,9 @@ public:
     eNone,
   };
 
-  void setup(const vk::Instance&       instance,
-             const vk::Device&         device,
-             const vk::PhysicalDevice& physicalDevice,
+  void setup(const VkInstance&       instance,
+             const VkDevice&         device,
+             const VkPhysicalDevice& physicalDevice,
              uint32_t                  gtcQueueIndexFamily,
              uint32_t                  computeQueueIndex,
              uint32_t                  transferQueueIndex);
@@ -98,7 +97,7 @@ public:
   void loadScene(const std::string& filename);
   void loadEnvironmentHdr(const std::string& hdrFilename);
   void createUniformBuffer();
-  void updateUniformBuffer(const vk::CommandBuffer& cmdBuf);
+  void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();
 
@@ -130,8 +129,8 @@ public:
   void onMouseMotion(int x, int y) override;
   void onMouseButton(int button, int action, int mods) override;
 
-  vk::RenderPass  getOffscreenRenderPass() { return m_offscreen.getRenderPass(); }
-  vk::Framebuffer getOffscreenFrameBuffer() { return m_offscreen.getFrameBuffer(); }
+  VkRenderPass  getOffscreenRenderPass() { return m_offscreen.getRenderPass(); }
+  VkFramebuffer getOffscreenFrameBuffer() { return m_offscreen.getFrameBuffer(); }
 
 
   Scene              m_scene;
@@ -149,24 +148,24 @@ public:
   nvvk::Buffer m_sunAndSkyBuffer;
 
   // Graphic pipeline
-  vk::DescriptorPool          m_descPool;
-  vk::DescriptorSetLayout     m_descSetLayout;
-  vk::DescriptorSet           m_descSet;
+  VkDescriptorPool          m_descPool;
+  VkDescriptorSetLayout     m_descSetLayout;
+  VkDescriptorSet           m_descSet;
   nvvk::DescriptorSetBindings m_bind;
 
   Allocator       m_alloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil m_debug;  // Utility to name objects
 
 
-  vk::Rect2D m_renderRegion;
-  void       setRenderRegion(const vk::Rect2D& size);
+  VkRect2D m_renderRegion;
+  void       setRenderRegion(const VkRect2D& size);
 
   // #Post
   void createOffscreenRender();
-  void drawPost(vk::CommandBuffer cmdBuf);
+  void drawPost(VkCommandBuffer cmdBuf);
 
   // #VKRay
-  void render(RndMethod method, const vk::CommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
+  void render(RndMethod method, const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
 
 
   RtxState    m_rtxState{};

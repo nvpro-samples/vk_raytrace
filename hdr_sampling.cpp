@@ -18,8 +18,6 @@
  */
 
 
-#include <vulkan/vulkan.hpp>
-
 #define _USE_MATH_DEFINES
 #include <cmath>
 
@@ -37,7 +35,7 @@
  */
 
 
-void HdrSampling::setup(const vk::Device& device, const vk::PhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
+void HdrSampling::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
   m_device     = device;
   m_alloc      = allocator;
@@ -63,22 +61,27 @@ void HdrSampling::loadEnvironment(const std::string& hrdImage)
   int32_t height{0};
   int32_t component{0};
 
-  float*         pixels     = stbi_loadf(hrdImage.c_str(), &width, &height, &component, STBI_rgb_alpha);
-  vk::DeviceSize bufferSize = width * height * 4 * sizeof(float);
-  vk::Extent2D   imgSize(width, height);
+  float*       pixels     = stbi_loadf(hrdImage.c_str(), &width, &height, &component, STBI_rgb_alpha);
+  VkDeviceSize bufferSize = width * height * 4 * sizeof(float);
+  VkExtent2D   imgSize{(uint32_t)width, (uint32_t)height};
 
 
-  vk::SamplerCreateInfo samplerCreateInfo{{}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
-  vk::Format            format = vk::Format::eR32G32B32A32Sfloat;
-  vk::ImageCreateInfo   icInfo = nvvk::makeImage2DCreateInfo(imgSize, format);
+  VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+  samplerCreateInfo.minFilter  = VK_FILTER_LINEAR;
+  samplerCreateInfo.magFilter  = VK_FILTER_LINEAR;
+  samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  VkFormat          format     = VK_FORMAT_R32G32B32A32_SFLOAT;
+  VkImageCreateInfo icInfo     = nvvk::makeImage2DCreateInfo(imgSize, format);
 
   {
     // We are using a different index (1), to allow loading in a different
     // queue/thread that the display (0)
-    auto                     queue = m_device.getQueue(m_queueIndex, 1);
+    VkQueue queue;
+    vkGetDeviceQueue(m_device, m_queueIndex, 1, &queue);
+
     nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex, queue);
     nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, pixels, icInfo);
-    vk::ImageViewCreateInfo  ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
+    VkImageViewCreateInfo    ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
     m_textures.txtHdr               = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
   }
   m_alloc->finalizeAndReleaseStaging();
@@ -140,7 +143,7 @@ inline float luminance(const float* color)
 //--------------------------------------------------------------------------------------------------
 // Create acceleration data for importance sampling
 // See:  https://arxiv.org/pdf/1901.05423.pdf
-void HdrSampling::createEnvironmentAccelTexture(const float* pixels, vk::Extent2D& size, nvvk::Texture& accelTex)
+void HdrSampling::createEnvironmentAccelTexture(const float* pixels, VkExtent2D& size, nvvk::Texture& accelTex)
 {
   const uint32_t rx = size.width;
   const uint32_t ry = size.height;
@@ -184,17 +187,18 @@ void HdrSampling::createEnvironmentAccelTexture(const float* pixels, vk::Extent2
   {
     // We are using a different index (1), to allow loading in a different
     // queue/thread that the display (0)
-    auto                     queue = m_device.getQueue(m_queueIndex, 1);
+    VkQueue queue;
+    vkGetDeviceQueue(m_device, m_queueIndex, 1, &queue);
     nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex, queue);
 
-    vk::SamplerCreateInfo samplerCreateInfo{};
-    vk::Format            format     = vk::Format::eR32G32B32A32Sfloat;
-    vk::ImageCreateInfo   icInfo     = nvvk::makeImage2DCreateInfo({rx, ry}, format);
-    vk::DeviceSize        bufferSize = rx * ry * sizeof(Env_accel);
+    VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    VkFormat            format     = VK_FORMAT_R32G32B32A32_SFLOAT;
+    VkImageCreateInfo   icInfo     = nvvk::makeImage2DCreateInfo({rx, ry}, format);
+    VkDeviceSize        bufferSize = rx * ry * sizeof(Env_accel);
 
-    nvvk::Image             image  = m_alloc->createImage(cmdBuf, bufferSize, env_accel.data(), icInfo);
-    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
-    accelTex                       = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
+    nvvk::Image           image  = m_alloc->createImage(cmdBuf, bufferSize, env_accel.data(), icInfo);
+    VkImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
+    accelTex                     = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
   }
   m_alloc->finalizeAndReleaseStaging();
 }
