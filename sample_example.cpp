@@ -45,7 +45,9 @@
 
 #include "nvml_monitor.hpp"
 
+#if defined(NVP_SUPPORTS_NVML)
 static NvmlMonitor g_nvml(100, 100);
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Keep the handle on the device
@@ -357,7 +359,9 @@ void SampleExample::drawPost(VkCommandBuffer cmdBuf)
 void SampleExample::render(RndMethod method, const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler)
 {
   LABEL_SCOPE_VK(cmdBuf);
+#if defined(NVP_SUPPORTS_NVML)
   g_nvml.refresh();
+#endif
 
   // We are done rendering
   if(m_rtxState.frame >= m_maxFrames)
@@ -412,12 +416,14 @@ void SampleExample::titleBar()
     o << " | " << m_renderRegion.extent.width << "x" << m_renderRegion.extent.height;  // resolution
     o << " | " << static_cast<int>(ImGui::GetIO().Framerate)                           // FPS / ms
       << " FPS / " << std::setprecision(3) << 1000.F / ImGui::GetIO().Framerate << "ms";
+#if defined(NVP_SUPPORTS_NVML)
     if(g_nvml.isValid())  // Graphic card, driver
     {
       const auto& i = g_nvml.getInfo(0);
       o << " | " << i.name;
       o << " | " << g_nvml.getSysInfo().driverVersion;
     }
+#endif
     if(m_rndMethod != eNone && m_pRender[m_rndMethod] != nullptr)
       o << " | " << m_pRender[m_rndMethod]->name();
     glfwSetWindowTitle(m_window, o.str().c_str());
@@ -712,6 +718,7 @@ bool SampleExample::guiProfiler(nvvk::ProfilerVK& profiler)
 
 bool SampleExample::guiGpuMeasures()
 {
+#if defined(NVP_SUPPORTS_NVML)
   if(g_nvml.isValid() == false)
     ImGui::Text("NVML wasn't loaded");
 
@@ -792,8 +799,9 @@ bool SampleExample::guiGpuMeasures()
       return false;
     });
   }
-
-
+#else 
+  ImGui::Text("NVML wasn't loaded");
+#endif
   return false;
 }
 
