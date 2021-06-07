@@ -17,6 +17,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <sstream>
 
 #include "scene.hpp"
 #include "binding.h"
@@ -447,7 +448,7 @@ void Scene::destroy()
 //
 VkSamplerCreateInfo gltfSamplerToVulkan(tinygltf::Sampler& tsampler)
 {
-  VkSamplerCreateInfo vk_sampler;
+  VkSamplerCreateInfo vk_sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 
   std::map<int, VkFilter> filters;
   filters[9728] = VK_FILTER_NEAREST;  // NEAREST
