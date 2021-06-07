@@ -19,6 +19,7 @@
 
 #pragma once
 
+#if defined(NVP_SUPPORTS_NVML)
 #include <iostream>
 #include <nvml.h>
 #include <string>
@@ -363,3 +364,5 @@ private:
 
   std::chrono::high_resolution_clock::time_point startTime;
 };
+
+#endif
