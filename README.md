@@ -66,7 +66,7 @@ Setup
 
 ~~~~ 
 git clone --recursive --shallow-submodules https://github.com/nvpro-samples/nvpro_core.git
-git clone https://github.com/nvpro-samples/vk_raytracing.git
+git clone https://github.com/nvpro-samples/vk_raytrace.git
 ~~~~
 
 
