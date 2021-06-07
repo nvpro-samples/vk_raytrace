@@ -58,8 +58,8 @@ endif()
 _add_package_VulkanSDK()
 _add_package_ImGUI()
 _add_package_FreeImage()
+# Add the following for GPU load and memory
 _add_package_NVML()
-_add_package_VMA()
 # This should be added after all packages
 _add_nvpro_core_lib()
 
