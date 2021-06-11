@@ -159,7 +159,9 @@ struct RtxState
 // The gl_InstanceCustomIndexNV
 struct InstanceData
 {
-  int materialIndex;
+  uint64_t vertexAddress;
+  uint64_t indexAddress;
+  int      materialIndex;
 };
 
 struct InstanceMatrices

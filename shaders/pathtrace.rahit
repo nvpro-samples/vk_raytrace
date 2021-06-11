@@ -25,6 +25,8 @@
 #extension GL_EXT_scalar_block_layout : enable          // Align structure layout to scalar
 #extension GL_EXT_shader_image_load_formatted : enable  // The folowing extension allow to pass images as function parameters
 
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_buffer_reference2 : require
 
 #include "globals.glsl"
 #include "layouts.glsl"
@@ -70,13 +72,17 @@ void main()
     const uint idGeo  = gl_InstanceCustomIndexEXT;  // Geometry of this instance
     const uint idPrim = gl_PrimitiveID;             // Triangle ID
 
+    // Primitive buffer addresses
+    Indices  indices  = Indices(geoInfo[idGeo].indexAddress);
+    Vertices vertices = Vertices(geoInfo[idGeo].vertexAddress);
+
     // Indices of this triangle primitive.
-    uvec3 tri = indices[nonuniformEXT(idGeo)].i[idPrim];
+    uvec3 tri = indices.i[idPrim];
 
     // All vertex attributes of the triangle.
-    VertexAttributes attr0 = vertex[nonuniformEXT(idGeo)].v[tri.x];
-    VertexAttributes attr1 = vertex[nonuniformEXT(idGeo)].v[tri.y];
-    VertexAttributes attr2 = vertex[nonuniformEXT(idGeo)].v[tri.z];
+    VertexAttributes attr0 = vertices.v[tri.x];
+    VertexAttributes attr1 = vertices.v[tri.y];
+    VertexAttributes attr2 = vertices.v[tri.z];
 
     // Get the texture coordinate
     const vec3 barycentrics = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);

@@ -44,11 +44,8 @@ layout(set = S_ACCEL, binding = B_TLAS)						uniform accelerationStructureEXT to
 //
 layout(set = S_OUT,   binding = B_STORE)					uniform image2D			resultImage;
 //
-layout(set = S_SCENE, binding = B_INSTDATA            )     buffer _InstanceInfo	{ InstanceData geoInfo[]; };
+layout(set = S_SCENE, binding = B_INSTDATA,     scalar)     buffer _InstanceInfo	{ InstanceData geoInfo[]; };
 layout(set = S_SCENE, binding = B_CAMERA,		scalar)		uniform _SceneCamera	{ SceneCamera sceneCamera; };
-layout(set = S_SCENE, binding = B_VERTEX,		scalar)		buffer _VertexBuf		{ VertexAttributes v[]; } vertex[];
-layout(set = S_SCENE, binding = B_INDICES,		scalar)		buffer _Indices			{ uvec3 i[];            } indices[];
-
 layout(set = S_SCENE, binding = B_MATERIALS,	scalar)		buffer _MaterialBuffer	{ GltfShadeMaterial materials[]; };
 layout(set = S_SCENE, binding = B_LIGHTS,		scalar)		buffer _Lights			{ Light lights[]; };
 layout(set = S_SCENE, binding = B_TEXTURES			  )		uniform sampler2D		texturesMap[]; 
@@ -56,6 +53,10 @@ layout(set = S_SCENE, binding = B_TEXTURES			  )		uniform sampler2D		texturesMap
 layout(set = S_ENV, binding = B_SUNANDSKY,		scalar)		uniform _SSBuffer		{ SunAndSky _sunAndSky; };
 layout(set = S_ENV, binding = B_HDR)						uniform sampler2D		environmentTexture;
 layout(set = S_ENV, binding = B_IMPORT_SMPL)				uniform sampler2D		environmentSamplingData;
+
+layout(buffer_reference, scalar) buffer Vertices { VertexAttributes v[]; };
+layout(buffer_reference, scalar) buffer Indices	 { uvec3 i[];            };
+
 // clang-format on
 
 

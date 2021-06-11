@@ -53,13 +53,17 @@ bool HitTest(in rayQueryEXT rayQuery, in Ray r)
     const uint idGeo  = InstanceCustomIndexEXT;  // Geometry of this instance
     const uint idPrim = PrimitiveID;             // Triangle ID
 
+    // Primitive buffer addresses
+    Indices  indices  = Indices(geoInfo[idGeo].indexAddress);
+    Vertices vertices = Vertices(geoInfo[idGeo].vertexAddress);
+
     // Indices of this triangle primitive.
-    uvec3 tri = indices[nonuniformEXT(idGeo)].i[idPrim];
+    uvec3 tri = indices.i[idPrim];
 
     // All vertex attributes of the triangle.
-    VertexAttributes attr0 = vertex[nonuniformEXT(idGeo)].v[tri.x];
-    VertexAttributes attr1 = vertex[nonuniformEXT(idGeo)].v[tri.y];
-    VertexAttributes attr2 = vertex[nonuniformEXT(idGeo)].v[tri.z];
+    VertexAttributes attr0 = vertices.v[tri.x];
+    VertexAttributes attr1 = vertices.v[tri.y];
+    VertexAttributes attr2 = vertices.v[tri.z];
 
     // Get the texture coordinate
     vec2       bary         = rayQueryGetIntersectionBarycentricsEXT(rayQuery, false);

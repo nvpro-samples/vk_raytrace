@@ -36,13 +36,10 @@
 
 // Scene Data - Set 2
 #define B_CAMERA 0
-#define B_VERTEX 1
-#define B_INDICES 2
-#define B_MATERIALS 3
-//#define B_MATRICES 4
-#define B_INSTDATA 5
-#define B_LIGHTS 6
-#define B_TEXTURES 7  // must be last elem
+#define B_MATERIALS 1
+#define B_INSTDATA 2
+#define B_LIGHTS 3
+#define B_TEXTURES 4  // must be last elem
 
 // Environment - Set 3
 #define B_SUNANDSKY 0
