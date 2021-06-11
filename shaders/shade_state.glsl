@@ -65,14 +65,18 @@ ShadeState GetShadeState(in PtPayload hstate)
   const uint idPrim = hstate.primitiveID;          // Triangle ID
   const vec3 bary   = vec3(1.0 - hstate.baryCoord.x - hstate.baryCoord.y, hstate.baryCoord.x, hstate.baryCoord.y);
 
+  // Primitive buffer addresses
+  Indices  indices  = Indices(geoInfo[idGeo].indexAddress);
+  Vertices vertices = Vertices(geoInfo[idGeo].vertexAddress);
+
   // Indices of this triangle primitive.
-  uvec3 tri = indices[nonuniformEXT(idGeo)].i[idPrim];
+  uvec3 tri = indices.i[idPrim];
 
   // All vertex attributes of the triangle.
-  VertexAttributes attr0 = vertex[nonuniformEXT(idGeo)].v[tri.x];
-  VertexAttributes attr1 = vertex[nonuniformEXT(idGeo)].v[tri.y];
-  VertexAttributes attr2 = vertex[nonuniformEXT(idGeo)].v[tri.z];
-
+  VertexAttributes attr0 = vertices.v[tri.x];
+  VertexAttributes attr1 = vertices.v[tri.y];
+  VertexAttributes attr2 = vertices.v[tri.z];
+  
   // Getting the material index on this geometry
   const uint matIndex = max(0, geoInfo[idGeo].materialIndex);  // material of primitive mesh
 

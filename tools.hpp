@@ -32,6 +32,7 @@
 //   double time_elapse = timer.elapse();
 // }
 #include <chrono>
+#include "nvh/nvprint.hpp"
 
 struct MilliTimer
 {

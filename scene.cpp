@@ -32,6 +32,7 @@
 #include "structures.h"
 #include "tiny_gltf.h"
 #include "tools.hpp"
+#include "nvvk/buffers_vk.hpp"
 
 
 namespace fs = std::filesystem;
@@ -163,14 +164,21 @@ bool Scene::loadGltfScene(const std::string& filename, tinygltf::Model& tmodel)
 }
 
 //--------------------------------------------------------------------------------------------------
-// Information per instance/geometry (currently only material)
+// Information per instance/geometry, the material it uses, and also the pointer to the vertex
+// and index buffers
 //
 void Scene::createInstanceDataBuffer(VkCommandBuffer cmdBuf, nvh::GltfScene& gltf)
 {
   std::vector<InstanceData> instData;
+  uint32_t cnt{0};
   for(auto& primMesh : gltf.m_primMeshes)
   {
-    instData.push_back({primMesh.materialIndex});
+    InstanceData data;
+    data.indexAddress = nvvk::getBufferDeviceAddress(m_device, m_buffers[eIndex][cnt].buffer);
+    data.vertexAddress = nvvk::getBufferDeviceAddress(m_device, m_buffers[eVertex][cnt].buffer);
+    data.materialIndex = primMesh.materialIndex;
+    instData.emplace_back(data);
+    cnt++;
   }
   m_buffer[eInstData] = m_pAlloc->createBuffer(cmdBuf, instData, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   NAME_VK(m_buffer[eInstData].buffer);
@@ -250,20 +258,18 @@ void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& glt
       v_buffer = it->second;
     }
 
-
+    // Buffer of indices
     indices.resize(primMesh.indexCount);
     for(size_t idx = 0; idx < primMesh.indexCount; idx++)
     {
       indices[idx] = gltf.m_indices[idx + primMesh.firstIndex];
     }
 
-    //nvvk::Buffer v_buffer =
-    //    m_pAlloc->createBuffer(cmdBuf, vertex, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     nvvk::Buffer i_buffer =
         m_pAlloc->createBuffer(cmdBuf, indices, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
     m_buffers[eVertex].push_back(v_buffer);
-    //NAME_IDX_VK(v_buffer.buffer, prim_idx);
+    NAME_IDX_VK(v_buffer.buffer, prim_idx);
 
     m_buffers[eIndex].push_back(i_buffer);
     NAME_IDX_VK(i_buffer.buffer, prim_idx);
@@ -593,8 +599,6 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
 
   nvvk::DescriptorSetBindings bind;
   bind.addBinding({B_CAMERA, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, flag});
-  bind.addBinding({B_VERTEX, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nb_meshes, flag});
-  bind.addBinding({B_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nb_meshes, flag});
   bind.addBinding({B_MATERIALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
   bind.addBinding({B_TEXTURES, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTextures, flag});
   bind.addBinding({B_INSTDATA, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
@@ -610,15 +614,8 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
   dbi[eInstData]  = VkDescriptorBufferInfo{m_buffer[eInstData].buffer, 0, VK_WHOLE_SIZE};
   dbi[eLights]    = VkDescriptorBufferInfo{m_buffer[eLights].buffer, 0, VK_WHOLE_SIZE};
 
-  // array of buffers/images
-  std::vector<VkDescriptorBufferInfo> v_info;
-  std::vector<VkDescriptorBufferInfo> i_info;
+  // array of images
   std::vector<VkDescriptorImageInfo>  t_info;
-  for(auto i = 0U; i < nb_meshes; i++)
-  {
-    v_info.push_back(VkDescriptorBufferInfo{m_buffers[eVertex][i].buffer, 0, VK_WHOLE_SIZE});
-    i_info.push_back(VkDescriptorBufferInfo{m_buffers[eIndex][i].buffer, 0, VK_WHOLE_SIZE});
-  }
   for(auto& texture : m_textures)
     t_info.emplace_back(texture.descriptor);
 
@@ -627,8 +624,6 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
   writes.emplace_back(bind.makeWrite(m_descSet, B_MATERIALS, &dbi[eMaterial]));
   writes.emplace_back(bind.makeWrite(m_descSet, B_INSTDATA, &dbi[eInstData]));
   writes.emplace_back(bind.makeWrite(m_descSet, B_LIGHTS, &dbi[eLights]));
-  writes.emplace_back(bind.makeWriteArray(m_descSet, B_VERTEX, v_info.data()));
-  writes.emplace_back(bind.makeWriteArray(m_descSet, B_INDICES, i_info.data()));
   writes.emplace_back(bind.makeWriteArray(m_descSet, B_TEXTURES, t_info.data()));
 
   // Writing the information
