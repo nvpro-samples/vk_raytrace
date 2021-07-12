@@ -35,7 +35,12 @@
 #include "nvvk/buffers_vk.hpp"
 
 
-namespace fs = std::filesystem;
+// Use std::experimental::filesystem for pre-2017 Visual Studio Compilers
+#if defined( _MSC_VER ) && ( _MSC_VER < 1910 ) // Pre-Visual Studio 2017
+    namespace fs = std::experimental::filesystem;
+#else
+    namespace fs = std::filesystem;
+#endif
 
 void Scene::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
