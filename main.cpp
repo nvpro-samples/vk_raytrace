@@ -102,10 +102,6 @@ int main(int argc, char** argv)
   // #VKRay: Activate the ray tracing extension
   VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false, &accelFeature);
-  VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
-  contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);
-  VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
-  contextInfo.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME, false, &rayQueryFeatures);
   contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
@@ -113,6 +109,46 @@ int main(int argc, char** argv)
   // Creating Vulkan base application
   nvvk::Context vkctx{};
   vkctx.initInstance(contextInfo);
+
+  std::vector<VkExtensionProperties> validDeviceExtensions;
+  {
+	  auto physicalDevices = vkctx.getPhysicalDevices();
+	  for (size_t deviceIndex = 0; deviceIndex < physicalDevices.size(); ++deviceIndex)
+	  {
+		  auto deviceExtensions = vkctx.getDeviceExtensions(physicalDevices[deviceIndex]);
+		  validDeviceExtensions.insert(validDeviceExtensions.end(), deviceExtensions.begin(), deviceExtensions.end());
+	  }
+  }
+
+  auto supportedDeviceExtension = [&] (const char* deviceName) -> bool
+  {
+	  for (size_t elementID = 0; elementID < validDeviceExtensions.size(); ++elementID)
+	  {
+		  if (strcmp(validDeviceExtensions[elementID].extensionName, deviceName) == 0)
+		  {
+			  return true;
+		  }
+	  }
+
+	  return false;
+  };
+
+  std::vector<std::string> renderMethodNames;
+
+  if (supportedDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME))
+  {
+    renderMethodNames.push_back("RtxPipeline");
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
+    contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);
+  }
+
+  if (supportedDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME))
+  {
+    renderMethodNames.push_back("RayQuery");
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
+    contextInfo.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME, false, &rayQueryFeatures);
+  }
+  
   auto compatibleDevices = vkctx.getCompatibleDevices(contextInfo);  // Find all compatible devices
   assert(!compatibleDevices.empty());
   vkctx.initDevice(compatibleDevices[0], contextInfo);  // Use first compatible device
@@ -199,7 +235,8 @@ int main(int argc, char** argv)
       using Gui = ImGuiH::Control;
       bool changed{false};
       changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
-                                     Gui::Flags::Normal, {"RtxPipeline", "RayQuery"});
+                                     Gui::Flags::Normal, renderMethodNames);
+
       if(ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
         changed |= sample.guiCamera();
       if(ImGui::CollapsingHeader("Ray Tracing", ImGuiTreeNodeFlags_DefaultOpen))
