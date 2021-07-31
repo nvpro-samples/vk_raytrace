@@ -17,20 +17,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//-------------------------------------------------------------------------------------------------
+// This file is the main function for the path tracer.
+// * `samplePixel()` is setting a ray from the camera origin through a pixel (jitter)
+// * `PathTrace()` will loop until the ray depth is reached or the environment is hit.
+// * `DirectLight()` is the contribution at the hit, if the shadow ray is not hitting anything.
 
 #define ENVMAP 1
-#define RR 1
-#define RR_DEPTH 1
-
-#define DISNEY 1
-//#define PBR 1
+#define RR 1        // Using russian roulette
+#define RR_DEPTH 1  // Minimum depth
 
 
-#include "disneyEval.glsl"
-#include "gltfmaterial.glsl"
-#include "pbrEval.glsl"
+#include "pbr_disney.glsl"
+#include "pbr_gltf.glsl"
+#include "gltf_material.glsl"
 #include "punctual.glsl"
-#include "sampling.glsl"  // Environment sampling
+#include "env_sampling.glsl"
 #include "shade_state.glsl"
 
 //-----------------------------------------------------------------------
@@ -45,7 +47,7 @@ vec3 Eval(in State state, in vec3 V, in vec3 N, in vec3 L, inout float pdf)
 
 //-----------------------------------------------------------------------
 //-----------------------------------------------------------------------
-vec3 Sample(in State state, in vec3 V, in vec3 N, inout vec3 L, inout float pdf, inout uint seed)
+vec3 Sample(in State state, in vec3 V, in vec3 N, inout vec3 L, inout float pdf, inout RngStateType seed)
 {
   if(rtxState.pbrMode == 0)
     return DisneySample(state, V, N, L, pdf, seed);
@@ -111,10 +113,10 @@ VisibilityContribution DirectLight(in Ray r, in State state)
   // e.g. by incorporating their luminance
 
   // Point lights
-  if(sceneCamera.nbLights != 0 && rnd(prd.seed) <= p_select_light)
+  if(sceneCamera.nbLights != 0 && rand(prd.seed) <= p_select_light)
   {
     // randomly select one of the lights
-    int   light_index = int(min(rnd(prd.seed) * sceneCamera.nbLights, sceneCamera.nbLights));
+    int   light_index = int(min(rand(prd.seed) * sceneCamera.nbLights, sceneCamera.nbLights));
     Light light       = lights[light_index];
 
     vec3  pointToLight     = -light.direction;
@@ -305,7 +307,7 @@ vec3 PathTrace(Ray r)
     if(depth >= RR_DEPTH)
     {
       float pcont = min(max(throughput.x, max(throughput.y, throughput.z)) * state.eta * state.eta + 0.001, 0.95);
-      if(rnd(prd.seed) >= pcont)
+      if(rand(prd.seed) >= pcont)
         break;
       throughput /= pcont;
     }
@@ -341,7 +343,7 @@ vec3 samplePixel(ivec2 imageCoords, ivec2 sizeImage)
   vec3 pixelColor = vec3(0);
 
   // Subpixel jitter: send the ray through a different position inside the pixel each time, to provide antialiasing.
-  vec2 subpixel_jitter = rtxState.frame == 0 ? vec2(0.5f, 0.5f) : rnd2(prd.seed);
+  vec2 subpixel_jitter = rtxState.frame == 0 ? vec2(0.5f, 0.5f) : vec2(rand(prd.seed), rand(prd.seed));
 
   // Compute sampling position between [-1 .. 1]
   const vec2 pixelCenter = vec2(imageCoords) + subpixel_jitter;
@@ -355,8 +357,8 @@ vec3 samplePixel(ivec2 imageCoords, ivec2 sizeImage)
 
   // Depth-of-Field
   vec3  focalPoint        = sceneCamera.focalDist * direction.xyz;
-  float cam_r1            = rnd(prd.seed) * M_TWO_PI;
-  float cam_r2            = rnd(prd.seed) * sceneCamera.aperture;
+  float cam_r1            = rand(prd.seed) * M_TWO_PI;
+  float cam_r2            = rand(prd.seed) * sceneCamera.aperture;
   vec4  cam_right         = sceneCamera.viewInverse * vec4(1, 0, 0, 0);
   vec4  cam_up            = sceneCamera.viewInverse * vec4(0, 1, 0, 0);
   vec3  randomAperturePos = (cos(cam_r1) * cam_right.xyz + sin(cam_r1) * cam_up.xyz) * sqrt(cam_r2);

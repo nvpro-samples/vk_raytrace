@@ -32,22 +32,15 @@
 //   double time_elapse = timer.elapse();
 // }
 #include <chrono>
+#include <sstream>
+#include <ios>
+
 #include "nvh/nvprint.hpp"
+#include "nvh/timesampler.hpp"
 
-struct MilliTimer
+struct MilliTimer : public nvh::Stopwatch
 {
-  MilliTimer() { reset(); }
-  void   reset() { startTime = std::chrono::high_resolution_clock::now(); }
-  double elapse()
-  {
-    auto now  = std::chrono::high_resolution_clock::now();
-    auto t    = std::chrono::duration_cast<std::chrono::microseconds>(now - startTime).count() / 1000.0;
-    startTime = now;
-    return t;
-  }
-  void print() { LOGI(" --> (%5.3f ms)\n", elapse()); }
-
-  std::chrono::high_resolution_clock::time_point startTime;
+  void print() { LOGI(" --> (%5.3f ms)\n", elapsed()); }
 };
 
 

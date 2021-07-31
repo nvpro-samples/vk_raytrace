@@ -18,21 +18,21 @@
  */
 
 
+/*
+ *  HDR sampling is loading an HDR image and creating an acceleration structure for 
+ *  sampling the environment. 
+ */
+
+
 #define _USE_MATH_DEFINES
 #include <cmath>
-
-#include "hdr_sampling.hpp"
-#include "nvh/fileoperations.hpp"
-#include "nvvk/commands_vk.hpp"
-#include "nvvk/debug_util_vk.hpp"
-#include "stb_image.h"
 #include <numeric>
 
-
-/*
- * HDR sampling is loading an HDR image and creating an acceleration structure for 
- * sampling the environment. 
- */
+#include "stb_image.h"
+#include "nvvk/debug_util_vk.hpp"
+#include "nvvk/commands_vk.hpp"
+#include "nvh/fileoperations.hpp"
+#include "hdr_sampling.hpp"
 
 
 void HdrSampling::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
@@ -45,8 +45,8 @@ void HdrSampling::setup(const VkDevice& device, const VkPhysicalDevice& physical
 
 void HdrSampling::destroy()
 {
-  m_alloc->destroy(m_textures.txtHdr);
-  m_alloc->destroy(m_textures.accelImpSmpl);
+  m_alloc->destroy(m_texHdr);
+  m_alloc->destroy(m_accelImpSmpl);
 }
 
 
@@ -65,13 +65,16 @@ void HdrSampling::loadEnvironment(const std::string& hrdImage)
   VkDeviceSize bufferSize = width * height * 4 * sizeof(float);
   VkExtent2D   imgSize{(uint32_t)width, (uint32_t)height};
 
-
   VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
   samplerCreateInfo.minFilter  = VK_FILTER_LINEAR;
   samplerCreateInfo.magFilter  = VK_FILTER_LINEAR;
   samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-  VkFormat          format     = VK_FORMAT_R32G32B32A32_SFLOAT;
-  VkImageCreateInfo icInfo     = nvvk::makeImage2DCreateInfo(imgSize, format);
+  // The map is parameterized with the U axis corresponding to the azimuthal angle, and V to the polar angle
+  // Therefore, in U the sampler will use VK_SAMPLER_ADDRESS_MODE_REPEAT (default), but V needs to use
+  // CLAMP_TO_EDGE to avoid having light leaking from one pole to another.
+  samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  VkFormat          format       = VK_FORMAT_R32G32B32A32_SFLOAT;
+  VkImageCreateInfo icInfo       = nvvk::makeImage2DCreateInfo(imgSize, format);
 
   {
     // We are using a different index (1), to allow loading in a different
@@ -82,59 +85,97 @@ void HdrSampling::loadEnvironment(const std::string& hrdImage)
     nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex, queue);
     nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, pixels, icInfo);
     VkImageViewCreateInfo    ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
-    m_textures.txtHdr               = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
+    m_texHdr                        = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
+    NAME_VK(m_texHdr.image);
+
+    auto envAccel  = createEnvironmentAccel(pixels, imgSize);
+    m_accelImpSmpl = m_alloc->createBuffer(cmdBuf, envAccel, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    NAME_VK(m_accelImpSmpl.buffer);
   }
   m_alloc->finalizeAndReleaseStaging();
 
-  createEnvironmentAccelTexture(pixels, imgSize, m_textures.accelImpSmpl);
 
   stbi_image_free(pixels);
-
-  NAME_VK(m_textures.txtHdr.image);
-  NAME_VK(m_textures.accelImpSmpl.image);
 }
 
 //--------------------------------------------------------------------------------------------------
-// Build alias map for the importance sampling
+// Build alias map for the importance sampling: Each texel is associated to another texel, or alias,
+// so that their combined intensities are a close as possible to the average of the environment map.
+// This will later allow the sampling shader to uniformly select a texel in the environment, and
+// select either that texel or its alias depending on their relative intensities
 //
-float HdrSampling::build_alias_map(const std::vector<float>& data, std::vector<Env_accel>& accel)
+float HdrSampling::buildAliasmap(const std::vector<float>& data, std::vector<EnvAccel>& accel)
 {
   auto size = static_cast<uint32_t>(data.size());
 
-  // create qs (normalized)
+  // Compute the integral of the emitted radiance of the environment map
+  // Since each element in data is already weighted by its solid angle
+  // the integral is a simple sum
   float sum = std::accumulate(data.begin(), data.end(), 0.f);
 
-  // Ratio against average
-  auto fsize = static_cast<float>(size);
+  // For each texel, compute the ratio q between the emitted radiance of the texel and the average
+  // emitted radiance over the entire sphere
+  // We also initialize the aliases to identity, ie. each texel is its own alias
+  auto  fSize          = static_cast<float>(size);
+  float inverseAverage = fSize / sum;
   for(uint32_t i = 0; i < size; ++i)
   {
-    accel[i].q     = fsize * data[i] / sum;
+    accel[i].q     = data[i] * inverseAverage;
     accel[i].alias = i;
   }
 
-  // Create partition table. Table cut in half, first part
-  // is below the normal and the other half is above the normal
-  std::vector<uint32_t> partition_table(size);
+  // Partition the texels according to their emitted radiance ratio wrt. average.
+  // Texels with a value q < 1 (ie. below average) are stored incrementally from the beginning of the
+  // array, while texels emitting higher-than-average radiance are stored from the end of the array
+  std::vector<uint32_t> partitionTable(size);
   uint32_t              s     = 0u;
   uint32_t              large = size;
   for(uint32_t i = 0; i < size; ++i)
   {
-    partition_table[(accel[i].q < 1.0f) ? (s++) : (--large)] = i;
+    if(accel[i].q < 1.f)
+      partitionTable[s++] = i;
+    else
+      partitionTable[--large] = i;
   }
 
-  // create alias map
+  // Associate the lower-energy texels to higher-energy ones. Since the emission of a high-energy texel may
+  // be vastly superior to the average,
   for(s = 0; s < large && large < size; ++s)
   {
-    const uint32_t j = partition_table[s];
-    const uint32_t k = partition_table[large];
-    accel[j].alias   = k;
-    accel[k].q += accel[j].q - 1.0f;
-    large = (accel[k].q < 1.0f) ? (large + 1u) : large;
-  }
+    // Index of the smaller energy texel
+    const uint32_t smallEnergyIndex = partitionTable[s];
 
+    // Index of the higher energy texel
+    const uint32_t highEnergyIndex = partitionTable[large];
+
+    // Associate the texel to its higher-energy alias
+    accel[smallEnergyIndex].alias = highEnergyIndex;
+
+    // Compute the difference between the lower-energy texel and the average
+    const float differenceWithAverage = 1.f - accel[smallEnergyIndex].q;
+
+    // The goal is to obtain texel couples whose combined intensity is close to the average.
+    // However, some texels may have low energies, while others may have very high intensity
+    // (for example a sunset: the sky is quite dark, but the sun is still visible). In this case
+    // it may not be possible to obtain a value close to average by combining only two texels.
+    // Instead, we potentially associate a single high-energy texel to many smaller-energy ones until
+    // the combined average is similar to the average of the environment map.
+    // We keep track of the combined average by subtracting the difference between the lower-energy texel and the average
+    // from the ratio stored in the high-energy texel.
+    accel[highEnergyIndex].q -= differenceWithAverage;
+
+    // If the combined ratio to average of the higher-energy texel reaches 1, a balance has been found
+    // between a set of low-energy texels and the higher-energy one. In this case, we will use the next
+    // higher-energy texel in the partition when processing the next texel.
+    if(accel[highEnergyIndex].q < 1.0f)
+      large++;
+  }
+  // Return the integral of the emitted radiance. This integral will be used to normalize the probability
+  // distribution function (PDF) of each pixel
   return sum;
 }
 
+// CIE luminance
 inline float luminance(const float* color)
 {
   return color[0] * 0.2126f + color[1] * 0.7152f + color[2] * 0.0722f;
@@ -143,62 +184,65 @@ inline float luminance(const float* color)
 //--------------------------------------------------------------------------------------------------
 // Create acceleration data for importance sampling
 // See:  https://arxiv.org/pdf/1901.05423.pdf
-void HdrSampling::createEnvironmentAccelTexture(const float* pixels, VkExtent2D& size, nvvk::Texture& accelTex)
+std::vector<HdrSampling::EnvAccel> HdrSampling::createEnvironmentAccel(const float* pixels, VkExtent2D& size)
 {
   const uint32_t rx = size.width;
   const uint32_t ry = size.height;
 
   // Create importance sampling data
-  std::vector<Env_accel> env_accel(rx * ry);
-  std::vector<float>     importance_data(rx * ry);
-  float                  cos_theta0 = 1.0f;
-  const float            step_phi   = float(2.0 * M_PI) / float(rx);
-  const float            step_theta = float(M_PI) / float(ry);
-  double                 total      = 0;
+  std::vector<EnvAccel> envAccel(rx * ry);
+  std::vector<float>    importanceData(rx * ry);
+  float                 cosTheta0 = 1.0f;
+  const float           stepPhi   = float(2.0 * M_PI) / float(rx);
+  const float           stepTheta = float(M_PI) / float(ry);
+  double                total     = 0;
+
+  // For each texel of the environment map, we compute the related solid angle
+  // subtended by the texel, and store the weighted luminance in importance_data,
+  // representing the amount of energy emitted through each texel.
+  // Also compute the average CIE luminance to drive the tonemapping of the final image
   for(uint32_t y = 0; y < ry; ++y)
   {
-    const float theta1     = float(y + 1) * step_theta;
-    const float cos_theta1 = std::cos(theta1);
-    const float area       = (cos_theta0 - cos_theta1) * step_phi;  // solid angle
-    cos_theta0             = cos_theta1;
+    const float theta1    = float(y + 1) * stepTheta;
+    const float cosTheta1 = std::cos(theta1);
+    const float area      = (cosTheta0 - cosTheta1) * stepPhi;  // solid angle
+    cosTheta0             = cosTheta1;
 
     for(uint32_t x = 0; x < rx; ++x)
     {
-      const uint32_t idx  = y * rx + x;
-      const uint32_t idx4 = idx * 4;
-      importance_data[idx] = area * std::max(pixels[idx4], std::max(pixels[idx4 + 1], pixels[idx4 + 2]));  // CIE luminance?
-      total += luminance(&pixels[idx4]);
+      const uint32_t idx          = y * rx + x;
+      const uint32_t idx4         = idx * 4;
+      float          cieLuminance = luminance(&pixels[idx4]);
+      importanceData[idx]         = area * std::max(pixels[idx4], std::max(pixels[idx4 + 1], pixels[idx4 + 2]));
+      total += cieLuminance;
     }
   }
 
   m_average = static_cast<float>(total) / static_cast<float>(rx * ry);
 
-  // Filling env_accel
-  m_integral = build_alias_map(importance_data, env_accel);
+  // Build the alias map, which aims at creating a set of texel couples
+  // so that all couples emit roughly the same amount of energy. To this aim,
+  // each smaller radiance texel will be assigned an "alias" with higher emitted radiance
+  // As a byproduct this function also returns the integral of the radiance emitted by the environment
+  m_integral = buildAliasmap(importanceData, envAccel);
 
-  // probability density function (PDF)
-  const float inv_env_integral = 1.0f / m_integral;
+  // We deduce the PDF of each texel by normalizing its emitted radiance by the radiance integral
+  const float invEnvIntegral = 1.0f / m_integral;
   for(uint32_t i = 0; i < rx * ry; ++i)
   {
     const uint32_t idx4 = i * 4;
-    env_accel[i].pdf    = std::max(pixels[idx4], std::max(pixels[idx4 + 1], pixels[idx4 + 2])) * inv_env_integral;
+    envAccel[i].pdf     = std::max(pixels[idx4], std::max(pixels[idx4 + 1], pixels[idx4 + 2])) * invEnvIntegral;
   }
 
+  // At runtime a texel will be uniformly chosen. Whether that texel or its alias is
+  // selected depends on the relative emitted radiances of the two texels.
+  // We store the PDF of the alias together with the PDF of the first member, so that both PDFs are
+  // available in a single lookup
+  for(uint32_t i = 0; i < rx * ry; ++i)
   {
-    // We are using a different index (1), to allow loading in a different
-    // queue/thread that the display (0)
-    VkQueue queue;
-    vkGetDeviceQueue(m_device, m_queueIndex, 1, &queue);
-    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex, queue);
-
-    VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    VkFormat            format     = VK_FORMAT_R32G32B32A32_SFLOAT;
-    VkImageCreateInfo   icInfo     = nvvk::makeImage2DCreateInfo({rx, ry}, format);
-    VkDeviceSize        bufferSize = rx * ry * sizeof(Env_accel);
-
-    nvvk::Image           image  = m_alloc->createImage(cmdBuf, bufferSize, env_accel.data(), icInfo);
-    VkImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
-    accelTex                     = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);
+    const uint32_t aliasIdx = envAccel[i].alias;
+    envAccel[i].aliasPdf    = envAccel[aliasIdx].pdf;
   }
-  m_alloc->finalizeAndReleaseStaging();
+
+  return envAccel;
 }

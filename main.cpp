@@ -27,7 +27,6 @@
 #include "nvvk/context_vk.hpp"
 #include "sample_example.hpp"
 
-
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
@@ -110,6 +109,22 @@ int main(int argc, char** argv)
   contextInfo.addDeviceExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
 
+// #define ENABLE_GPU_PRINTF //   Enabling printf in shaders
+// #extension GL_EXT_debug_printf
+// debugPrintfEXT("");
+#ifdef ENABLE_GPU_PRINTF
+  contextInfo.addDeviceExtension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+  std::vector<VkValidationFeatureEnableEXT>  enables{VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
+  std::vector<VkValidationFeatureDisableEXT> disables{};
+  VkValidationFeaturesEXT                    features{VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
+  features.enabledValidationFeatureCount  = static_cast<uint32_t>(enables.size());
+  features.pEnabledValidationFeatures     = enables.data();
+  features.disabledValidationFeatureCount = static_cast<uint32_t>(disables.size());
+  features.pDisabledValidationFeatures    = disables.data();
+  contextInfo.instanceCreateInfoExt       = &features;
+#endif  // ENABLE_GPU_PRINTF
+
+
   // Creating Vulkan base application
   nvvk::Context vkctx{};
   vkctx.initInstance(contextInfo);
@@ -147,12 +162,11 @@ int main(int argc, char** argv)
     sample.loadScene(nvh::findFile(sceneFile, defaultSearchPaths, true));
     sample.createUniformBuffer();
     sample.createDescriptorSetLayout();
+    sample.createRender(SampleExample::eRtxPipeline);
+    sample.resetFrame();
     sample.m_busy = false;
   }).detach();
 
-
-  // It is possible to have various back-ends
-  SampleExample::RndMethod renderMethod = SampleExample::eRtxPipeline;
 
   // Profiler measure the execution time on the GPU
   nvvk::ProfilerVK profiler;
@@ -171,11 +185,10 @@ int main(int argc, char** argv)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-
     // Start rendering the scene
-    profiler.beginFrame();
-    sample.prepareFrame();
-    sample.updateFrame();
+    profiler.beginFrame();  // GPU performance timer
+    sample.prepareFrame();  // Waits for a framebuffer to be available
+    sample.updateFrame();   // Increment/update rendering frame count
 
     // Start command buffer of this frame
     auto                   curFrame = sample.getCurFrame();
@@ -185,80 +198,19 @@ int main(int argc, char** argv)
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(cmdBuf, &beginInfo);
 
-    // UI
-    sample.titleBar();
-    sample.menuBar();
+    sample.renderGui(profiler);          // UI
+    sample.updateUniformBuffer(cmdBuf);  // Updating UBOs
 
-    // Show UI panel window.
-    float panelAlpha = 1.0f;
-    if(sample.showGui())
-    {
-      ImGuiH::Control::style.ctrlPerc = 0.55f;
-      ImGuiH::Panel::Begin(ImGuiH::Panel::Side::Right, panelAlpha);
+    // Rendering Scene (ray tracing)
+    sample.renderScene(cmdBuf, profiler);
 
-      using Gui = ImGuiH::Control;
-      bool changed{false};
-      changed |= Gui::Selection<int>("Rendering Mode\n", "Choose the type of rendering", (int*)&renderMethod, nullptr,
-                                     Gui::Flags::Normal, {"RtxPipeline", "RayQuery"});
-      if(ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
-        changed |= sample.guiCamera();
-      if(ImGui::CollapsingHeader("Ray Tracing", ImGuiTreeNodeFlags_DefaultOpen))
-        changed |= sample.guiRayTracing();
-      if(ImGui::CollapsingHeader("Tonemapper", ImGuiTreeNodeFlags_DefaultOpen))
-        changed |= sample.guiTonemapper();
-      if(ImGui::CollapsingHeader("Environment", ImGuiTreeNodeFlags_DefaultOpen))
-        changed |= sample.guiEnvironment();
-      if(ImGui::CollapsingHeader("Stats"))
-      {
-        Gui::Group<bool>("Scene Info", false, [&] { return sample.guiStatistics(); });
-        Gui::Group<bool>("Profiler", false, [&] { return sample.guiProfiler(profiler); });
-        Gui::Group<bool>("Plot", false, [&] { return sample.guiGpuMeasures(); });
-      }
-      ImGui::TextWrapped("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
-                         ImGui::GetIO().Framerate);
-
-      if(changed)
-      {
-        sample.resetFrame();
-      }
-
-      ImGui::End();  // ImGui::Panel::end()
-    }
-
-    // Rendering region is different if the side panel is visible
-    if(panelAlpha >= 1.0f && sample.showGui())
-    {
-      ImVec2 pos, size;
-      ImGuiH::Panel::CentralDimension(pos, size);
-      sample.setRenderRegion(VkRect2D{VkOffset2D{static_cast<int32_t>(pos.x), static_cast<int32_t>(pos.y)},
-                                      VkExtent2D{static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)}});
-    }
-    else
-    {
-      sample.setRenderRegion(VkRect2D{{}, sample.getSize()});
-    }
-
-    // Clearing screen
-    std::array<VkClearValue, 2> clearValues;
-    clearValues[0].color        = {{0.0f, 0.0f, 0.0f, 0.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
-
-    // Offscreen render pass
-    if(sample.isBusy() == false)
-    {
-      auto sec = profiler.timeRecurring("Render", cmdBuf);
-
-      sample.updateUniformBuffer(cmdBuf);             // Updating camera buffer
-      sample.render(renderMethod, cmdBuf, profiler);  // Rendering Scene
-    }
-    else
-    {
-      sample.showBusyWindow();  // Busy while loading scene
-    }
-
-    // Rendering pass: tone mapper, UI
+    // Rendering pass in swapchain framebuffer + tone mapper, UI
     {
       auto sec = profiler.timeRecurring("Tonemap", cmdBuf);
+
+      std::array<VkClearValue, 2> clearValues;
+      clearValues[0].color        = {{0.0f, 0.0f, 0.0f, 0.0f}};
+      clearValues[1].depthStencil = {1.0f, 0};
 
       VkRenderPassBeginInfo postRenderPassBeginInfo{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
       postRenderPassBeginInfo.clearValueCount = 2;
@@ -269,11 +221,13 @@ int main(int argc, char** argv)
 
       vkCmdBeginRenderPass(cmdBuf, &postRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-      // Rendering tonemapper
+      // Draw the rendering result + tonemapper
       sample.drawPost(cmdBuf);
 
+      // Render the UI
       ImGui::Render();
       ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
+
       vkCmdEndRenderPass(cmdBuf);
     }
 

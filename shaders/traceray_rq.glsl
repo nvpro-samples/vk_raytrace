@@ -18,6 +18,11 @@
  */
 
 
+//-------------------------------------------------------------------------------------------------
+// This file has the Ray Query functions for Closest-Hit and Any-Hit shader.
+// The RTX pipeline implementation of thoses functions are in traceray_rtx.
+// This is used in pathtrace.glsl (Ray-Generation shader)
+
 #include "shade_state.glsl"
 
 //----------------------------------------------------------
@@ -90,7 +95,7 @@ bool HitTest(in rayQueryEXT rayQuery, in Ray r)
   }
 
   // do alpha blending the stochastically way
-  if(rnd(prd.seed) > opacity)
+  if(rand(prd.seed) > opacity)
     return false;
 
   return true;

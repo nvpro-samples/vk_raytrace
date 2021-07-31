@@ -17,6 +17,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//-------------------------------------------------------------------------------------------------
+// This file finds the geometric information used for shader.
+// From the payload (hit information), retrive the position, normal, uv, ..
 
 #ifndef SHADE_STATE_GLSL
 #define SHADE_STATE_GLSL
@@ -76,7 +79,7 @@ ShadeState GetShadeState(in PtPayload hstate)
   VertexAttributes attr0 = vertices.v[tri.x];
   VertexAttributes attr1 = vertices.v[tri.y];
   VertexAttributes attr2 = vertices.v[tri.z];
-  
+
   // Getting the material index on this geometry
   const uint matIndex = max(0, geoInfo[idGeo].materialIndex);  // material of primitive mesh
 

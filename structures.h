@@ -172,6 +172,11 @@ struct InstanceMatrices
 
 // KHR_lights_punctual extension.
 // see https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_lights_punctual
+
+const int LightType_Directional = 0;
+const int LightType_Point       = 1;
+const int LightType_Spot        = 2;
+
 struct Light
 {
   vec3  direction;
@@ -189,7 +194,26 @@ struct Light
   vec2 padding;
 };
 
-const int LightType_Directional = 0;
-const int LightType_Point       = 1;
-const int LightType_Spot        = 2;
+struct Env_sample_data
+{
+  uint  alias;
+  float q;
+  float pdf;
+  float aliasPdf;
+};
+
+struct Tonemapper
+{
+  float brightness;
+  float contrast;
+  float saturation;
+  float vignette;
+  float avgLum;
+  float zoom;
+  vec2  renderingRatio;
+  int   autoExposure;
+  float Ywhite;  // Burning white
+  float key;     // Log-average luminance
+};
+
 #endif

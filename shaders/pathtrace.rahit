@@ -17,6 +17,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//-------------------------------------------------------------------------------------------------
+// Any-Hit shader, testing the alpha value and continue the ray if the value is smaller
+// than the alpha. Backface and opacity tests are set with BLAS flag, which makes the test
+// here not needed.
+
 
 #version 460
 #extension GL_GOOGLE_include_directive : enable
@@ -31,7 +36,7 @@
 #include "globals.glsl"
 #include "layouts.glsl"
 #include "random.glsl"
-#include "raycommon.glsl"
+#include "common.glsl"
 #include "shade_state.glsl"
 
 hitAttributeEXT vec2 bary;
@@ -42,7 +47,7 @@ layout(location = 0) rayPayloadInEXT PtPayload prd;
 // Push Constant
 layout(push_constant) uniform _RtxState
 {
-  RtxState rtxstate;
+  RtxState rtxState;
 };
 
 
@@ -107,7 +112,7 @@ void main()
     opacity = baseColorAlpha;
   }
 
-  // do alpha blending the stochastically way
-  if(rnd(prd.seed) > opacity)
+  // Do alpha blending the stochastically way
+  if(rand(prd.seed) > opacity)
     ignoreIntersectionEXT;
 }

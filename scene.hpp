@@ -17,8 +17,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
 #pragma once
+
+
+//--------------------------------------------------------------------------------------------------
+// - Loading and storing the glTF scene 
+// - Creates the buffers and descriptor set for the scene
+
 
 #include <string>
 
@@ -29,10 +34,7 @@
 #include "structures.h"
 
 
-/*
-  - Loading and storing the glTF scene
-  - Creates the buffers and descriptor set for the scene
-*/
+
 class Scene
 {
 public:

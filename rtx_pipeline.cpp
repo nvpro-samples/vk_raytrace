@@ -17,6 +17,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+
+/*
+ *  Implement the RTX ray tracing pipeline
+ */
+
+
+
 #include <future>
 
 #include "nvh/alignment.hpp"
@@ -26,13 +34,16 @@
 #include "scene.hpp"
 #include "tools.hpp"
 
+// Shaders
 #include "autogen/pathtrace.rahit.h"
 #include "autogen/pathtrace.rchit.h"
 #include "autogen/pathtrace.rgen.h"
 #include "autogen/pathtrace.rmiss.h"
 #include "autogen/pathtraceShadow.rmiss.h"
 
-
+//--------------------------------------------------------------------------------------------------
+// Typical resource holder + query for capabilities
+//
 void RtxPipeline::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
   m_device     = device;
@@ -49,6 +60,9 @@ void RtxPipeline::setup(const VkDevice& device, const VkPhysicalDevice& physical
   m_stbWrapper.setup(device, familyIndex, allocator, m_rtProperties);
 }
 
+//--------------------------------------------------------------------------------------------------
+// Destroy all allocated resources
+//
 void RtxPipeline::destroy()
 {
   m_stbWrapper.destroy();
@@ -60,7 +74,9 @@ void RtxPipeline::destroy()
   m_rtPipeline       = VkPipeline();
 }
 
-
+//--------------------------------------------------------------------------------------------------
+// Creation of the pipeline and layout
+//
 void RtxPipeline::create(const VkExtent2D& size, const std::vector<VkDescriptorSetLayout>& rtDescSetLayouts, Scene* scene)
 {
   MilliTimer timer;
@@ -252,6 +268,9 @@ void RtxPipeline::run(const VkCommandBuffer& cmdBuf, const VkExtent2D& size, nvv
   vkCmdTraceRaysKHR(cmdBuf, &regions[0], &regions[1], &regions[2], &regions[3], size.width, size.height, 1);
 }
 
+//--------------------------------------------------------------------------------------------------
+// Toggle the usage of Anyhit. Not having anyhit can be faster, but the scene must but fully opaque
+//
 void RtxPipeline::useAnyHit(bool enable)
 {
   m_enableAnyhit = enable;

@@ -115,7 +115,7 @@ target_sources(${PROJNAME} PUBLIC ${GLSL_HEADERS})
 #
 source_group("Common"         FILES ${COMMON_SOURCE_FILES} ${PACKAGE_SOURCE_FILES})
 source_group("Sources"        FILES ${SOURCE_FILES})
-source_group("Headers"        FILES ${HEADER_FILES})
+source_group("Header Files"   FILES ${HEADER_FILES})
 source_group("Shader Sources" FILES ${GLSL_SOURCES})
 source_group("Shader Headers" FILES ${GLSL_HEADERS})
 

@@ -17,10 +17,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+//-------------------------------------------------------------------------------------------------
+// This file is resolving the material input GltfShadeMaterial, metallic-roughness,
+// specular-glossiness, textures and other thing and set the State Material values
+// which are used for the shading.
+
+
 #ifndef GLTFMATERIAL_GLSL
 #define GLTFMATERIAL_GLSL 1
 
-#include "sampling.glsl"
+#include "env_sampling.glsl"
 
 //-----------------------------------------------------------------------
 #define SRGB_FAST_APPROXIMATION 1

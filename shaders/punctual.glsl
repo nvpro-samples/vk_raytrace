@@ -17,6 +17,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//-------------------------------------------------------------------------------------------------
+// This file has functions for punctual lights
+
 #ifndef PUNCTUAL_GLSL
 #define PUNCTUAL_GLSL
 

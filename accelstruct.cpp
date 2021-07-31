@@ -18,22 +18,28 @@
  */
 
 
-#include "accelstruct.hpp"
-#include "nvvk/raytraceKHR_vk.hpp"
-#include "structures.h"
-#include "tools.hpp"
 
 
 /*
  *	The Acceleration structure class will holds the scene made of BLASes an TLASes.
  * - It expect a scene in a format of GltfScene  
  * - Each glTF primitive mesh will be in a separate BLAS
- * - All BLASes are using one single Hit shader, the values of the material as to be
- *   done in the shader.
+ * - All BLASes are using one single Hit shader
  * - It creates a descriptorSet holding the TLAS
  * 
  */
 
+
+
+
+
+#include "accelstruct.hpp"
+#include "nvvk/raytraceKHR_vk.hpp"
+#include "structures.h"
+#include "tools.hpp"
+
+#include <sstream>
+#include <ios>
 
 void AccelStructure::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {

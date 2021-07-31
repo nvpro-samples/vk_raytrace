@@ -17,6 +17,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+/*
+ *  Implement ray tracing using Ray-Query in a compute shader.
+ *  This allows to compare the speed with RTX, but also to easier debug the shading pipeline,
+ *  as it is not building a Mega kernel as the RTX pipeline does.
+ */
+
+
+
 #include "nvh/alignment.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvvk/shaders_vk.hpp"
@@ -24,6 +33,7 @@
 #include "scene.hpp"
 #include "tools.hpp"
 
+// Shaders
 #include "autogen/pathtrace.comp.h"
 //--------------------------------------------------------------------------------------------------
 //
