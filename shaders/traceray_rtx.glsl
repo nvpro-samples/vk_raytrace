@@ -17,6 +17,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//-------------------------------------------------------------------------------------------------
+// This file has the RTX functions for Closest-Hit and Any-Hit shader.
+// The Ray Query pipeline implementation of thoses functions are in traceray_rq.
+// This is used in pathtrace.glsl (Ray-Generation shader)
+
+
 
 //-----------------------------------------------------------------------
 // Shoot a ray an return the information of the closest hit, in the

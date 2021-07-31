@@ -17,36 +17,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+
+/*
+ * Main class to render the scene, holds sub-classes for various work
+ */
+
+
 #define VMA_IMPLEMENTATION
 
-#include <iomanip>
-#include <iostream>
-#include <sstream>
-
-#include "nvh/cameramanipulator.hpp"
-#include "nvh/fileoperations.hpp"
-#include "nvh/nvprint.hpp"
-#include "nvvk/commands_vk.hpp"
-#include "nvvk/descriptorsets_vk.hpp"
-#include "nvvk/pipeline_vk.hpp"
-#include "nvvk/renderpasses_vk.hpp"
-#include "nvvk/shaders_vk.hpp"
-
 #include "binding.h"
-#include "imgui/imgui_helper.h"
-#include "imgui/imgui_orient.h"
 #include "rayquery.hpp"
 #include "rtx_pipeline.hpp"
 #include "sample_example.hpp"
+#include "sample_gui.hpp"
 #include "tools.hpp"
 
-
+#include "nvml_monitor.hpp"
 #include "fileformats/tiny_gltf_freeimage.h"
 
-#include "nvml_monitor.hpp"
 
 #if defined(NVP_SUPPORTS_NVML)
-static NvmlMonitor g_nvml(100, 100);
+NvmlMonitor g_nvml(100, 100);
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -61,6 +53,8 @@ void SampleExample::setup(const VkInstance&       instance,
                           uint32_t                transferQueueIndex)
 {
   AppBaseVk::setup(instance, device, physicalDevice, gtcQueueIndexFamily);
+
+  m_gui = std::make_shared<SampleGUI>(this);  // GUI of this class
 
   // Memory allocator for buffers and images
   m_alloc.init(instance, device, physicalDevice);
@@ -107,29 +101,30 @@ void SampleExample::setup(const VkInstance&       instance,
 
 
 //--------------------------------------------------------------------------------------------------
-// Loading the scene file and setting up all buffers
+// Loading the scene file, setting up all scene buffers, create the acceleration structures
+// for the loaded models.
 //
 void SampleExample::loadScene(const std::string& filename)
 {
   m_scene.load(filename);
   m_accelStruct.create(m_scene.getScene(), m_scene.getBuffers(Scene::eVertex), m_scene.getBuffers(Scene::eIndex));
 
+  // The picker is the helper to return information from a ray hit under the mouse cursor
   m_picker.setTlas(m_accelStruct.getTlas());
   resetFrame();
 }
 
 //--------------------------------------------------------------------------------------------------
-//
+// Loading an HDR image and creating the importance sampling acceleration structure
 //
 void SampleExample::loadEnvironmentHdr(const std::string& hdrFilename)
 {
   MilliTimer timer;
   LOGI("Loading HDR and converting %s\n", hdrFilename.c_str());
   m_skydome.loadEnvironment(hdrFilename);
-  LOGI(" --> (%5.3f ms)\n", timer.elapse());
+  timer.print();
 
-  //m_offscreen.m_tReinhard.avgLum = m_skydome.getAverage();
-  m_rtxState.fireflyClampThreshold = m_skydome.getIntegral() * 4.f;  //magic
+  m_rtxState.fireflyClampThreshold = m_skydome.getIntegral() * 4.f;  // magic
 }
 
 
@@ -181,10 +176,13 @@ void SampleExample::loadAssets(const char* filename)
 
 
 //--------------------------------------------------------------------------------------------------
-// Called at each frame to update the environment (sun&sky)
+// Called at each frame to update the UBO: scene, camera, environment (sun&sky)
 //
 void SampleExample::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 {
+  if(m_busy)
+    return;
+
   LABEL_SCOPE_VK(cmdBuf);
   const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
 
@@ -213,6 +211,9 @@ void SampleExample::updateFrame()
     m_rtxState.frame++;
 }
 
+//--------------------------------------------------------------------------------------------------
+// Reset frame is re-starting the rendering
+//
 void SampleExample::resetFrame()
 {
   m_rtxState.frame = -1;
@@ -228,8 +229,8 @@ void SampleExample::createDescriptorSetLayout()
 
 
   m_bind.addBinding({B_SUNANDSKY, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_MISS_BIT_KHR | flags});
-  m_bind.addBinding({B_HDR, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, flags});          // HDR image
-  m_bind.addBinding({B_IMPORT_SMPL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, flags});  // importance sampling
+  m_bind.addBinding({B_HDR, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, flags});  // HDR image
+  m_bind.addBinding({B_IMPORT_SMPL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flags});  // importance sampling
 
 
   m_descPool = m_bind.createPool(m_device, 1);
@@ -239,25 +240,30 @@ void SampleExample::createDescriptorSetLayout()
   // Using the environment
   std::vector<VkWriteDescriptorSet> writes;
   VkDescriptorBufferInfo            sunskyDesc{m_sunAndSkyBuffer.buffer, 0, VK_WHOLE_SIZE};
+  VkDescriptorBufferInfo            accelImpSmpl{m_skydome.m_accelImpSmpl.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_bind.makeWrite(m_descSet, B_SUNANDSKY, &sunskyDesc));
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_textures.txtHdr.descriptor));
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &m_skydome.m_textures.accelImpSmpl.descriptor));
-
-  vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-}
-
-void SampleExample::updateHdrDescriptors()
-{
-  std::vector<VkWriteDescriptorSet> writes;
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_textures.txtHdr.descriptor));
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &m_skydome.m_textures.accelImpSmpl.descriptor));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_texHdr.descriptor));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &accelImpSmpl));
 
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 //--------------------------------------------------------------------------------------------------
-// Creating the uniform buffer holding the camera matrices
-// - Buffer is host visible
+// Setting the descriptor for the HDR and its acceleration structure
+//
+void SampleExample::updateHdrDescriptors()
+{
+  std::vector<VkWriteDescriptorSet> writes;
+  VkDescriptorBufferInfo            accelImpSmpl{m_skydome.m_accelImpSmpl.buffer, 0, VK_WHOLE_SIZE};
+
+  writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_texHdr.descriptor));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &accelImpSmpl));
+  vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+}
+
+//--------------------------------------------------------------------------------------------------
+// Creating the uniform buffer holding the Sun&Sky structure
+// - Buffer is host visible and will be set each frame
 //
 void SampleExample::createUniformBuffer()
 {
@@ -307,7 +313,38 @@ void SampleExample::onResize(int /*w*/, int /*h*/)
 }
 
 //--------------------------------------------------------------------------------------------------
-// The size of the rendering area is smaller than the viewport
+// Call the rendering of all graphical user interface
+//
+void SampleExample::renderGui(nvvk::ProfilerVK& profiler)
+{
+  m_gui->titleBar();
+  m_gui->menuBar();
+  m_gui->render(profiler);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+// Creating the render: RTX, Ray Query, ...
+// - Destroy the previous one.
+void SampleExample::createRender(RndMethod method)
+{
+  if(method == m_rndMethod)
+    return;
+
+  LOGI("Switching renderer, from %d to %d \n", m_rndMethod, method);
+  if(m_rndMethod != eNone)
+  {
+    vkDeviceWaitIdle(m_device);  // cannot destroy while in use
+    m_pRender[m_rndMethod]->destroy();
+  }
+  m_rndMethod = method;
+
+  m_pRender[m_rndMethod]->create(
+      m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
+}
+
+//--------------------------------------------------------------------------------------------------
+// The GUI is taking space and size of the rendering area is smaller than the viewport
 // This is the space left in the center view.
 void SampleExample::setRenderRegion(const VkRect2D& size)
 {
@@ -317,7 +354,7 @@ void SampleExample::setRenderRegion(const VkRect2D& size)
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Post-processing
+// Post ray tracing
 //////////////////////////////////////////////////////////////////////////
 
 void SampleExample::createOffscreenRender()
@@ -326,14 +363,14 @@ void SampleExample::createOffscreenRender()
   m_axis.init(m_device, m_renderPass, 0, 50.0f);
 }
 
-
+//--------------------------------------------------------------------------------------------------
+// This will draw the result of the rendering and apply the tonemapper.
+// If enabled, draw orientation axis in the lower left corner.
 void SampleExample::drawPost(VkCommandBuffer cmdBuf)
 {
   LABEL_SCOPE_VK(cmdBuf);
-  m_offscreen.m_tonemapper.zoom           = m_descaling ? 1.0f / m_descalingLevel : 1.0f;
-  auto size                               = nvmath::vec2f(m_size.width, m_size.height);
-  auto area                               = nvmath::vec2f(m_renderRegion.extent.width, m_renderRegion.extent.height);
-  m_offscreen.m_tonemapper.renderingRatio = size / area;
+  auto size = nvmath::vec2f(m_size.width, m_size.height);
+  auto area = nvmath::vec2f(m_renderRegion.extent.width, m_renderRegion.extent.height);
 
   VkViewport viewport{static_cast<float>(m_renderRegion.offset.x),
                       static_cast<float>(m_renderRegion.offset.y),
@@ -341,13 +378,14 @@ void SampleExample::drawPost(VkCommandBuffer cmdBuf)
                       static_cast<float>(m_size.height),
                       0.0f,
                       1.0f};
+  VkRect2D   scissor{m_renderRegion.offset, {m_renderRegion.extent.width, m_renderRegion.extent.height}};
   vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
-
-  VkRect2D scissor{{0, 0}, {m_renderRegion.extent.width, m_renderRegion.extent.height}};
   vkCmdSetScissor(cmdBuf, 0, 1, &scissor);
 
-
+  m_offscreen.m_tonemapper.zoom           = m_descaling ? 1.0f / m_descalingLevel : 1.0f;
+  m_offscreen.m_tonemapper.renderingRatio = size / area;
   m_offscreen.run(cmdBuf);
+
   if(m_showAxis)
     m_axis.display(cmdBuf, CameraManip.getMatrix(), m_size);
 }
@@ -356,29 +394,25 @@ void SampleExample::drawPost(VkCommandBuffer cmdBuf)
 // Ray tracing
 //////////////////////////////////////////////////////////////////////////
 
-void SampleExample::render(RndMethod method, const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler)
+void SampleExample::renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler)
 {
+  if(m_busy)
+  {
+    m_gui->showBusyWindow();  // Busy while loading scene
+    return;
+  }
+
+
   LABEL_SCOPE_VK(cmdBuf);
 #if defined(NVP_SUPPORTS_NVML)
   g_nvml.refresh();
 #endif
 
+  auto sec = profiler.timeRecurring("Render", cmdBuf);
+
   // We are done rendering
   if(m_rtxState.frame >= m_maxFrames)
     return;
-
-  // #TODO - add more rendering engines
-  if(method != m_rndMethod)
-  {
-    LOGI("Switching renderer, from %d to %d \n", m_rndMethod, method);
-    vkDeviceWaitIdle(m_device);  // cannot destroy while in use
-    if(m_rndMethod != eNone)
-      m_pRender[m_rndMethod]->destroy();
-    m_rndMethod = method;
-
-    m_pRender[m_rndMethod]->create(
-        m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
-  }
 
   // Handling de-scaling by reducing the size to render
   VkExtent2D render_size = m_renderRegion.extent;
@@ -391,462 +425,16 @@ void SampleExample::render(RndMethod method, const VkCommandBuffer& cmdBuf, nvvk
   // Running the renderer
   m_pRender[m_rndMethod]->run(cmdBuf, render_size, profiler,
                               {m_accelStruct.getDescSet(), m_offscreen.getDescSet(), m_scene.getDescSet(), m_descSet});
-}
 
 
-//////////////////////////////////////////////////////////////////////////
-/// GUI
-//////////////////////////////////////////////////////////////////////////
-using GuiH = ImGuiH::Control;
-
-
-//--------------------------------------------------------------------------------------------------
-//
-//
-void SampleExample::titleBar()
-{
-  static float dirtyTimer = 0.0f;
-
-  dirtyTimer += ImGui::GetIO().DeltaTime;
-  if(dirtyTimer > 1)
+  // For automatic brightness tonemapping
+  if(m_offscreen.m_tonemapper.autoExposure)
   {
-    std::stringstream o;
-    o << "VK glTF Viewer";
-    o << " | " << m_scene.getSceneName();                                              // Scene name
-    o << " | " << m_renderRegion.extent.width << "x" << m_renderRegion.extent.height;  // resolution
-    o << " | " << static_cast<int>(ImGui::GetIO().Framerate)                           // FPS / ms
-      << " FPS / " << std::setprecision(3) << 1000.F / ImGui::GetIO().Framerate << "ms";
-#if defined(NVP_SUPPORTS_NVML)
-    if(g_nvml.isValid())  // Graphic card, driver
-    {
-      const auto& i = g_nvml.getInfo(0);
-      o << " | " << i.name;
-      o << " | " << g_nvml.getSysInfo().driverVersion;
-    }
-#endif
-    if(m_rndMethod != eNone && m_pRender[m_rndMethod] != nullptr)
-      o << " | " << m_pRender[m_rndMethod]->name();
-    glfwSetWindowTitle(m_window, o.str().c_str());
-    dirtyTimer = 0;
+    auto slot = profiler.timeRecurring("Mipmap", cmdBuf);
+    m_offscreen.genMipmap(cmdBuf);
   }
 }
 
-void SampleExample::menuBar()
-{
-  auto openFilename = [](const char* filter) {
-#ifdef _WIN32
-    char         filename[MAX_PATH];
-    OPENFILENAME ofn;
-    ZeroMemory(&filename, sizeof(filename));
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner   = nullptr;  // If you have a window to center over, put its HANDLE here
-    ofn.lpstrFilter = filter;
-    ofn.lpstrFile   = filename;
-    ofn.nMaxFile    = MAX_PATH;
-    ofn.lpstrTitle  = "Select a File";
-    ofn.Flags       = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
-
-    if(GetOpenFileNameA(&ofn))
-    {
-      return std::string(filename);
-    }
-#endif
-
-    return std::string("");
-  };
-
-
-  // Menu Bar
-  if(ImGui::BeginMainMenuBar())
-  {
-    if(ImGui::BeginMenu("File"))
-    {
-      if(ImGui::MenuItem("Open GLTF Scene"))
-        loadAssets(openFilename("GLTF Files\0*.gltf;*.glb\0\0").c_str());
-      if(ImGui::MenuItem("Open HDR Environment"))
-        loadAssets(openFilename("HDR Files\0*.hdr\0\0").c_str());
-      ImGui::Separator();
-      if(ImGui::MenuItem("Quit", "ESC"))
-        glfwSetWindowShouldClose(m_window, 1);
-      ImGui::EndMenu();
-    }
-
-    if(ImGui::BeginMenu("Tools"))
-    {
-      ImGui::MenuItem("Settings", "F10", &m_show_gui);
-      ImGui::MenuItem("Axis", nullptr, &m_showAxis);
-      ImGui::EndMenu();
-    }
-
-    ImGui::EndMainMenuBar();
-  }
-}
-
-//--------------------------------------------------------------------------------------------------
-//
-//
-bool SampleExample::guiCamera()
-{
-  bool changed{false};
-  changed |= ImGuiH::CameraWidget();
-  auto& cam = m_scene.getCamera();
-  changed |= GuiH::Slider("Aperture", "", &cam.aperture, nullptr, ImGuiH::Control::Flags::Normal, 0.0f, 0.5f);
-
-  return changed;
-}
-
-bool SampleExample::guiRayTracing()
-{
-  auto Normal = ImGuiH::Control::Flags::Normal;
-  bool changed{false};
-
-  changed |= GuiH::Slider("Max Ray Depth", "", &m_rtxState.maxDepth, nullptr, Normal, 1, 10);
-  changed |= GuiH::Slider("Samples Per Frame", "", &m_rtxState.maxSamples, nullptr, Normal, 1, 10);
-  changed |= GuiH::Slider("Max Iteration ", "", &m_maxFrames, nullptr, Normal, 1, 1000);
-  changed |= GuiH::Slider("De-scaling ",
-                          "Reduce resolution while navigating.\n"
-                          "Speeding up rendering while camera moves.\n"
-                          "Value of 1, will not de-scale",
-                          &m_descalingLevel, nullptr, Normal, 1, 8);
-
-  changed |= GuiH::Selection("Pbr Mode", "PBR material model", &m_rtxState.pbrMode, nullptr, Normal, {"Disney", "Gltf"});
-
-  static bool bAnyHit = true;
-  if(GuiH::Checkbox("Enable AnyHit",
-                    "AnyHit is used for double sided, cutout opacity, but can be slower when all objects are opaque", &bAnyHit, nullptr))
-  {
-    auto rtx = dynamic_cast<RtxPipeline*>(m_pRender[m_rndMethod]);
-    vkDeviceWaitIdle(m_device);  // cannot run while changing this
-    rtx->useAnyHit(bAnyHit);
-    changed = true;
-  }
-
-  GuiH::Group<bool>("Debugging", false, [&] {
-    changed |= GuiH::Selection("Debug Mode", "Display unique values of material", &m_rtxState.debugging_mode, nullptr, Normal,
-                               {
-                                   "No Debug",
-                                   "BaseColor",
-                                   "Normal",
-                                   "Metallic",
-                                   "Emissive",
-                                   "Alpha",
-                                   "Roughness",
-                                   "TexCoord",
-                                   "Tangent",
-                                   "Radiance",
-                                   "Weight",
-                                   "RayDir",
-                                   "HeatMap",
-                               });
-
-    if(m_rtxState.debugging_mode == eHeatmap)
-    {
-      changed |= GuiH::Drag("Min Heat map", "Minimum timing value, below this value it will be blue",
-                            &m_rtxState.minHeatmap, nullptr, Normal, 0, 1'000'000, 100);
-      changed |= GuiH::Drag("Max Heat map", "Maximum timing value, above this value it will be red",
-                            &m_rtxState.maxHeatmap, nullptr, Normal, 0, 1'000'000, 100);
-    }
-    return changed;
-  });
-
-  GuiH::Info("Frame", "", std::to_string(m_rtxState.frame), GuiH::Flags::Disabled);
-  return changed;
-}
-
-
-bool SampleExample::guiTonemapper()
-{
-  static Offscreen::Tonemapper default_tm;  // default values
-  auto&                        tm = m_offscreen.m_tonemapper;
-  bool                         changed{false};
-
-  changed |= GuiH::Slider("Exposure", "Scene Exposure", &tm.avgLum, &default_tm.avgLum, GuiH::Flags::Normal, 0.001f, 5.00f);
-  changed |= GuiH::Slider("Brightness", "", &tm.brightness, &default_tm.brightness, GuiH::Flags::Normal, 0.0f, 2.0f);
-  changed |= GuiH::Slider("Contrast", "", &tm.contrast, &default_tm.contrast, GuiH::Flags::Normal, 0.0f, 2.0f);
-  changed |= GuiH::Slider("Saturation", "", &tm.saturation, &default_tm.saturation, GuiH::Flags::Normal, 0.0f, 5.0f);
-  changed |= GuiH::Slider("Vignette", "", &tm.vignette, &default_tm.vignette, GuiH::Flags::Normal, 0.0f, 2.0f);
-
-  return false;  // no need to restart the renderer
-}
-
-bool SampleExample::guiEnvironment()
-{
-  static SunAndSky dss = SunAndSky_default();  // default values
-  bool             changed{false};
-
-  changed |= ImGui::Checkbox("Use Sun & Sky", (bool*)&m_sunAndSky.in_use);
-  changed |= GuiH::Slider("Exposure", "Intensity of the environment", &m_rtxState.hdrMultiplier, nullptr,
-                          GuiH::Flags::Normal, 0.f, 5.f);
-
-  // Adjusting the up with the camera
-  nvmath::vec3f eye, center, up;
-  CameraManip.getLookat(eye, center, up);
-  m_sunAndSky.y_is_up = (up.y == 1);
-
-  if(m_sunAndSky.in_use)
-  {
-    GuiH::Group<bool>("Sun", true, [&] {
-      changed |= GuiH::Custom("Direction", "Sun Direction", [&] {
-        float indent = ImGui::GetCursorPos().x;
-        changed |= ImGui::DirectionGizmo("", &m_sunAndSky.sun_direction.x, true);
-        ImGui::NewLine();
-        ImGui::SameLine(indent);
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        changed |= ImGui::InputFloat3("##IG", &m_sunAndSky.sun_direction.x);
-        return changed;
-      });
-      changed |= GuiH::Slider("Disk Scale", "", &m_sunAndSky.sun_disk_scale, &dss.sun_disk_scale, GuiH::Flags::Normal, 0.f, 100.f);
-      changed |= GuiH::Slider("Glow Intensity", "", &m_sunAndSky.sun_glow_intensity, &dss.sun_glow_intensity,
-                              GuiH::Flags::Normal, 0.f, 5.f);
-      changed |= GuiH::Slider("Disk Intensity", "", &m_sunAndSky.sun_disk_intensity, &dss.sun_disk_intensity,
-                              GuiH::Flags::Normal, 0.f, 5.f);
-      changed |= GuiH::Color("Night Color", "", &m_sunAndSky.night_color.x, &dss.night_color.x, GuiH::Flags::Normal);
-      return changed;
-    });
-
-    GuiH::Group<bool>("Ground", true, [&] {
-      changed |=
-          GuiH::Slider("Horizon Height", "", &m_sunAndSky.horizon_height, &dss.horizon_height, GuiH::Flags::Normal, -1.f, 1.f);
-      changed |= GuiH::Slider("Horizon Blur", "", &m_sunAndSky.horizon_blur, &dss.horizon_blur, GuiH::Flags::Normal, 0.f, 1.f);
-      changed |= GuiH::Color("Ground Color", "", &m_sunAndSky.ground_color.x, &dss.ground_color.x, GuiH::Flags::Normal);
-      changed |= GuiH::Slider("Haze", "", &m_sunAndSky.haze, &dss.haze, GuiH::Flags::Normal, 0.f, 15.f);
-      return changed;
-    });
-
-    GuiH::Group<bool>("Other", false, [&] {
-      changed |= GuiH::Drag("Multiplier", "", &m_sunAndSky.multiplier, &dss.multiplier, GuiH::Flags::Normal, 0.f,
-                            std::numeric_limits<float>::max(), 2, "%5.5f");
-      changed |= GuiH::Slider("Saturation", "", &m_sunAndSky.saturation, &dss.saturation, GuiH::Flags::Normal, 0.f, 1.f);
-      changed |= GuiH::Slider("Red Blue Shift", "", &m_sunAndSky.redblueshift, &dss.redblueshift, GuiH::Flags::Normal, -1.f, 1.f);
-      changed |= GuiH::Color("RGB Conversion", "", &m_sunAndSky.rgb_unit_conversion.x, &dss.rgb_unit_conversion.x,
-                             GuiH::Flags::Normal);
-
-      nvmath::vec3f eye, center, up;
-      CameraManip.getLookat(eye, center, up);
-      m_sunAndSky.y_is_up = up.y == 1;
-      changed |= GuiH::Checkbox("Y is Up", "", (bool*)&m_sunAndSky.y_is_up, nullptr, GuiH::Flags::Disabled);
-      return changed;
-    });
-  }
-
-  return changed;
-}
-
-bool SampleExample::guiStatistics()
-{
-  ImGuiStyle& style    = ImGui::GetStyle();
-  auto        pushItem = style.ItemSpacing;
-  style.ItemSpacing.y  = -4;  // making the lines more dense
-
-  auto& stats = m_scene.getStat();
-
-  if(stats.nbCameras > 0)
-    GuiH::Info("Cameras", "", FormatNumbers(stats.nbCameras));
-  if(stats.nbImages > 0)
-    GuiH::Info("Images", "", FormatNumbers(stats.nbImages) + " (" + FormatNumbers(stats.imageMem) + ")");
-  if(stats.nbTextures > 0)
-    GuiH::Info("Textures", "", FormatNumbers(stats.nbTextures));
-  if(stats.nbMaterials > 0)
-    GuiH::Info("Material", "", FormatNumbers(stats.nbMaterials));
-  if(stats.nbSamplers > 0)
-    GuiH::Info("Samplers", "", FormatNumbers(stats.nbSamplers));
-  if(stats.nbNodes > 0)
-    GuiH::Info("Nodes", "", FormatNumbers(stats.nbNodes));
-  if(stats.nbMeshes > 0)
-    GuiH::Info("Meshes", "", FormatNumbers(stats.nbMeshes));
-  if(stats.nbLights > 0)
-    GuiH::Info("Lights", "", FormatNumbers(stats.nbLights));
-  if(stats.nbTriangles > 0)
-    GuiH::Info("Triangles", "", FormatNumbers(stats.nbTriangles));
-  if(stats.nbUniqueTriangles > 0)
-    GuiH::Info("Unique Tri", "", FormatNumbers(stats.nbUniqueTriangles));
-  GuiH::Info("Resolution", "", std::to_string(m_size.width) + "x" + std::to_string(m_size.height));
-
-  style.ItemSpacing = pushItem;
-
-  return false;
-}
-
-bool SampleExample::guiProfiler(nvvk::ProfilerVK& profiler)
-{
-  struct Info
-  {
-    vec2  statRender{0.0f, 0.0f};
-    vec2  statTone{0.0f, 0.0f};
-    float frameTime{0.0f};
-  };
-  static Info display;
-  static Info collect;
-
-  // Collecting data
-  static float dirtyCnt = 0.0f;
-  {
-    dirtyCnt++;
-    nvh::Profiler::TimerInfo info;
-    profiler.getTimerInfo("Render", info);
-    collect.statRender.x += float(info.gpu.average / 1000.0f);
-    collect.statRender.y += float(info.cpu.average / 1000.0f);
-    profiler.getTimerInfo("Tonemap", info);
-    collect.statTone.x += float(info.gpu.average / 1000.0f);
-    collect.statTone.y += float(info.cpu.average / 1000.0f);
-    collect.frameTime += 1000.0f / ImGui::GetIO().Framerate;
-  }
-
-  // Averaging display of the data every 0.5 seconds
-  static float dirtyTimer = 1.0f;
-  dirtyTimer += ImGui::GetIO().DeltaTime;
-  if(dirtyTimer >= 0.5f)
-  {
-    display.statRender = collect.statRender / dirtyCnt;
-    display.statTone   = collect.statTone / dirtyCnt;
-    display.frameTime  = collect.frameTime / dirtyCnt;
-    dirtyTimer         = 0;
-    dirtyCnt           = 0;
-    collect            = Info{};
-  }
-
-  ImGui::Text("Frame     [ms]: %2.3f", display.frameTime);
-  ImGui::Text("Render GPU/CPU [ms]: %2.3f  /  %2.3f", display.statRender.x, display.statRender.y);
-  ImGui::Text("Tone+UI GPU/CPU [ms]: %2.3f  /  %2.3f", display.statTone.x, display.statTone.y);
-  ImGui::ProgressBar(display.statRender.x / display.frameTime);
-
-
-  return false;
-}
-
-
-bool SampleExample::guiGpuMeasures()
-{
-#if defined(NVP_SUPPORTS_NVML)
-  if(g_nvml.isValid() == false)
-    ImGui::Text("NVML wasn't loaded");
-
-  auto memoryNumbers = [](float n, int precision = 3) -> std::string {
-    std::vector<std::string> t{" KB", " MB", " GB", " TB"};
-    int                      level{0};
-    while(n > 1024)
-    {
-      n = n / 1024;
-      level++;
-    }
-    assert(level < 3);
-    std::stringstream o;
-    o << std::setprecision(precision) << std::fixed << n << t[level];
-
-    return o.str();
-  };
-
-  uint32_t offset = g_nvml.getOffset();
-
-  for(uint32_t g = 0; g < g_nvml.nbGpu(); g++)  // Number of gpu
-  {
-    const auto& i = g_nvml.getInfo(g);
-    const auto& m = g_nvml.getMeasures(g);
-
-    std::stringstream o;
-    o << "Driver: " << i.driver_model << "\n"                                                                //
-      << "Memory: " << memoryNumbers(m.memory[offset]) << "/" << memoryNumbers(float(i.max_mem), 0) << "\n"  //
-      << "Load: " << m.load[offset];
-
-    float                mem = m.memory[offset] / float(i.max_mem) * 100.f;
-    std::array<char, 64> desc;
-    sprintf(desc.data(), "%s: \n- Load: %2.0f%s \n- Mem: %2.0f%s", i.name.c_str(), m.load[offset], "%%", mem, "%%");
-    ImGuiH::Control::Custom(desc.data(), o.str().c_str(), [&]() {
-      ImGui::ImPlotMulti datas[2];
-      datas[0].plot_type     = static_cast<ImGuiPlotType>(ImGuiPlotType_Area);
-      datas[0].name          = "Load";
-      datas[0].color         = ImColor(0.07f, 0.9f, 0.06f, 1.0f);
-      datas[0].thickness     = 1.5;
-      datas[0].data          = m.load.data();
-      datas[0].values_count  = (int)m.load.size();
-      datas[0].values_offset = offset + 1;
-      datas[0].scale_min     = 0;
-      datas[0].scale_max     = 100;
-
-      datas[1].plot_type     = ImGuiPlotType_Histogram;
-      datas[1].name          = "Mem";
-      datas[1].color         = ImColor(0.06f, 0.6f, 0.97f, 0.8f);
-      datas[1].thickness     = 2.0;
-      datas[1].data          = m.memory.data();
-      datas[1].values_count  = (int)m.memory.size();
-      datas[1].values_offset = offset + 1;
-      datas[1].scale_min     = 0;
-      datas[1].scale_max     = float(i.max_mem);
-
-
-      std::string overlay = std::to_string((int)m.load[offset]) + " %";
-      ImGui::PlotMultiEx("##NoName", 2, datas, overlay.c_str(), ImVec2(0, 100));
-
-      return false;
-    });
-
-    ImGuiH::Control::Custom("CPU", "", [&]() {
-      ImGui::ImPlotMulti datas[1];
-      datas[0].plot_type     = ImGuiPlotType_Lines;
-      datas[0].name          = "CPU";
-      datas[0].color         = ImColor(0.96f, 0.96f, 0.07f, 1.0f);
-      datas[0].thickness     = 1.0;
-      datas[0].data          = g_nvml.getSysInfo().cpu.data();
-      datas[0].values_count  = (int)g_nvml.getSysInfo().cpu.size();
-      datas[0].values_offset = offset + 1;
-      datas[0].scale_min     = 0;
-      datas[0].scale_max     = 100;
-
-      std::string overlay = std::to_string((int)m.load[offset]) + " %";
-      ImGui::PlotMultiEx("##NoName", 1, datas, nullptr, ImVec2(0, 0));
-
-      return false;
-    });
-  }
-#else 
-  ImGui::Text("NVML wasn't loaded");
-#endif
-  return false;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-// Display a static window when loading assets
-//
-void SampleExample::showBusyWindow()
-{
-  static int   nb_dots   = 0;
-  static float deltaTime = 0;
-  bool         show      = true;
-  size_t       width     = 270;
-  size_t       height    = 60;
-
-  deltaTime += ImGui::GetIO().DeltaTime;
-  if(deltaTime > .25)
-  {
-    deltaTime = 0;
-    nb_dots   = ++nb_dots % 10;
-  }
-
-  ImGui::SetNextWindowSize(ImVec2(float(width), float(height)));
-  ImGui::SetNextWindowPos(ImVec2(float(m_size.width - width) * 0.5f, float(m_size.height - height) * 0.5f));
-
-  ImGui::SetNextWindowBgAlpha(0.75f);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 15.0);
-  if(ImGui::Begin("##notitle", &show,
-                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
-                      | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMouseInputs))
-  {
-    ImVec2 available = ImGui::GetContentRegionAvail();
-
-    ImVec2 text_size = ImGui::CalcTextSize(m_busyReasonText.c_str(), nullptr, false, available.x);
-
-    ImVec2 pos = ImGui::GetCursorPos();
-    pos.x += (available.x - text_size.x) * 0.5f;
-    pos.y += (available.y - text_size.y) * 0.5f;
-
-    ImGui::SetCursorPos(pos);
-    ImGui::TextWrapped((m_busyReasonText + std::string(nb_dots, '.')).c_str());
-  }
-  ImGui::PopStyleVar();
-  ImGui::End();
-}
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -881,6 +469,9 @@ void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
   }
 }
 
+//--------------------------------------------------------------------------------------------------
+//
+//
 void SampleExample::screenPicking()
 {
   double x, y;
@@ -924,6 +515,9 @@ void SampleExample::screenPicking()
   LOGI(" - PrimId(%d)\n", pr.primitiveID);
 }
 
+//--------------------------------------------------------------------------------------------------
+//
+//
 void SampleExample::onFileDrop(const char* filename)
 {
   loadAssets(filename);
@@ -946,6 +540,9 @@ void SampleExample::onMouseMotion(int x, int y)
   }
 }
 
+//--------------------------------------------------------------------------------------------------
+//
+//
 void SampleExample::onMouseButton(int button, int action, int mods)
 {
   AppBaseVk::onMouseButton(button, action, mods);

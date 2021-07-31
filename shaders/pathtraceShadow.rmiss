@@ -27,8 +27,8 @@
 //-------------------------------------------------------------------------------------------------
 // This will be executed when sending shadow rays and missing all geometries
 // - There are no hit shader for the shadow ray, therefore
-// - Before calling Trace, set isShadowed=true
-// - The default anyhit, closesthit won't change isShadowed, but if nothing is hit, it will be
+// - Before calling Trace, set isHit=true
+// - The default anyhit, closesthit won't change isHit, but if nothing is hit, it will be
 //   set to false.
 //-------------------------------------------------------------------------------------------------
 

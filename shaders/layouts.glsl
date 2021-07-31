@@ -17,6 +17,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//-------------------------------------------------------------------------------------------------
+// This file holds the layout used by all ray tracing shaders
+
 
 #ifndef LAYOUTS_GLSL
 #define LAYOUTS_GLSL 1
@@ -25,11 +28,6 @@
 // C++ shared structures and binding
 #include "../binding.h"
 #include "../structures.h"
-
-
-// Including structs used by the layouts
-//#include "globals.glsl"
-
 
 // Sun & Sky structure
 #include "sun_and_sky.h"
@@ -52,7 +50,7 @@ layout(set = S_SCENE, binding = B_TEXTURES			  )		uniform sampler2D		texturesMap
 //
 layout(set = S_ENV, binding = B_SUNANDSKY,		scalar)		uniform _SSBuffer		{ SunAndSky _sunAndSky; };
 layout(set = S_ENV, binding = B_HDR)						uniform sampler2D		environmentTexture;
-layout(set = S_ENV, binding = B_IMPORT_SMPL)				uniform sampler2D		environmentSamplingData;
+layout(set = S_ENV, binding = B_IMPORT_SMPL,    scalar)		buffer _EnvAccel		{ Env_sample_data envSamplingData[]; };
 
 layout(buffer_reference, scalar) buffer Vertices { VertexAttributes v[]; };
 layout(buffer_reference, scalar) buffer Indices	 { uvec3 i[];            };

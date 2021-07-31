@@ -17,23 +17,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//-------------------------------------------------------------------------------------------------
+// This file has random functions.
+// Usage:
+// - initialize the seed using tea(), with a value that is different for each pixel and each frame.
+// - use rnd() with the seed
 
 #ifndef RANDOM_GLSL
 #define RANDOM_GLSL 1
-
-#define RAND_PCG 1
-#define RAND_LCG 2
-#define RAD_RADINV 3
-
-#define RAND_METHOD RAND_LCG
-
 
 //-----------------------------------------------------------------------
 // Generate a random unsigned int from two unsigned int values, using 16 pairs
 // of rounds of the Tiny Encryption Algorithm. See Zafar, Olano, and Curtis,
 // "GPU Random Numbers via the Tiny Encryption Algorithm"
 //-----------------------------------------------------------------------
-uint tea(uint val0, uint val1)
+uint tea(in uint val0, in uint val1)
 {
   uint v0 = val0;
   uint v1 = val1;
@@ -49,17 +47,11 @@ uint tea(uint val0, uint val1)
   return v0;
 }
 
-//-----------------------------------------------------------------------
-// Generate a random unsigned int in [0, 2^24) given the previous RNG state
-// using the Numerical Recipes linear congruential generator
-//-----------------------------------------------------------------------
-uint lcg(inout uint prev)
+uint initRandom(in uvec2 resolution, in uvec2 screenCoord, in uint frame)
 {
-  uint LCG_A = 1664525u;
-  uint LCG_C = 1013904223u;
-  prev       = (LCG_A * prev + LCG_C);
-  return prev & 0x00FFFFFF;
+  return tea(screenCoord.y * resolution.x + screenCoord.x, frame);
 }
+
 
 //-----------------------------------------------------------------------
 // https://www.pcg-random.org/
@@ -101,32 +93,17 @@ uvec3 pcg3d(uvec3 v)
 
 
 //-----------------------------------------------------------------------
-const float pcg_div = (1.0 / float(0xffffffffu));  // 4,294,967,295 max uint32
 // Generate a random float in [0, 1) given the previous RNG state
 //-----------------------------------------------------------------------
-float rnd(inout uint seed)
+float rand(inout uint seed)
 {
-#if(RAND_METHOD == RAND_PCG)
-  seed = pcg(seed);
-  return float(seed) * pcg_div;
-#endif
-
-#if(RAND_METHOD == RAND_LCG)
-  return (float(lcg(seed)) / float(0x01000000u));
-#endif
+  uint r = pcg(seed);
+  return uintBitsToFloat(0x3f800000 | (r >> 9)) - 1.0f;
 }
 
-//-----------------------------------------------------------------------
-//-----------------------------------------------------------------------
-vec2 rnd2(inout uint prev)
+vec2 rand2(inout uint prev)
 {
-#if(RAND_METHOD == RAND_PCG)
-  return vec2(rnd(prev), rnd(prev));
-#endif
-
-#if(RAND_METHOD == RAND_LCG)
-  return vec2(float(lcg(prev)) / float(0x01000000u), float(lcg(prev)) / float(0x01000000u));
-#endif
+  return vec2(rand(prev), rand(prev));
 }
 
 #endif  // RANDOM_GLSL

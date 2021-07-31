@@ -17,23 +17,32 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+
+/*
+ * - Loading and storing the glTF scene
+ * - Creates the buffers and descriptor set for the scene
+ */
+
+
+
 #include <sstream>
 
-#include "scene.hpp"
-#include "binding.h"
-#include "fileformats/tiny_gltf_freeimage.h"
 #include "imgui/imgui_camera_widget.h"
 #include "nvh/cameramanipulator.hpp"
-#include "nvh/nvprint.hpp"
+#include "nvvk/buffers_vk.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
 #include "nvvk/images_vk.hpp"
+
+#include "binding.h"
+#include "scene.hpp"
 #include "shaders/compress.glsl"
 #include "structures.h"
 #include "tiny_gltf.h"
 #include "tools.hpp"
-#include "nvvk/buffers_vk.hpp"
 
+#include "fileformats/tiny_gltf_freeimage.h"
 
 namespace fs = std::filesystem;
 
@@ -338,7 +347,7 @@ void Scene::createLightBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf
 //--------------------------------------------------------------------------------------------------
 // Create a buffer of all materials
 // Most parameters are supported, and GltfShadeMaterial is GLSL packed compliant
-//
+// #TODO: compress the material, is it too large.
 void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf)
 {
   LOGI(" - Create %d Material Buffer", gltf.m_materials.size());
@@ -505,7 +514,7 @@ void Scene::createTextureImages(VkCommandBuffer cmdBuf, tinygltf::Model& gltfMod
     std::array<uint8_t, 4> white           = {255, 255, 255, 255};
     VkImageCreateInfo      imageCreateInfo = nvvk::makeImage2DCreateInfo(VkExtent2D{1, 1});
     nvvk::Image            image           = m_pAlloc->createImage(cmdBuf, 4, white.data(), imageCreateInfo);
-    m_images.push_back({image, imageCreateInfo});
+    m_images.emplace_back(image, imageCreateInfo);
     m_debug.setObjectName(m_images.back().first.image, "dummy");
   };
 
@@ -513,7 +522,8 @@ void Scene::createTextureImages(VkCommandBuffer cmdBuf, tinygltf::Model& gltfMod
   auto addDefaultTexture = [this, cmdBuf]() {
     m_defaultTextures.push_back(m_textures.size());
     std::array<uint8_t, 4> white = {255, 255, 255, 255};
-    m_textures.emplace_back(m_pAlloc->createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(VkExtent2D{1, 1}), {}));
+    VkSamplerCreateInfo sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; 
+    m_textures.emplace_back(m_pAlloc->createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(VkExtent2D{1, 1}), sampler));
     m_debug.setObjectName(m_textures.back().image, "dummy");
   };
 
@@ -547,7 +557,7 @@ void Scene::createTextureImages(VkCommandBuffer cmdBuf, tinygltf::Model& gltfMod
     VkImageCreateInfo imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     nvvk::Image       image           = m_pAlloc->createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
     // nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
-    m_images.push_back({image, imageCreateInfo});
+    m_images.emplace_back(image, imageCreateInfo);
 
     NAME_IDX_VK(m_images[i].first.image, i);
   }

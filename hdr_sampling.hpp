@@ -18,14 +18,13 @@
  */
 
 
-
 #pragma once
 //////////////////////////////////////////////////////////////////////////
 
 
-#include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/images_vk.hpp"
+#include "nvvk/resourceallocator_vk.hpp"
 #include <array>
 #include <vector>
 
@@ -45,31 +44,28 @@ public:
   float getIntegral() { return m_integral; }
   float getAverage() { return m_average; }
 
-  struct Textures
-  {
-    nvvk::Texture txtHdr;        // HDR environment texture
-    nvvk::Texture accelImpSmpl;  // Importance Sampling
-  } m_textures;
-
+  // Resources
+  nvvk::Texture m_texHdr;
+  nvvk::Buffer  m_accelImpSmpl;
 
 private:
-  struct Env_accel
+  struct EnvAccel
   {
     uint32_t alias{0};
     float    q{0.f};
     float    pdf{0.f};
-    float    _padding{0.f};
+    float    aliasPdf{0.f};
   };
 
-  VkDevice       m_device;
-  uint32_t         m_queueIndex{0};
+  VkDevice                 m_device;
+  uint32_t                 m_queueIndex{0};
   nvvk::ResourceAllocator* m_alloc{nullptr};
-  nvvk::DebugUtil  m_debug;
+  nvvk::DebugUtil          m_debug;
 
   float m_integral{1.f};
   float m_average{1.f};
 
 
-  float build_alias_map(const std::vector<float>& data, std::vector<Env_accel>& accel);
-  void  createEnvironmentAccelTexture(const float* pixels, VkExtent2D& size, nvvk::Texture& accelTex);
+  float                 buildAliasmap(const std::vector<float>& data, std::vector<EnvAccel>& accel);
+  std::vector<EnvAccel> createEnvironmentAccel(const float* pixels, VkExtent2D& size);
 };

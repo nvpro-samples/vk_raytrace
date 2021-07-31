@@ -17,9 +17,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
+//-------------------------------------------------------------------------------------------------
 // This file can compress normal or tangent to a single uint
-// all oct functions derived from "A Survey of Efficient Representations for Independent Unit Vectors"
+// all oct functions derived from:
+// "A Survey of Efficient Representations for Independent Unit Vectors"
 // http://jcgt.org/published/0003/02/01/paper.pdf
 
 

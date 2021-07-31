@@ -17,28 +17,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+//--------------------------------------------------------------------------------------------------
+// This creates the image in floating point, holding the result of ray tracing.
+// It also creates a pipeline for drawing this image from HDR to LDR applying a tonemapper
+//
+
 
 #pragma once
 
+#include "nvmath/nvmath.h"
 #include "nvmath/nvmath_glsltypes.h"
+using namespace nvmath;
+
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
+#include "structures.h"
 
 
-class Offscreen
+class RenderOutput
 {
 public:
-  struct Tonemapper
-  {
-    float        brightness{1.0f};
-    float        contrast{1.0f};
-    float        saturation{1.0f};
-    float        vignette{0.0f};
-    float        avgLum{1.0f};
-    float        zoom{1.0f};
-    nvmath::vec2 renderingRatio{1.0f, 1.0f};  // Rendering area without the UI
-  } m_tonemapper;
+  Tonemapper m_tonemapper{1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, {1.f, 1.f}, 0, .5f, .5f};
 
 public:
   void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator);
@@ -46,28 +46,22 @@ public:
   void create(const VkExtent2D& size, const VkRenderPass& renderPass);
   void update(const VkExtent2D& size);
   void run(VkCommandBuffer cmdBuf);
+  void genMipmap(VkCommandBuffer cmdBuf);
 
   VkDescriptorSetLayout getDescLayout() { return m_postDescSetLayout; }
   VkDescriptorSet       getDescSet() { return m_postDescSet; }
-  VkRenderPass          getRenderPass() { return m_offscreenRenderPass; }
-  VkFramebuffer         getFrameBuffer() { return m_offscreenFramebuffer; }
-
 
 private:
   void createOffscreenRender(const VkExtent2D& size);
   void createPostPipeline(const VkRenderPass& renderPass);
   void createPostDescriptor();
-  void updatePostDescriptorSet();
 
   VkDescriptorPool      m_postDescPool{VK_NULL_HANDLE};
   VkDescriptorSetLayout m_postDescSetLayout{VK_NULL_HANDLE};
   VkDescriptorSet       m_postDescSet{VK_NULL_HANDLE};
   VkPipeline            m_postPipeline{VK_NULL_HANDLE};
   VkPipelineLayout      m_postPipelineLayout{VK_NULL_HANDLE};
-  VkRenderPass          m_offscreenRenderPass{VK_NULL_HANDLE};
-  VkFramebuffer         m_offscreenFramebuffer{VK_NULL_HANDLE};
   nvvk::Texture         m_offscreenColor;
-  nvvk::Texture         m_offscreenDepth;
   //VkFormat m_offscreenColorFormat{VkFormat::eR16G16B16A16Sfloat};  // Darkening the scene over 5000 iterations
   VkFormat m_offscreenColorFormat{VK_FORMAT_R32G32B32A32_SFLOAT};
   VkFormat m_offscreenDepthFormat{VK_FORMAT_X8_D24_UNORM_PACK32};  // Will be replaced by best supported format
@@ -78,4 +72,6 @@ private:
   nvvk::DebugUtil          m_debug;   // Utility to name objects
   VkDevice                 m_device;
   uint32_t                 m_queueIndex;
+
+  VkExtent2D m_size{};
 };

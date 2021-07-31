@@ -18,6 +18,9 @@
  */
 
 
+//-------------------------------------------------------------------------------------------------
+// This file as all constant, global values and structures not shared with CPP
+
 #ifndef GLOBALS_GLSL
 #define GLOBALS_GLSL 1
 
@@ -26,16 +29,18 @@
 #define INFINITY 1e32
 #define EPS 0.0001
 
-const highp float M_PI        = 3.14159265358979323846;   // pi
-const highp float M_TWO_PI    = 6.28318530717958648;      // 2*pi
-const highp float M_PI_2      = 1.57079632679489661923;   // pi/2
-const highp float M_PI_4      = 0.785398163397448309616;  // pi/4
-const highp float M_1_OVER_PI = 0.318309886183790671538;  // 1/pi
-const highp float M_2_OVER_PI = 0.636619772367581343076;  // 2/pi
+//precision highp int;
+precision highp float;
 
-#define REFL 0
-#define REFR 1
-#define SUBS 2
+const float M_PI        = 3.14159265358979323846;   // pi
+const float M_TWO_PI    = 6.28318530717958648;      // 2*pi
+const float M_PI_2      = 1.57079632679489661923;   // pi/2
+const float M_PI_4      = 0.785398163397448309616;  // pi/4
+const float M_1_OVER_PI = 0.318309886183790671538;  // 1/pi
+const float M_2_OVER_PI = 0.636619772367581343076;  // 2/pi
+
+
+#define RngStateType uint // Random type
 
 //-----------------------------------------------------------------------
 struct Ray
@@ -59,10 +64,12 @@ struct PtPayload
 
 struct ShadowHitPayload
 {
-  uint seed;
-  bool isHit;
+  RngStateType seed;
+  bool         isHit;
 };
 
+// This material is the shading material after applying textures and any
+// other operation. This structure is filled in gltfmaterial.glsl
 struct Material
 {
   vec3  albedo;
@@ -93,6 +100,7 @@ struct Material
   bool  thinwalled;
 };
 
+// From shading state, this is the structure pass to the eval functions
 struct State
 {
   int   depth;
@@ -108,7 +116,6 @@ struct State
   bool isEmitter;
   bool specularBounce;
   bool isSubsurface;
-
 
   uint     matID;
   Material mat;

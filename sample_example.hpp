@@ -62,12 +62,14 @@ typedef nvvk::ResourceAllocatorDedicated Allocator;
 #include "nvvk/raypicker_vk.hpp"
 
 #include "accelstruct.hpp"
-#include "offscreen.hpp"
+#include "render_output.hpp"
 #include "scene.hpp"
 #include "shaders/sun_and_sky.h"
 #include "structures.h"
 
 #include "imgui_internal.h"
+
+class SampleGUI;
 
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
@@ -78,6 +80,8 @@ typedef nvvk::ResourceAllocatorDedicated Allocator;
 //
 class SampleExample : public nvvk::AppBaseVk
 {
+  friend SampleGUI;
+
 public:
   enum RndMethod
   {
@@ -89,57 +93,40 @@ public:
   void setup(const VkInstance&       instance,
              const VkDevice&         device,
              const VkPhysicalDevice& physicalDevice,
-             uint32_t                  gtcQueueIndexFamily,
-             uint32_t                  computeQueueIndex,
-             uint32_t                  transferQueueIndex);
-  void createDescriptorSetLayout();
-  void updateHdrDescriptors();
-  void loadScene(const std::string& filename);
-  void loadEnvironmentHdr(const std::string& hdrFilename);
-  void createUniformBuffer();
-  void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
-  void onResize(int /*w*/, int /*h*/) override;
-  void destroyResources();
-
-  void updateFrame();
-  void resetFrame();
+             uint32_t                gtcQueueIndexFamily,
+             uint32_t                computeQueueIndex,
+             uint32_t                transferQueueIndex);
 
   bool isBusy() { return m_busy; }
-
-  bool guiCamera();
-  bool guiTonemapper();
-  bool guiEnvironment();
-  bool guiStatistics();
-  bool guiProfiler(nvvk::ProfilerVK& profiler);
-  bool guiGpuMeasures();
-  void showBusyWindow();
-  bool guiRayTracing();
-  void titleBar();
-
-
-  void menuBar();
-  void onKeyboard(int key, int scancode, int action, int mods) override;
-
-  void screenPicking();
-
-  void onFileDrop(const char* filename) override;
-
+  void createDescriptorSetLayout();
+  void createUniformBuffer();
+  void destroyResources();
   void loadAssets(const char* filename);
-
-  void onMouseMotion(int x, int y) override;
+  void loadEnvironmentHdr(const std::string& hdrFilename);
+  void loadScene(const std::string& filename);
+  void onFileDrop(const char* filename) override;
+  void onKeyboard(int key, int scancode, int action, int mods) override;
   void onMouseButton(int button, int action, int mods) override;
-
-  VkRenderPass  getOffscreenRenderPass() { return m_offscreen.getRenderPass(); }
-  VkFramebuffer getOffscreenFrameBuffer() { return m_offscreen.getFrameBuffer(); }
-
+  void onMouseMotion(int x, int y) override;
+  void onResize(int /*w*/, int /*h*/) override;
+  void renderGui(nvvk::ProfilerVK& profiler);
+  void createRender(RndMethod method);
+  void resetFrame();
+  void screenPicking();
+  void updateFrame();
+  void updateHdrDescriptors();
+  void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
 
   Scene              m_scene;
   AccelStructure     m_accelStruct;
   SunAndSky          m_sunAndSky;
-  Offscreen          m_offscreen;
+  RenderOutput       m_offscreen;
   HdrSampling        m_skydome;
   nvvk::AxisVK       m_axis;
   nvvk::RayPickerKHR m_picker;
+
+  // It is possible to have various back-ends
+  SampleExample::RndMethod renderMethod = SampleExample::eRtxPipeline;
 
   // All renderers
   std::array<Renderer*, eNone> m_pRender;
@@ -148,9 +135,9 @@ public:
   nvvk::Buffer m_sunAndSkyBuffer;
 
   // Graphic pipeline
-  VkDescriptorPool          m_descPool;
-  VkDescriptorSetLayout     m_descSetLayout;
-  VkDescriptorSet           m_descSet;
+  VkDescriptorPool            m_descPool;
+  VkDescriptorSetLayout       m_descSetLayout;
+  VkDescriptorSet             m_descSet;
   nvvk::DescriptorSetBindings m_bind;
 
   Allocator       m_alloc;  // Allocator for buffer, images, acceleration structures
@@ -158,14 +145,14 @@ public:
 
 
   VkRect2D m_renderRegion;
-  void       setRenderRegion(const VkRect2D& size);
+  void     setRenderRegion(const VkRect2D& size);
 
   // #Post
   void createOffscreenRender();
   void drawPost(VkCommandBuffer cmdBuf);
 
   // #VKRay
-  void render(RndMethod method, const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
+  void renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
 
 
   RtxState    m_rtxState{};
@@ -175,4 +162,7 @@ public:
   int         m_descalingLevel{1};
   bool        m_busy{false};
   std::string m_busyReasonText;
+
+
+  std::shared_ptr<SampleGUI> m_gui;
 };
