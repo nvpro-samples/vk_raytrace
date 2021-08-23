@@ -89,7 +89,7 @@ int main(int argc, char** argv)
   auto     reqExtensions = glfwGetRequiredInstanceExtensions(&count);
 
   // Requesting Vulkan extensions and layers
-  nvvk::ContextCreateInfo contextInfo;
+  nvvk::ContextCreateInfo contextInfo(true);
   contextInfo.setVersion(1, 2);                       // Using Vulkan 1.2
   for(uint32_t ext_id = 0; ext_id < count; ext_id++)  // Adding required extensions (surface, win32, linux, ..)
     contextInfo.addInstanceExtension(reqExtensions[ext_id]);
@@ -153,6 +153,8 @@ int main(int argc, char** argv)
   sample.createOffscreenRender();
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
+  ImGui::GetIO().MouseDoubleClickTime    = 0.2f;  // Default: 0.3
+  ImGui::GetIO().MouseDoubleClickMaxDist = 2.0f;  // Default: 6.0
 
   // Creation of the example - loading scene in separate thread
   sample.loadEnvironmentHdr(nvh::findFile(hdrFilename, defaultSearchPaths, true));
