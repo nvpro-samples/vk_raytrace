@@ -18,8 +18,6 @@
  */
 
 
-
-
 /*
  *	The Acceleration structure class will holds the scene made of BLASes an TLASes.
  * - It expect a scene in a format of GltfScene  
@@ -28,9 +26,6 @@
  * - It creates a descriptorSet holding the TLAS
  * 
  */
-
-
-
 
 
 #include "accelstruct.hpp"
@@ -136,7 +131,7 @@ void AccelStructure::createBottomLevelAS(nvh::GltfScene&                  gltfSc
 //
 void AccelStructure::createTopLevelAS(nvh::GltfScene& gltfScene)
 {
-  std::vector<nvvk::RaytracingBuilderKHR::Instance> tlas;
+  std::vector<VkAccelerationStructureInstanceKHR> tlas;
   tlas.reserve(gltfScene.m_nodes.size());
 
   for(auto& node : gltfScene.m_nodes)
@@ -153,12 +148,13 @@ void AccelStructure::createTopLevelAS(nvh::GltfScene& gltfScene)
     if(mat.doubleSided == 1)
       flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
 
-    nvvk::RaytracingBuilderKHR::Instance rayInst;
-    rayInst.transform        = node.worldMatrix;
-    rayInst.instanceCustomId = node.primMesh;  // gl_InstanceCustomIndexEXT: to find which primitive
-    rayInst.blasId           = node.primMesh;
-    rayInst.flags            = flags;
-    rayInst.hitGroupId       = 0;  // We will use the same hit group for all objects
+    VkAccelerationStructureInstanceKHR rayInst{};
+    rayInst.transform                      = nvvk::toTransformMatrixKHR(node.worldMatrix);
+    rayInst.instanceCustomIndex            = node.primMesh;  // gl_InstanceCustomIndexEXT: to find which primitive
+    rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(node.primMesh);
+    rayInst.flags                          = flags;
+    rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
+    rayInst.mask                                   = 0xFF;
     tlas.emplace_back(rayInst);
   }
   LOGI(" TLAS(%d)", tlas.size());
