@@ -18,12 +18,10 @@
  */
 
 
-
 /*
  * - Loading and storing the glTF scene
  * - Creates the buffers and descriptor set for the scene
  */
-
 
 
 #include <sstream>
@@ -179,11 +177,11 @@ bool Scene::loadGltfScene(const std::string& filename, tinygltf::Model& tmodel)
 void Scene::createInstanceDataBuffer(VkCommandBuffer cmdBuf, nvh::GltfScene& gltf)
 {
   std::vector<InstanceData> instData;
-  uint32_t cnt{0};
+  uint32_t                  cnt{0};
   for(auto& primMesh : gltf.m_primMeshes)
   {
     InstanceData data;
-    data.indexAddress = nvvk::getBufferDeviceAddress(m_device, m_buffers[eIndex][cnt].buffer);
+    data.indexAddress  = nvvk::getBufferDeviceAddress(m_device, m_buffers[eIndex][cnt].buffer);
     data.vertexAddress = nvvk::getBufferDeviceAddress(m_device, m_buffers[eVertex][cnt].buffer);
     data.materialIndex = primMesh.materialIndex;
     instData.emplace_back(data);
@@ -258,7 +256,9 @@ void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& glt
 
         vertex[v_ctx] = std::move(v);
       }
-      v_buffer = m_pAlloc->createBuffer(cmdBuf, vertex, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+      v_buffer = m_pAlloc->createBuffer(cmdBuf, vertex,
+                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                                            | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
       NAME_IDX_VK(v_buffer.buffer, prim_idx);
       m_cachePrimitive[key] = v_buffer;
     }
@@ -274,8 +274,9 @@ void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& glt
       indices[idx] = gltf.m_indices[idx + primMesh.firstIndex];
     }
 
-    nvvk::Buffer i_buffer =
-        m_pAlloc->createBuffer(cmdBuf, indices, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    nvvk::Buffer i_buffer = m_pAlloc->createBuffer(cmdBuf, indices,
+                                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                                                       | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
 
     m_buffers[eVertex].push_back(v_buffer);
     NAME_IDX_VK(v_buffer.buffer, prim_idx);
@@ -322,9 +323,12 @@ void Scene::createLightBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf
   for(const auto& l_gltf : gltf.m_lights)
   {
     Light l;
-    l.position     = l_gltf.worldMatrix * nvmath::vec4f(0, 0, 0, 1);
-    l.direction    = l_gltf.worldMatrix * nvmath::vec4f(0, 0, -1, 0);
-    l.color        = nvmath::vec3f(l_gltf.light.color[0], l_gltf.light.color[1], l_gltf.light.color[2]);
+    l.position  = l_gltf.worldMatrix * nvmath::vec4f(0, 0, 0, 1);
+    l.direction = l_gltf.worldMatrix * nvmath::vec4f(0, 0, -1, 0);
+    if(!l_gltf.light.color.empty())
+      l.color = nvmath::vec3f(l_gltf.light.color[0], l_gltf.light.color[1], l_gltf.light.color[2]);
+    else
+      l.color = nvmath::vec3f(1, 1, 1);
     l.innerConeCos = static_cast<float>(cos(l_gltf.light.spot.innerConeAngle));
     l.outerConeCos = static_cast<float>(cos(l_gltf.light.spot.outerConeAngle));
     l.range        = static_cast<float>(l_gltf.light.range);
@@ -390,6 +394,7 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.clearcoatRoughness           = m.clearcoat.roughnessFactor;
     smat.clearcoatTexture             = m.clearcoat.texture;
     smat.clearcoatRoughnessTexture    = m.clearcoat.roughnessTexture;
+    smat.sheen                        = packUnorm4x8(vec4(m.sheen.colorFactor, m.sheen.roughnessFactor));
 
     shadeMaterials.emplace_back(smat);
   }
@@ -522,7 +527,7 @@ void Scene::createTextureImages(VkCommandBuffer cmdBuf, tinygltf::Model& gltfMod
   auto addDefaultTexture = [this, cmdBuf]() {
     m_defaultTextures.push_back(m_textures.size());
     std::array<uint8_t, 4> white = {255, 255, 255, 255};
-    VkSamplerCreateInfo sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; 
+    VkSamplerCreateInfo    sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
     m_textures.emplace_back(m_pAlloc->createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(VkExtent2D{1, 1}), sampler));
     m_debug.setObjectName(m_textures.back().image, "dummy");
   };
@@ -625,7 +630,7 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
   dbi[eLights]    = VkDescriptorBufferInfo{m_buffer[eLights].buffer, 0, VK_WHOLE_SIZE};
 
   // array of images
-  std::vector<VkDescriptorImageInfo>  t_info;
+  std::vector<VkDescriptorImageInfo> t_info;
   for(auto& texture : m_textures)
     t_info.emplace_back(texture.descriptor);
 
