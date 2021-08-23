@@ -18,7 +18,6 @@
  */
 
 
-
 /*
  * Main class to render the scene, holds sub-classes for various work
  */
@@ -396,17 +395,17 @@ void SampleExample::drawPost(VkCommandBuffer cmdBuf)
 
 void SampleExample::renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler)
 {
+#if defined(NVP_SUPPORTS_NVML)
+  g_nvml.refresh();
+#endif
+
   if(m_busy)
   {
     m_gui->showBusyWindow();  // Busy while loading scene
     return;
   }
 
-
   LABEL_SCOPE_VK(cmdBuf);
-#if defined(NVP_SUPPORTS_NVML)
-  g_nvml.refresh();
-#endif
 
   auto sec = profiler.timeRecurring("Render", cmdBuf);
 
@@ -434,7 +433,6 @@ void SampleExample::renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK&
     m_offscreen.genMipmap(cmdBuf);
   }
 }
-
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -482,7 +480,7 @@ void SampleExample::screenPicking()
   VkCommandBuffer   cmdBuf = sc.createCommandBuffer();
 
   const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
-  auto        view        = CameraManip.getMatrix();
+  const auto& view        = CameraManip.getMatrix();
   auto        proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.1f, 1000.0f);
 
   nvvk::RayPickerKHR::PickInfo pickInfo;
@@ -553,7 +551,7 @@ void SampleExample::onMouseButton(int button, int action, int mods)
   }
 
   auto& IO = ImGui::GetIO();
-  if(IO.MouseDownWasDoubleClick[0])
+  if(IO.MouseDownWasDoubleClick[0] && !ImGui::GetIO().WantCaptureKeyboard)
   {
     screenPicking();
   }
