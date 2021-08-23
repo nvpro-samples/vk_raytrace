@@ -81,7 +81,7 @@ struct Material
   float subsurface;
   float specularTint;
   float sheen;
-  float sheenTint;
+  vec3  sheenTint;
   float clearcoat;
   float clearcoatRoughness;
   float transmission;
