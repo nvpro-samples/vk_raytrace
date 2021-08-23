@@ -4,7 +4,13 @@
 
 This project is a [glTF 2.0](https://www.khronos.org/gltf/) sample viewer using [Vulkan ray tracing](https://www.khronos.org/blog/vulkan-ray-tracing-final-specification-release). It follows the [ray tracing tutorial](https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR) and combines all chapters into a single example. 
 
-The lighting equation is based on the [reference glTF PBR implementation](https://github.com/KhronosGroup/glTF-WebGL-PBR) from Khronos. 
+The lighting equation is based on:
+* [glTF PBR reference implementation](https://github.com/KhronosGroup/glTF-WebGL-PBR) from Khronos. 
+* [Disney PBR](https://blog.selfshadow.com/publications/s2012-shading-course/burley/s2012_pbs_disney_brdf_slides_v2.pdf)
+
+The rendering pipeline can be switched from:
+* **RTX**: RayGen, Closest-Hit, Miss, Any-Hit model
+* **Compute**: using Ray Query
 
 
 
@@ -18,20 +24,22 @@ Features
 - [x] IBL lighting using importance light sampling
 - [x] Alpha blend and cut-out
 - [x] Texture transforms and samplers
-- Attributes
+
+### Attributes
   - [x] Normal : create geometric normal when not present
   - [x] Texture coords : only set 0, project cube map when text coords are missing.
   - [x] Tangents : generate tangents and bitangent when missing.
   - [x] Color : default (1,1,1,1)
-- Extensions
-  - [ ] [KHR_lights_punctual](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_lights_punctual)
+
+### Extensions
+  - [ ] [KHR_lights_punctual](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_lights_punctual) (some support)
   - [x] [KHR_materials_pbrSpecularGlossiness](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness)
-  - [ ] [KHR_materials_clearcoat](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_clearcoat)
+  - [x] [KHR_materials_clearcoat](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_clearcoat)
   - [x] [KHR_materials_unlit](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_unlit)
   - [x] [KHR_texture_transform](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_texture_transform)
   - [x] KHR_materials_anisotropy
-  - [ ] [KHR_materials_transmission](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_transmission)
-  - [ ] [KHR_materials_sheen](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_sheen)
+  - [x] [KHR_materials_transmission](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_transmission)
+  - [ ] [KHR_materials_sheen](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_sheen) (some support)
 
 Usage
 -----
