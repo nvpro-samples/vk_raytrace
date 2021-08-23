@@ -21,6 +21,9 @@
 #ifndef SUN_AND_SKY_GLSL
 #define SUN_AND_SKY_GLSL
 
+#pragma warning(push)
+#pragma warning(disable : 26495)  // Struct initialization - can't do it for GLSL
+
 #ifndef M_PI
 #define M_PI 3.1415926535f
 #endif
@@ -647,4 +650,6 @@ vec3 sun_and_sky(in SunAndSky ss, in vec3 in_direction)
 }
 
 #endif  // CPP
+
+#pragma warning(pop)
 #endif  // SUN_AND_SKY_GLSL

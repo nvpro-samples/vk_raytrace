@@ -49,21 +49,18 @@ public:
   void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator) override;
   void destroy() override;
   void create(const VkExtent2D& size, const std::vector<VkDescriptorSetLayout>& rtDescSetLayouts, Scene* scene) override;
-  void              run(const VkCommandBuffer&              cmdBuf,
-                        const VkExtent2D&                   size,
-                        nvvk::ProfilerVK&                     profiler,
-                        const std::vector<VkDescriptorSet>& descSets) override;
+  void              run(const VkCommandBuffer& cmdBuf, const VkExtent2D& size, nvvk::ProfilerVK& profiler, const std::vector<VkDescriptorSet>& descSets) override;
   const std::string name() override { return std::string("RQ"); }
 
 private:
-  uint32_t m_nbHit;
+  uint32_t m_nbHit{0};
 
 private:
   // Setup
-  nvvk::ResourceAllocator* m_pAlloc;  // Allocator for buffer, images, acceleration structures
-  nvvk::DebugUtil  m_debug;   // Utility to name objects
-  VkDevice       m_device;
-  uint32_t         m_queueIndex;
+  nvvk::ResourceAllocator* m_pAlloc{nullptr};  // Allocator for buffer, images, acceleration structures
+  nvvk::DebugUtil          m_debug;            // Utility to name objects
+  VkDevice                 m_device{VK_NULL_HANDLE};
+  uint32_t                 m_queueIndex{0};
 
 
   VkPipelineLayout m_pipelineLayout{VK_NULL_HANDLE};

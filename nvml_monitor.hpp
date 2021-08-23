@@ -64,15 +64,15 @@ public:
 
   struct GpuInfo
   {
-    uint32_t    max_mem;       // Max memory for each GPU
-    uint32_t    driver_model;  // Driver model: WDDM/TCC
+    uint32_t    max_mem{0};       // Max memory for each GPU
+    uint32_t    driver_model{0};  // Driver model: WDDM/TCC
     std::string name;
   };
 
   struct SysInfo
   {
     std::vector<float> cpu;  // Load measurement [0, 100]
-    char               driverVersion[80];
+    char               driverVersion[80] = {0};
   };
 
   NvmlMonitor(uint32_t interval = 100, uint32_t limit = 100)
@@ -187,7 +187,7 @@ private:
   {
     nvmlMemory_t memory;
     nvmlDeviceGetMemoryInfo(device, &memory);
-    return static_cast<float>(memory.used / (uint64_t)(1024));  // Convert to KB
+    return static_cast<float>(memory.used / (uint64_t)(1000));  // Convert to KB
   }
 
   float getLoad(nvmlDevice_t device)
@@ -336,12 +336,15 @@ private:
       return nullptr;
     }
 
-    strcat(systemPath, "\\");
-    strcat(systemPath, nvmlDllName);
+    if(systemPath != nullptr)
+    {
+      strcat(systemPath, "\\");
+      strcat(systemPath, nvmlDllName);
 
-    handle = LoadLibraryA(systemPath);
+      handle = LoadLibraryA(systemPath);
 
-    free(systemPath);
+      free(systemPath);
+    }
 
     if(handle)
     {

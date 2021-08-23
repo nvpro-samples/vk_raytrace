@@ -26,6 +26,8 @@
 #ifndef STRUCTURES_H
 #define STRUCTURES_H
 
+#pragma warning(push)
+#pragma warning(disable : 26495)  // Struct initialization - can't do it for GLSL
 
 // Camera of the scene
 struct SceneCamera
@@ -103,10 +105,10 @@ struct GltfShadeMaterial
   float clearcoatFactor;
   float clearcoatRoughness;
   // 48
-  int clearcoatTexture;
-  int clearcoatRoughnessTexture;
-  int _pad0;
-  int _pad1;
+  int  clearcoatTexture;
+  int  clearcoatRoughnessTexture;
+  uint sheen;
+  int  pad;
   // 52
 };
 
@@ -216,4 +218,5 @@ struct Tonemapper
   float key;     // Log-average luminance
 };
 
+#pragma warning(pop)
 #endif
