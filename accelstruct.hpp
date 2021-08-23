@@ -53,8 +53,8 @@ private:
 
 
   // Setup
-  nvvk::ResourceAllocator* m_pAlloc;  // Allocator for buffer, images, acceleration structures
-  nvvk::DebugUtil          m_debug;   // Utility to name objects
+  nvvk::ResourceAllocator* m_pAlloc{nullptr};  // Allocator for buffer, images, acceleration structures
+  nvvk::DebugUtil          m_debug;            // Utility to name objects
   VkDevice                 m_device{nullptr};
   uint32_t                 m_queueIndex{0};
 
