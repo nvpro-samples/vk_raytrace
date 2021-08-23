@@ -38,7 +38,7 @@ vec4 SRGBtoLINEAR(vec4 srgbIn)
 {
 #ifdef SRGB_FAST_APPROXIMATION
   vec3 linOut = pow(srgbIn.xyz, vec3(2.2));
-#else   //SRGB_FAST_APPROXIMATION
+#else  //SRGB_FAST_APPROXIMATION
   vec3 bLess  = step(vec3(0.04045), srgbIn.xyz);
   vec3 linOut = mix(srgbIn.xyz / vec3(12.92), pow((srgbIn.xyz + vec3(0.055)) / vec3(1.055), vec3(2.4)), bLess);
 #endif  //SRGB_FAST_APPROXIMATION
@@ -176,7 +176,7 @@ void GetMaterialsAndTextures(inout State state, in Ray r)
   state.mat.subsurface   = 0;
   state.mat.specularTint = 1;
   state.mat.sheen        = 0;
-  state.mat.sheenTint    = 0;
+  state.mat.sheenTint    = vec3(0);
 
   // Uv Transform
   state.texCoord = (vec4(state.texCoord.xy, 1, 1) * material.uvTransform).xy;
@@ -255,6 +255,11 @@ void GetMaterialsAndTextures(inout State state, in Ray r)
         textureLod(texturesMap[nonuniformEXT(material.clearcoatRoughnessTexture)], state.texCoord, 0).g;
   }
   state.mat.clearcoatRoughness = max(state.mat.clearcoatRoughness, 0.001);
+
+  // KHR_materials_sheen
+  vec4 sheen = unpackUnorm4x8(material.sheen);
+  state.mat.sheenTint = sheen.xyz;
+  state.mat.sheen     = sheen.w;
 }
 
 #endif  // GLTFMATERIAL_GLSL
