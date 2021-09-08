@@ -29,6 +29,17 @@
 #pragma warning(push)
 #pragma warning(disable : 26495)  // Struct initialization - can't do it for GLSL
 
+#ifdef __cplusplus
+// GLSL Type
+using ivec2 = nvmath::vec2i;
+using vec2  = nvmath::vec2f;
+using vec3  = nvmath::vec3f;
+using vec4  = nvmath::vec4f;
+using mat4  = nvmath::mat4f;
+using uint  = unsigned int;
+#endif
+
+
 // Camera of the scene
 struct SceneCamera
 {
