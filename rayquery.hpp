@@ -20,12 +20,10 @@
 
 #pragma once
 
-#include "nvmath/nvmath_glsltypes.h"
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
 
-using namespace nvmath;
 #include "nvvk/profiler_vk.hpp"
 #include "renderer.h"
 #include "structures.h"

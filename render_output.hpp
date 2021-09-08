@@ -26,8 +26,6 @@
 #pragma once
 
 #include "nvmath/nvmath.h"
-#include "nvmath/nvmath_glsltypes.h"
-using namespace nvmath;
 
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"

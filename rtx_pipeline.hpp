@@ -20,14 +20,12 @@
 
 #pragma once
 
-#include "nvmath/nvmath_glsltypes.h"
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
 #include "nvvk/sbtwrapper_vk.hpp"
 #include "nvvk/profiler_vk.hpp"
 
-using namespace nvmath;
 #include "renderer.h"
 #include "structures.h"
 
@@ -74,8 +72,8 @@ private:
   uint32_t                 m_queueIndex{0};
 
 
-  VkPhysicalDeviceRayTracingPipelinePropertiesKHR   m_rtProperties{};
-  VkPipelineLayout                                  m_rtPipelineLayout{VK_NULL_HANDLE};
-  VkPipeline                                        m_rtPipeline{VK_NULL_HANDLE};
-  SBTWrapper                                        m_stbWrapper;
+  VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rtProperties{};
+  VkPipelineLayout                                m_rtPipelineLayout{VK_NULL_HANDLE};
+  VkPipeline                                      m_rtPipeline{VK_NULL_HANDLE};
+  SBTWrapper                                      m_stbWrapper;
 };

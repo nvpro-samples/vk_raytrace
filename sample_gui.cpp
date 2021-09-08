@@ -28,8 +28,6 @@
 #include <sstream>
 
 #include "nvmath/nvmath.h"
-#include "nvmath/nvmath_glsltypes.h"
-using namespace nvmath;
 
 #include "imgui_helper.h"
 #include "imgui_orient.h"
