@@ -25,7 +25,7 @@
 
 #define ENVMAP 1
 #define RR 1        // Using russian roulette
-#define RR_DEPTH 1  // Minimum depth
+#define RR_DEPTH 0  // Minimum depth
 
 
 #include "pbr_disney.glsl"
@@ -86,9 +86,10 @@ vec3 DebugInfo(in State state)
 // Use for light/env contribution
 struct VisibilityContribution
 {
-  vec3 radiance;  // Radiance at the point if light is visible
-  vec3 lightDir;  // Direction to the light, to shoot shadow ray
-  bool visible;   // true if in front of the face and should shoot shadow ray
+  vec3  radiance;   // Radiance at the point if light is visible
+  vec3  lightDir;   // Direction to the light, to shoot shadow ray
+  float lightDist;  // Distance to the light (1e32 for infinite or sky)
+  bool  visible;    // true if in front of the face and should shoot shadow ray
 };
 
 //-----------------------------------------------------------------------
@@ -99,6 +100,8 @@ VisibilityContribution DirectLight(in Ray r, in State state)
   float lightPdf;
   vec3  lightContrib;
   vec3  lightDir;
+  float lightDist = 1e32;
+  bool  isLight   = false;
 
   VisibilityContribution contrib;
   contrib.radiance = vec3(0);
@@ -115,6 +118,8 @@ VisibilityContribution DirectLight(in Ray r, in State state)
   // Point lights
   if(sceneCamera.nbLights != 0 && rand(prd.seed) <= p_select_light)
   {
+    isLight = true;
+
     // randomly select one of the lights
     int   light_index = int(min(rand(prd.seed) * sceneCamera.nbLights, sceneCamera.nbLights));
     Light light       = lights[light_index];
@@ -128,10 +133,12 @@ VisibilityContribution DirectLight(in Ray r, in State state)
       pointToLight = light.position - state.position;
     }
 
+    lightDist = length(pointToLight);
+
     // Compute range and spot light attenuation.
     if(light.type != LightType_Directional)
     {
-      rangeAttenuation = getRangeAttenuation(light.range, length(pointToLight));
+      rangeAttenuation = getRangeAttenuation(light.range, lightDist);
     }
     if(light.type == LightType_Spot)
     {
@@ -166,17 +173,15 @@ VisibilityContribution DirectLight(in Ray r, in State state)
 
       bsdfSampleRec.f = Eval(state, -r.direction, state.ffnormal, lightDir, bsdfSampleRec.pdf);
 
-      if(bsdfSampleRec.pdf > 0.0)
-      {
-        float misWeight = powerHeuristic(lightPdf, bsdfSampleRec.pdf);
-        if(misWeight > 0.0)
-          Li += misWeight * bsdfSampleRec.f * abs(dot(lightDir, state.ffnormal)) * lightContrib / lightPdf;
-      }
+      float misWeight = isLight ? 1.0 : max(0.0, powerHeuristic(lightPdf, bsdfSampleRec.pdf));
+
+      Li += misWeight * bsdfSampleRec.f * abs(dot(lightDir, state.ffnormal)) * lightContrib / lightPdf;
     }
 
-    contrib.visible  = true;
-    contrib.lightDir = lightDir;
-    contrib.radiance = Li;
+    contrib.visible   = true;
+    contrib.lightDir  = lightDir;
+    contrib.lightDist = lightDist;
+    contrib.radiance  = Li;
   }
 
   return contrib;
@@ -301,18 +306,12 @@ vec3 PathTrace(Ray r)
         return (bsdfSampleRec.L + vec3(1)) * 0.5;
     }
 
-
 #ifdef RR
-    // Russian roulette
-    if(depth >= RR_DEPTH)
-    {
-      float pcont = min(max(throughput.x, max(throughput.y, throughput.z)) * state.eta * state.eta + 0.001, 0.95);
-      if(rand(prd.seed) >= pcont)
-        break;
-      throughput /= pcont;
-    }
+    // For Russian-Roulette (minimizing live state)
+    float rrPcont = (depth >= RR_DEPTH) ?
+                        min(max(throughput.x, max(throughput.y, throughput.z)) * state.eta * state.eta + 0.001, 0.95) :
+                        1.0;
 #endif
-
 
     // Next ray
     r.direction = bsdfSampleRec.L;
@@ -322,13 +321,21 @@ vec3 PathTrace(Ray r)
     // This is done here to minimize live state across ray-trace calls.
     if(vcontrib.visible == true)
     {
+      // Shoot shadow ray up to the light (1e32 == environement)
       Ray  shadowRay = Ray(r.origin, vcontrib.lightDir);
-      bool inShadow  = AnyHit(shadowRay, 1e32);
+      bool inShadow  = AnyHit(shadowRay, vcontrib.lightDist);
       if(!inShadow)
       {
         radiance += vcontrib.radiance;
       }
     }
+
+
+#ifdef RR
+    if(rand(prd.seed) >= rrPcont)
+      break;                // paths with low throughput that won't contribute
+    throughput /= rrPcont;  // boost the energy of the non-terminated paths
+#endif
   }
 
 
