@@ -36,8 +36,7 @@
 #include "globals.glsl"
 #include "layouts.glsl"
 #include "random.glsl"
-#include "common.glsl"
-#include "shade_state.glsl"
+
 
 hitAttributeEXT vec2 bary;
 
@@ -56,7 +55,7 @@ void main()
   // Retrieve the Primitive mesh buffer information
   InstanceData      pinfo    = geoInfo[gl_InstanceCustomIndexEXT];
   const uint        matIndex = max(0, pinfo.materialIndex);  // material of primitive mesh
-  GltfShadeMaterial mat      = materials[nonuniformEXT(matIndex)];
+  GltfShadeMaterial mat      = materials[matIndex];
 
   // (Not needed, check flags in accelstrct.cpp)
   // back face culling
@@ -74,15 +73,12 @@ void main()
   float baseColorAlpha = mat.pbrBaseColorFactor.a;
   if(mat.pbrBaseColorTexture > -1)
   {
-    const uint idGeo  = gl_InstanceCustomIndexEXT;  // Geometry of this instance
-    const uint idPrim = gl_PrimitiveID;             // Triangle ID
-
     // Primitive buffer addresses
-    Indices  indices  = Indices(geoInfo[idGeo].indexAddress);
-    Vertices vertices = Vertices(geoInfo[idGeo].vertexAddress);
+    Indices  indices  = Indices(pinfo.indexAddress);
+    Vertices vertices = Vertices(pinfo.vertexAddress);
 
     // Indices of this triangle primitive.
-    uvec3 tri = indices.i[idPrim];
+    uvec3 tri = indices.i[gl_PrimitiveID];
 
     // All vertex attributes of the triangle.
     VertexAttributes attr0 = vertices.v[tri.x];
