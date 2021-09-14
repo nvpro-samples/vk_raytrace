@@ -184,7 +184,7 @@ inline float luminance(const float* color)
 //--------------------------------------------------------------------------------------------------
 // Create acceleration data for importance sampling
 // See:  https://arxiv.org/pdf/1901.05423.pdf
-std::vector<HdrSampling::EnvAccel> HdrSampling::createEnvironmentAccel(const float* pixels, VkExtent2D& size)
+std::vector<EnvAccel> HdrSampling::createEnvironmentAccel(const float* pixels, VkExtent2D& size)
 {
   const uint32_t rx = size.width;
   const uint32_t ry = size.height;

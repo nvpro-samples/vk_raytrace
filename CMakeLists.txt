@@ -85,8 +85,8 @@ endif()
 
 #--------------------------------------------------------------------------------------------------
 # Source files for this project
-file(GLOB SOURCE_FILES *.cpp *.c)
-file(GLOB HEADER_FILES *.hpp *.h )
+file(GLOB SOURCE_FILES src/*.cpp src/*.c)
+file(GLOB HEADER_FILES src/*.hpp src/*.h )
 
 
 #--------------------------------------------------------------------------------------------------

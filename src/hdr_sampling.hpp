@@ -21,12 +21,14 @@
 #pragma once
 //////////////////////////////////////////////////////////////////////////
 
+#include <array>
+#include <vector>
+
 
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/images_vk.hpp"
 #include "nvvk/resourceallocator_vk.hpp"
-#include <array>
-#include <vector>
+#include "shaders/host_device.h"
 
 //--------------------------------------------------------------------------------------------------
 // Load an environment image (HDR) and create an acceleration structure for
@@ -49,14 +51,6 @@ public:
   nvvk::Buffer  m_accelImpSmpl;
 
 private:
-  struct EnvAccel
-  {
-    uint32_t alias{0};
-    float    q{0.f};
-    float    pdf{0.f};
-    float    aliasPdf{0.f};
-  };
-
   VkDevice                 m_device{VK_NULL_HANDLE};
   uint32_t                 m_queueIndex{0};
   nvvk::ResourceAllocator* m_alloc{nullptr};

@@ -23,13 +23,13 @@
 */
 
 
-#ifndef STRUCTURES_H
-#define STRUCTURES_H
+#ifndef COMMON_HOST_DEVICE
+#define COMMON_HOST_DEVICE
 
-#pragma warning(push)
-#pragma warning(disable : 26495)  // Struct initialization - can't do it for GLSL
 
 #ifdef __cplusplus
+#include <stdint.h>
+#include "nvmath/nvmath.h"
 // GLSL Type
 using ivec2 = nvmath::vec2i;
 using vec2  = nvmath::vec2f;
@@ -39,12 +39,74 @@ using mat4  = nvmath::mat4f;
 using uint  = unsigned int;
 #endif
 
+// clang-format off
+#ifdef __cplusplus  // Descriptor binding helper for C++ and GLSL
+#define START_ENUM(a)                                                                                               \
+  enum a                                                                                                               \
+  {
+#define END_ENUM() }
+#else
+#define START_ENUM(a) const uint
+#define END_ENUM()
+#endif
+
+// Sets
+START_ENUM(SetBindings)
+  S_ACCEL = 0,  // Acceleration structure
+  S_OUT   = 1,  // Offscreen output image
+  S_SCENE = 2,  // Scene data
+  S_ENV   = 3,  // Environment / Sun & Sky
+  S_WF    = 4   // Wavefront extra data
+END_ENUM();
+
+// Acceleration Structure - Set 0
+START_ENUM(AccelBindings)
+  eTlas = 0 
+END_ENUM();
+
+// Output image - Set 1
+START_ENUM(OutputBindings)
+  eSampler = 0,  // As sampler
+  eStore   = 1   // As storage
+END_ENUM();
+
+// Scene Data - Set 2
+START_ENUM(SceneBindings)
+  eCamera    = 0, 
+  eMaterials = 1, 
+  eInstData  = 2, 
+  eLights    = 3,            
+  eTextures  = 4  // must be last elem            
+END_ENUM();
+
+// Environment - Set 3
+START_ENUM(EnvBindings)
+  eSunSky     = 0, 
+  eHdr        = 1, 
+  eImpSamples = 2 
+END_ENUM();
+
+START_ENUM(DebugMode)
+  eNoDebug   = 0,   //
+  eBaseColor = 1,   //
+  eNormal    = 2,   //
+  eMetallic  = 3,   //
+  eEmissive  = 4,   //
+  eAlpha     = 5,   //
+  eRoughness = 6,   //
+  eTexcoord  = 7,   //
+  eTangent   = 8,   //
+  eRadiance  = 9,   //
+  eWeight    = 10,  //
+  eRayDir    = 11,  //
+  eHeatmap   = 12   //
+END_ENUM();
+// clang-format on
+
 
 // Camera of the scene
 struct SceneCamera
 {
-  mat4  view;
-  mat4  proj;
   mat4  viewInverse;
   mat4  projInverse;
   float focalDist;
@@ -124,32 +186,6 @@ struct GltfShadeMaterial
 };
 
 
-#ifdef __cplusplus
-enum DebugMode
-{
-#else
-const uint
-#endif  // __cplusplus
-  eNoDebug   = 0,
-  eBaseColor = 1,
-  eNormal    = 2,
-  eMetallic  = 3,
-  eEmissive  = 4,
-  eAlpha     = 5,
-  eRoughness = 6,
-  eTexcoord  = 7,
-  eTangent   = 8,
-  eRadiance  = 9,
-  eWeight    = 10,
-  eRayDir    = 11,
-  eHeatmap   = 12
-
-
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
-;
-
 // Use with PushConstant
 struct RtxState
 {
@@ -157,19 +193,17 @@ struct RtxState
   int   maxDepth;               // How deep the path is
   int   maxSamples;             // How many samples to do per render
   float fireflyClampThreshold;  // to cut fireflies
-
-  float hdrMultiplier;   // To brightening the scene
-  int   debugging_mode;  //
-  int   pbrMode;         // 0-Disney, 1-Gltf
-  int   _pad0;
-
-  ivec2 size;  // rendering size
-  int   minHeatmap;
+  float hdrMultiplier;          // To brightening the scene
+  int   debugging_mode;         // See DebugMode
+  int   pbrMode;                // 0-Disney, 1-Gltf
+  int   _pad0;                  // vec2 need alignment
+  ivec2 size;                   // rendering size
+  int   minHeatmap;             // Debug mode - heat map
   int   maxHeatmap;
 };
 
 // Structure used for retrieving the primitive information in the closest hit
-// The gl_InstanceCustomIndexNV
+// using gl_InstanceCustomIndexNV
 struct InstanceData
 {
   uint64_t vertexAddress;
@@ -177,11 +211,6 @@ struct InstanceData
   int      materialIndex;
 };
 
-struct InstanceMatrices
-{
-  mat4 object2World;
-  mat4 world2Object;
-};
 
 // KHR_lights_punctual extension.
 // see https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_lights_punctual
@@ -207,7 +236,8 @@ struct Light
   vec2 padding;
 };
 
-struct Env_sample_data
+// Environment acceleration structure - computed in hdr_sampling
+struct EnvAccel
 {
   uint  alias;
   float q;
@@ -215,6 +245,7 @@ struct Env_sample_data
   float aliasPdf;
 };
 
+// Tonemapper used in post.frag
 struct Tonemapper
 {
   float brightness;
@@ -229,5 +260,31 @@ struct Tonemapper
   float key;     // Log-average luminance
 };
 
-#pragma warning(pop)
-#endif
+
+struct SunAndSky
+{
+  vec3  rgb_unit_conversion;
+  float multiplier;
+
+  float haze;
+  float redblueshift;
+  float saturation;
+  float horizon_height;
+
+  vec3  ground_color;
+  float horizon_blur;
+
+  vec3  night_color;
+  float sun_disk_intensity;
+
+  vec3  sun_direction;
+  float sun_disk_scale;
+
+  float sun_glow_intensity;
+  int   y_is_up;
+  int   physically_scaled_sun;
+  int   in_use;
+};
+
+
+#endif  // COMMON_HOST_DEVICE

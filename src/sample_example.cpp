@@ -25,7 +25,7 @@
 
 #define VMA_IMPLEMENTATION
 
-#include "binding.h"
+#include "shaders/host_device.h"
 #include "rayquery.hpp"
 #include "rtx_pipeline.hpp"
 #include "sample_example.hpp"
@@ -60,8 +60,6 @@ void SampleExample::setup(const VkInstance&       instance,
 
   m_debug.setup(m_device);
 
-  m_sunAndSky = SunAndSky_default();
-
   // Compute queues can be use for acceleration structures
   m_picker.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
   m_accelStruct.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
@@ -81,21 +79,6 @@ void SampleExample::setup(const VkInstance&       instance,
   {
     r->setup(m_device, physicalDevice, transferQueueIndex, &m_alloc);
   }
-
-
-  // Default RTX state (push_constant)
-  m_rtxState.frame                 = 0;
-  m_rtxState.maxDepth              = 10;
-  m_rtxState.frame                 = 0;   // Current frame, start at 0
-  m_rtxState.maxDepth              = 10;  // How deep the path is
-  m_rtxState.maxSamples            = 1;   // How many samples to do per render
-  m_rtxState.fireflyClampThreshold = 1;   // to cut fireflies
-  m_rtxState.hdrMultiplier         = 1;   // To brightening the scene
-  m_rtxState.debugging_mode        = 0;   //
-  m_rtxState.pbrMode               = 0;   // 0-Disney, 1-glTF
-
-  m_rtxState.minHeatmap = 0;
-  m_rtxState.maxHeatmap = 65000;
 }
 
 
@@ -227,9 +210,9 @@ void SampleExample::createDescriptorSetLayout()
                              | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 
-  m_bind.addBinding({B_SUNANDSKY, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_MISS_BIT_KHR | flags});
-  m_bind.addBinding({B_HDR, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, flags});  // HDR image
-  m_bind.addBinding({B_IMPORT_SMPL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flags});  // importance sampling
+  m_bind.addBinding({EnvBindings::eSunSky, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_MISS_BIT_KHR | flags});
+  m_bind.addBinding({EnvBindings::eHdr, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, flags});  // HDR image
+  m_bind.addBinding({EnvBindings::eImpSamples, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flags});   // importance sampling
 
 
   m_descPool = m_bind.createPool(m_device, 1);
@@ -240,9 +223,9 @@ void SampleExample::createDescriptorSetLayout()
   std::vector<VkWriteDescriptorSet> writes;
   VkDescriptorBufferInfo            sunskyDesc{m_sunAndSkyBuffer.buffer, 0, VK_WHOLE_SIZE};
   VkDescriptorBufferInfo            accelImpSmpl{m_skydome.m_accelImpSmpl.buffer, 0, VK_WHOLE_SIZE};
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_SUNANDSKY, &sunskyDesc));
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_texHdr.descriptor));
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &accelImpSmpl));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, EnvBindings::eSunSky, &sunskyDesc));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, EnvBindings::eHdr, &m_skydome.m_texHdr.descriptor));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, EnvBindings::eImpSamples, &accelImpSmpl));
 
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
@@ -255,8 +238,8 @@ void SampleExample::updateHdrDescriptors()
   std::vector<VkWriteDescriptorSet> writes;
   VkDescriptorBufferInfo            accelImpSmpl{m_skydome.m_accelImpSmpl.buffer, 0, VK_WHOLE_SIZE};
 
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_HDR, &m_skydome.m_texHdr.descriptor));
-  writes.emplace_back(m_bind.makeWrite(m_descSet, B_IMPORT_SMPL, &accelImpSmpl));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, EnvBindings::eHdr, &m_skydome.m_texHdr.descriptor));
+  writes.emplace_back(m_bind.makeWrite(m_descSet, EnvBindings::eImpSamples, &accelImpSmpl));
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
@@ -420,7 +403,7 @@ void SampleExample::renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK&
 
   m_rtxState.size = {render_size.width, render_size.height};
   // State is the push constant structure
-  m_pRender[m_rndMethod]->m_state = m_rtxState;
+  m_pRender[m_rndMethod]->setPushContants(m_rtxState);
   // Running the renderer
   m_pRender[m_rndMethod]->run(cmdBuf, render_size, profiler,
                               {m_accelStruct.getDescSet(), m_offscreen.getDescSet(), m_scene.getDescSet(), m_descSet});

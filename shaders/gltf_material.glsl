@@ -170,7 +170,7 @@ void GetSpecularGlossiness(inout State state, in GltfShadeMaterial material)
 //-----------------------------------------------------------------------
 void GetMaterialsAndTextures(inout State state, in Ray r)
 {
-  GltfShadeMaterial material = materials[nonuniformEXT(state.matID)];
+  GltfShadeMaterial material = materials[state.matID];
 
   state.mat.specular     = 0.5;
   state.mat.subsurface   = 0;
@@ -257,7 +257,7 @@ void GetMaterialsAndTextures(inout State state, in Ray r)
   state.mat.clearcoatRoughness = max(state.mat.clearcoatRoughness, 0.001);
 
   // KHR_materials_sheen
-  vec4 sheen = unpackUnorm4x8(material.sheen);
+  vec4 sheen          = unpackUnorm4x8(material.sheen);
   state.mat.sheenTint = sheen.xyz;
   state.mat.sheen     = sheen.w;
 }
