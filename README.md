@@ -117,14 +117,19 @@ Test Scenes
 |Model | Link |
 |------|------|
 |![](doc/2cylinder.png)  | [2 Cylinder Engine](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/2CylinderEngine) |
+|![](doc/alpha_blend.png) | Alpha Blending |
 |![](doc/Anisotropy.png)  | [Anisotropy](https://github.com/KhronosGroup/glTF-Sample-Models/tree/develop/sample-viewer-enhancements/2.0/AnisotropySpheres/glTF)|
 |![](doc/AntiqueCamera.png)  | [Antique Camera](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/AntiqueCamera) |
 |![](doc/BoomBox.png)  | [Boom Box](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/BoomBox) |
+|![](doc/carbon_fiber.png) | Carbon Fiber |
+|![](doc/clear_coat.png) | Clear Coat |
 |![](doc/Corset.png)  | [Corset](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/Corset) |
 |![](doc/Damagedhelmet.png)  | [Damaged Helmet](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/DamagedHelmet)
 |![](doc/FlightHelmet.png)  | [Flight Helmet](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/FlightHelmet) |
 |![](doc/MetalRoughness.png) | [Metal Rough Spheres](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/MetalRoughSpheres)  |
+|![](doc/punctual_light.png) | Punctual Light |
 |![](doc/SciFiHelmet.png)  | [SciFi](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/SciFiHelmet) |
 |![](doc/SpecGlossVsMetalRough.png)  | [SpecGlossVsMetalRough](https://github.com/KhronosGroup/glTF-Sample-Models/tree/develop/sample-viewer-enhancements/2.0/SpecGlossVsMetalRough) |
 |![](doc/Unlit.png)  | [Unlit](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/UnlitTest) |
+|![](doc/transmission.png) | Transmission |
 |![](doc/VertexColor.png)  |[Box Vertex Color](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/BoxVertexColors) |
