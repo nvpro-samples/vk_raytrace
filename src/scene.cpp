@@ -33,10 +33,9 @@
 #include "nvvk/descriptorsets_vk.hpp"
 #include "nvvk/images_vk.hpp"
 
-#include "binding.h"
+#include "shaders/host_device.h"
 #include "scene.hpp"
 #include "shaders/compress.glsl"
-#include "structures.h"
 #include "tiny_gltf.h"
 #include "tools.hpp"
 
@@ -613,11 +612,11 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
   auto nbTextures = static_cast<uint32_t>(m_textures.size());
 
   nvvk::DescriptorSetBindings bind;
-  bind.addBinding({B_CAMERA, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, flag});
-  bind.addBinding({B_MATERIALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
-  bind.addBinding({B_TEXTURES, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTextures, flag});
-  bind.addBinding({B_INSTDATA, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
-  bind.addBinding({B_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
+  bind.addBinding({SceneBindings::eCamera, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, flag});
+  bind.addBinding({SceneBindings::eMaterials, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
+  bind.addBinding({SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTextures, flag});
+  bind.addBinding({SceneBindings::eInstData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
+  bind.addBinding({SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, flag});
 
   m_descPool = bind.createPool(m_device, 1);
   CREATE_NAMED_VK(m_descSetLayout, bind.createLayout(m_device));
@@ -635,11 +634,11 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
     t_info.emplace_back(texture.descriptor);
 
   std::vector<VkWriteDescriptorSet> writes;
-  writes.emplace_back(bind.makeWrite(m_descSet, B_CAMERA, &dbi[eCameraMat]));
-  writes.emplace_back(bind.makeWrite(m_descSet, B_MATERIALS, &dbi[eMaterial]));
-  writes.emplace_back(bind.makeWrite(m_descSet, B_INSTDATA, &dbi[eInstData]));
-  writes.emplace_back(bind.makeWrite(m_descSet, B_LIGHTS, &dbi[eLights]));
-  writes.emplace_back(bind.makeWriteArray(m_descSet, B_TEXTURES, t_info.data()));
+  writes.emplace_back(bind.makeWrite(m_descSet, SceneBindings::eCamera, &dbi[eCameraMat]));
+  writes.emplace_back(bind.makeWrite(m_descSet, SceneBindings::eMaterials, &dbi[eMaterial]));
+  writes.emplace_back(bind.makeWrite(m_descSet, SceneBindings::eInstData, &dbi[eInstData]));
+  writes.emplace_back(bind.makeWrite(m_descSet, SceneBindings::eLights, &dbi[eLights]));
+  writes.emplace_back(bind.makeWriteArray(m_descSet, SceneBindings::eTextures, t_info.data()));
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -650,10 +649,10 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
 //
 void Scene::updateCamera(const VkCommandBuffer& cmdBuf, float aspectRatio)
 {
-  m_camera.view        = CameraManip.getMatrix();
-  m_camera.proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.001f, 100000.0f);
-  m_camera.viewInverse = nvmath::invert(m_camera.view);
-  m_camera.projInverse = nvmath::invert(m_camera.proj);
+  const auto& view     = CameraManip.getMatrix();
+  const auto  proj     = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.001f, 100000.0f);
+  m_camera.viewInverse = nvmath::invert(view);
+  m_camera.projInverse = nvmath::invert(proj);
 
   // Focal is the interest point
   nvmath::vec3f eye, center, up;

@@ -172,13 +172,16 @@ bool SampleGUI::guiRayTracing()
     return changed;
   });
 
-  SampleExample::RndMethod method = _se->renderMethod;
-  if(GuiH::Selection<int>("Rendering Pipeline", "Choose the type of rendering", (int*)&method, nullptr,
-                          GuiH::Control::Flags::Normal, {"Rtx", "Compute"}))
+  if(_se->m_supportRayQuery)
   {
-    _se->createRender(method);
-    _se->renderMethod = method;
-    changed           = true;
+    SampleExample::RndMethod method = _se->m_rndMethod;  //renderMethod;
+    if(GuiH::Selection<int>("Rendering Pipeline", "Choose the type of rendering", (int*)&method, nullptr,
+                            GuiH::Control::Flags::Normal, {"Rtx", "Compute"}))
+    {
+      _se->createRender(method);
+      //      _se->renderMethod = method;
+      changed = true;
+    }
   }
 
   GuiH::Info("Frame", "", std::to_string(rtxState.frame), GuiH::Flags::Disabled);
@@ -188,10 +191,22 @@ bool SampleGUI::guiRayTracing()
 
 bool SampleGUI::guiTonemapper()
 {
-  static Tonemapper default_tm{1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, {1.f, 1.f}, 0, .5f, .5f};
-  auto&             tm = _se->m_offscreen.m_tonemapper;
-  bool              changed{false};
-  std::bitset<8>    b(tm.autoExposure);
+  static Tonemapper default_tm{
+      1.0f,          // brightness;
+      1.0f,          // contrast;
+      1.0f,          // saturation;
+      0.0f,          // vignette;
+      1.0f,          // avgLum;
+      1.0f,          // zoom;
+      {1.0f, 1.0f},  // renderingRatio;
+      0,             // autoExposure;
+      0.5f,          // Ywhite;  // Burning white
+      0.5f,          // key;     // Log-average luminance
+  };
+
+  auto&          tm = _se->m_offscreen.m_tonemapper;
+  bool           changed{false};
+  std::bitset<8> b(tm.autoExposure);
 
   bool autoExposure = b.test(0);
 
@@ -225,9 +240,27 @@ bool SampleGUI::guiTonemapper()
 //
 bool SampleGUI::guiEnvironment()
 {
-  static SunAndSky dss = SunAndSky_default();  // default values
-  bool             changed{false};
-  auto&            sunAndSky(_se->m_sunAndSky);
+  static SunAndSky dss{
+      {1, 1, 1},            // rgb_unit_conversion;
+      0.0000101320f,        // multiplier;
+      0.0f,                 // haze;
+      0.0f,                 // redblueshift;
+      1.0f,                 // saturation;
+      0.0f,                 // horizon_height;
+      {0.4f, 0.4f, 0.4f},   // ground_color;
+      0.1f,                 // horizon_blur;
+      {0.0, 0.0, 0.01f},    // night_color;
+      0.8f,                 // sun_disk_intensity;
+      {0.00, 0.78, 0.62f},  // sun_direction;
+      5.0f,                 // sun_disk_scale;
+      1.0f,                 // sun_glow_intensity;
+      1,                    // y_is_up;
+      1,                    // physically_scaled_sun;
+      0,                    // in_use;
+  };
+
+  bool  changed{false};
+  auto& sunAndSky(_se->m_sunAndSky);
 
   changed |= ImGui::Checkbox("Use Sun & Sky", (bool*)&sunAndSky.in_use);
   changed |= GuiH::Slider("Exposure", "Intensity of the environment", &_se->m_rtxState.hdrMultiplier, nullptr,
@@ -507,8 +540,8 @@ void SampleGUI::menuBar()
 {
   auto openFilename = [](const char* filter) {
 #ifdef _WIN32
-    char         filename[MAX_PATH] = {0};
-    OPENFILENAME ofn;
+    char          filename[MAX_PATH] = {0};
+    OPENFILENAMEA ofn;
     ZeroMemory(&filename, sizeof(filename));
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);

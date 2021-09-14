@@ -39,7 +39,7 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_debug_printf : enable
 
-#include "../structures.h"
+#include "host_device.h"
 
 #include "globals.glsl"
 #include "layouts.glsl"

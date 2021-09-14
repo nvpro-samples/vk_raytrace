@@ -37,7 +37,7 @@ bool HitTest(in rayQueryEXT rayQuery, in Ray r)
   // Retrieve the Primitive mesh buffer information
   InstanceData      pinfo    = geoInfo[InstanceCustomIndexEXT];
   const uint        matIndex = max(0, pinfo.materialIndex);  // material of primitive mesh
-  GltfShadeMaterial mat      = materials[nonuniformEXT(matIndex)];
+  GltfShadeMaterial mat      = materials[matIndex];
 
   //// Back face culling defined by material
   //bool front_face = rayQueryGetIntersectionFrontFaceEXT(rayQuery, false);

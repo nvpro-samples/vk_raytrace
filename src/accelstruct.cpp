@@ -30,7 +30,7 @@
 
 #include "accelstruct.hpp"
 #include "nvvk/raytraceKHR_vk.hpp"
-#include "structures.h"
+#include "shaders/host_device.h"
 #include "tools.hpp"
 
 #include <sstream>
@@ -169,7 +169,7 @@ void AccelStructure::createRtDescriptorSet()
   VkShaderStageFlags flags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
                              | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   nvvk::DescriptorSetBindings bind;
-  bind.addBinding({0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, flags});  // TLAS
+  bind.addBinding({AccelBindings::eTlas, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, flags});  // TLAS
 
   m_rtDescPool = bind.createPool(m_device);
   CREATE_NAMED_VK(m_rtDescSetLayout, bind.createLayout(m_device));
@@ -183,6 +183,6 @@ void AccelStructure::createRtDescriptorSet()
   descASInfo.pAccelerationStructures    = &tlas;
 
   std::vector<VkWriteDescriptorSet> writes;
-  writes.emplace_back(bind.makeWrite(m_rtDescSet, 0, &descASInfo));
+  writes.emplace_back(bind.makeWrite(m_rtDescSet, AccelBindings::eTlas, &descASInfo));
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }

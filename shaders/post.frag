@@ -30,7 +30,7 @@
 #define TONEMAP_UNCHARTED
 #include "random.glsl"
 #include "tonemapping.glsl"
-#include "../structures.h"
+#include "host_device.h"
 
 
 layout(location = 0) in vec2 uvCoords;

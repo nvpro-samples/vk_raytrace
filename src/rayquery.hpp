@@ -26,7 +26,7 @@
 
 #include "nvvk/profiler_vk.hpp"
 #include "renderer.h"
-#include "structures.h"
+#include "shaders/host_device.h"
 
 /*
 

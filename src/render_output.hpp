@@ -30,13 +30,24 @@
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
-#include "structures.h"
+#include "shaders/host_device.h"
 
 
 class RenderOutput
 {
 public:
-  Tonemapper m_tonemapper{1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, {1.f, 1.f}, 0, .5f, .5f};
+  Tonemapper m_tonemapper{
+      1.0f,          // brightness;
+      1.0f,          // contrast;
+      1.0f,          // saturation;
+      0.0f,          // vignette;
+      1.0f,          // avgLum;
+      1.0f,          // zoom;
+      {1.0f, 1.0f},  // renderingRatio;
+      0,             // autoExposure;
+      0.5f,          // Ywhite;  // Burning white
+      0.5f,          // key;     // Log-average luminance
+  };
 
 public:
   void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator);

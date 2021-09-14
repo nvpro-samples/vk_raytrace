@@ -155,15 +155,16 @@ void RenderOutput::createPostDescriptor()
 
   // This descriptor is passed to the RTX pipeline
   // Ray tracing will write to the binding 1, but the fragment shader will be using binding 0, so it can use a sampler too.
-  bind.addBinding({0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT});
-  bind.addBinding({1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR});
+  bind.addBinding({OutputBindings::eSampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT});
+  bind.addBinding({OutputBindings::eStore, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,
+                   VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR});
   m_postDescSetLayout = bind.createLayout(m_device);
   m_postDescPool      = bind.createPool(m_device);
   m_postDescSet       = nvvk::allocateDescriptorSet(m_device, m_postDescPool, m_postDescSetLayout);
 
   std::vector<VkWriteDescriptorSet> writes;
-  writes.emplace_back(bind.makeWrite(m_postDescSet, 0, &m_offscreenColor.descriptor));  // This is use by the tonemapper
-  writes.emplace_back(bind.makeWrite(m_postDescSet, 1, &m_offscreenColor.descriptor));  // This will be used by the ray trace to write the image
+  writes.emplace_back(bind.makeWrite(m_postDescSet, OutputBindings::eSampler, &m_offscreenColor.descriptor));  // This is use by the tonemapper
+  writes.emplace_back(bind.makeWrite(m_postDescSet, OutputBindings::eStore, &m_offscreenColor.descriptor));  // This will be used by the ray trace to write the image
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 

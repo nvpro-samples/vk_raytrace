@@ -64,8 +64,7 @@ typedef nvvk::ResourceAllocatorDedicated Allocator;
 #include "accelstruct.hpp"
 #include "render_output.hpp"
 #include "scene.hpp"
-#include "shaders/sun_and_sky.h"
-#include "structures.h"
+#include "shaders/host_device.h"
 
 #include "imgui_internal.h"
 
@@ -119,14 +118,14 @@ public:
 
   Scene              m_scene;
   AccelStructure     m_accelStruct;
-  SunAndSky          m_sunAndSky;
   RenderOutput       m_offscreen;
   HdrSampling        m_skydome;
   nvvk::AxisVK       m_axis;
   nvvk::RayPickerKHR m_picker;
 
-  // It is possible to have various back-ends
-  SampleExample::RndMethod renderMethod = SampleExample::eRtxPipeline;
+  // It is possible that ray query isn't supported (ex. Titan)
+  void supportRayQuery(bool support) { m_supportRayQuery = support; }
+  bool m_supportRayQuery{true};
 
   // All renderers
   std::array<Renderer*, eNone> m_pRender;
@@ -155,7 +154,39 @@ public:
   void renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK& profiler);
 
 
-  RtxState    m_rtxState{};
+  RtxState m_rtxState{
+      0,       // frame;
+      10,      // maxDepth;
+      1,       // maxSamples;
+      1,       // fireflyClampThreshold;
+      1,       // hdrMultiplier;
+      0,       // debugging_mode;
+      0,       // pbrMode;
+      0,       // _pad0;
+      {0, 0},  // size;
+      0,       // minHeatmap;
+      65000    // maxHeatmap;
+  };
+
+  SunAndSky m_sunAndSky{
+      {1, 1, 1},            // rgb_unit_conversion;
+      0.0000101320f,        // multiplier;
+      0.0f,                 // haze;
+      0.0f,                 // redblueshift;
+      1.0f,                 // saturation;
+      0.0f,                 // horizon_height;
+      {0.4f, 0.4f, 0.4f},   // ground_color;
+      0.1f,                 // horizon_blur;
+      {0.0, 0.0, 0.01f},    // night_color;
+      0.8f,                 // sun_disk_intensity;
+      {0.00, 0.78, 0.62f},  // sun_direction;
+      5.0f,                 // sun_disk_scale;
+      1.0f,                 // sun_glow_intensity;
+      1,                    // y_is_up;
+      1,                    // physically_scaled_sun;
+      0,                    // in_use;
+  };
+
   int         m_maxFrames{100000};
   bool        m_showAxis{true};
   bool        m_descaling{false};

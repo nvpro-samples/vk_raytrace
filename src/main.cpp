@@ -104,7 +104,7 @@ int main(int argc, char** argv)
   VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);
   VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
-  contextInfo.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME, false, &rayQueryFeatures);
+  contextInfo.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME, true, &rayQueryFeatures);  // Optional extension
   contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
@@ -132,8 +132,10 @@ int main(int argc, char** argv)
   assert(!compatibleDevices.empty());
   vkctx.initDevice(compatibleDevices[0], contextInfo);  // Use first compatible device
 
+
   //
   SampleExample sample;
+  sample.supportRayQuery(vkctx.hasDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME));
 
   // Window need to be opened to get the surface on which to draw
   const VkSurfaceKHR surface = sample.getVkSurface(vkctx.m_instance, window);

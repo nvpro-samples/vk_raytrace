@@ -21,7 +21,7 @@
 
 
 //--------------------------------------------------------------------------------------------------
-// - Loading and storing the glTF scene 
+// - Loading and storing the glTF scene
 // - Creates the buffers and descriptor set for the scene
 
 
@@ -31,8 +31,6 @@
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
-#include "structures.h"
-
 
 
 class Scene
