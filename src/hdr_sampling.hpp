@@ -52,7 +52,7 @@ public:
 
 private:
   VkDevice                 m_device{VK_NULL_HANDLE};
-  uint32_t                 m_queueIndex{0};
+  uint32_t                 m_familyIndex{0};
   nvvk::ResourceAllocator* m_alloc{nullptr};
   nvvk::DebugUtil          m_debug;
 

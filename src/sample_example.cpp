@@ -44,14 +44,12 @@ NvmlMonitor g_nvml(100, 100);
 // Keep the handle on the device
 // Initialize the tool to do all our allocations: buffers, images
 //
-void SampleExample::setup(const VkInstance&       instance,
-                          const VkDevice&         device,
-                          const VkPhysicalDevice& physicalDevice,
-                          uint32_t                gtcQueueIndexFamily,
-                          uint32_t                computeQueueIndex,
-                          uint32_t                transferQueueIndex)
+void SampleExample::setup(const VkInstance&               instance,
+                          const VkDevice&                 device,
+                          const VkPhysicalDevice&         physicalDevice,
+                          const std::vector<nvvk::Queue>& queues)
 {
-  AppBaseVk::setup(instance, device, physicalDevice, gtcQueueIndexFamily);
+  AppBaseVk::setup(instance, device, physicalDevice, queues[eGCT0].familyIndex);
 
   m_gui = std::make_shared<SampleGUI>(this);  // GUI of this class
 
@@ -61,23 +59,23 @@ void SampleExample::setup(const VkInstance&       instance,
   m_debug.setup(m_device);
 
   // Compute queues can be use for acceleration structures
-  m_picker.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
-  m_accelStruct.setup(m_device, physicalDevice, computeQueueIndex, &m_alloc);
+  m_picker.setup(m_device, physicalDevice, queues[eCompute].familyIndex, &m_alloc);
+  m_accelStruct.setup(m_device, physicalDevice, queues[eCompute].familyIndex, &m_alloc);
 
   // Note: the GTC family queue is used because the nvvk::cmdGenerateMipmaps uses vkCmdBlitImage and this
   // command requires graphic queue and not only transfer.
-  m_scene.setup(m_device, physicalDevice, gtcQueueIndexFamily, &m_alloc);
+  m_scene.setup(m_device, physicalDevice, queues[eGCT1], &m_alloc);
 
   // Transfer queues can be use for the creation of the following assets
-  m_offscreen.setup(m_device, physicalDevice, transferQueueIndex, &m_alloc);
-  m_skydome.setup(device, physicalDevice, transferQueueIndex, &m_alloc);
+  m_offscreen.setup(m_device, physicalDevice, queues[eTransfer].familyIndex, &m_alloc);
+  m_skydome.setup(device, physicalDevice, queues[eTransfer].familyIndex, &m_alloc);
 
   // Create and setup all renderers
   m_pRender[eRtxPipeline] = new RtxPipeline;
   m_pRender[eRayQuery]    = new RayQuery;
   for(auto r : m_pRender)
   {
-    r->setup(m_device, physicalDevice, transferQueueIndex, &m_alloc);
+    r->setup(m_device, physicalDevice, queues[eTransfer].familyIndex, &m_alloc);
   }
 }
 
@@ -435,18 +433,20 @@ void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
   if(action == GLFW_RELEASE)
     return;
 
-  if(key == GLFW_KEY_HOME)
+  switch(key)
   {
-    // Set the camera as to see the model
-    fitCamera(m_scene.getScene().m_dimensions.min, m_scene.getScene().m_dimensions.max, false);
-  }
-  else if(key == GLFW_KEY_SPACE)
-  {
-    screenPicking();
-  }
-  else if(key == GLFW_KEY_R)
-  {
-    resetFrame();
+    case GLFW_KEY_HOME:
+    case GLFW_KEY_F:  // Set the camera as to see the model
+      fitCamera(m_scene.getScene().m_dimensions.min, m_scene.getScene().m_dimensions.max, false);
+      break;
+    case GLFW_KEY_SPACE:
+      screenPicking();
+      break;
+    case GLFW_KEY_R:
+      resetFrame();
+      break;
+    default:
+      break;
   }
 }
 

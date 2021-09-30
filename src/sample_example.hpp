@@ -67,6 +67,7 @@ typedef nvvk::ResourceAllocatorDedicated Allocator;
 #include "shaders/host_device.h"
 
 #include "imgui_internal.h"
+#include "queue.hpp"
 
 class SampleGUI;
 
@@ -89,12 +90,16 @@ public:
     eNone,
   };
 
-  void setup(const VkInstance&       instance,
-             const VkDevice&         device,
-             const VkPhysicalDevice& physicalDevice,
-             uint32_t                gtcQueueIndexFamily,
-             uint32_t                computeQueueIndex,
-             uint32_t                transferQueueIndex);
+  enum Queues
+  {
+    eGCT0,
+    eGCT1,
+    eCompute,
+    eTransfer
+  };
+
+
+  void setup(const VkInstance& instance, const VkDevice& device, const VkPhysicalDevice& physicalDevice, const std::vector<nvvk::Queue>& queues);
 
   bool isBusy() { return m_busy; }
   void createDescriptorSetLayout();
@@ -128,22 +133,22 @@ public:
   bool m_supportRayQuery{true};
 
   // All renderers
-  std::array<Renderer*, eNone> m_pRender;
+  std::array<Renderer*, eNone> m_pRender{nullptr, nullptr};
   RndMethod                    m_rndMethod{eNone};
 
   nvvk::Buffer m_sunAndSkyBuffer;
 
   // Graphic pipeline
-  VkDescriptorPool            m_descPool;
-  VkDescriptorSetLayout       m_descSetLayout;
-  VkDescriptorSet             m_descSet;
+  VkDescriptorPool            m_descPool{VK_NULL_HANDLE};
+  VkDescriptorSetLayout       m_descSetLayout{VK_NULL_HANDLE};
+  VkDescriptorSet             m_descSet{VK_NULL_HANDLE};
   nvvk::DescriptorSetBindings m_bind;
 
   Allocator       m_alloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil m_debug;  // Utility to name objects
 
 
-  VkRect2D m_renderRegion;
+  VkRect2D m_renderRegion{};
   void     setRenderRegion(const VkRect2D& size);
 
   // #Post

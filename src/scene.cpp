@@ -43,11 +43,11 @@
 
 namespace fs = std::filesystem;
 
-void Scene::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
+void Scene::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, const nvvk::Queue& queue, nvvk::ResourceAllocator* allocator)
 {
-  m_device           = device;
-  m_pAlloc           = allocator;
-  m_queueFamilyIndex = familyIndex;
+  m_device = device;
+  m_pAlloc = allocator;
+  m_queue  = queue;
   m_debug.setup(device);
 }
 
@@ -64,7 +64,6 @@ bool Scene::load(const std::string& filename)
     return false;
 
   m_stats = gltf.getStatistics(tmodel);
-
 
   // Extracting GLTF information to our format and adding, if missing, attributes such as tangent
   {
@@ -84,10 +83,7 @@ bool Scene::load(const std::string& filename)
   // Note: the GTC family queue is used because the nvvk::cmdGenerateMipmaps uses vkCmdBlitImage and this
   // command requires graphic queue and not only transfer.
   LOGI("Create Buffers\n");
-  VkQueue queue;
-  vkGetDeviceQueue(m_device, m_queueFamilyIndex, 1, &queue);
-
-  nvvk::CommandPool cmdBufGet(m_device, m_queueFamilyIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, queue);
+  nvvk::CommandPool cmdBufGet(m_device, m_queue.familyIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, m_queue.queue);
   VkCommandBuffer   cmdBuf = cmdBufGet.createCommandBuffer();
 
   // Create camera buffer
@@ -117,6 +113,7 @@ bool Scene::load(const std::string& filename)
   m_gltf.m_nodes      = gltf.m_nodes;
   m_gltf.m_primMeshes = gltf.m_primMeshes;
   m_gltf.m_materials  = gltf.m_materials;
+  m_gltf.m_dimensions = gltf.m_dimensions;
 
   return true;
 }
@@ -207,7 +204,7 @@ void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& glt
   LOGI(" - Create %d Vertex Buffers", gltf.m_primMeshes.size());
   MilliTimer timer;
 
-  std::vector<VertexAttributes> vertex;
+  std::vector<VertexAttributes> vertex{};
   std::vector<uint32_t>         indices;
 
 
@@ -235,7 +232,7 @@ void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& glt
       for(size_t v_ctx = 0; v_ctx < primMesh.vertexCount; v_ctx++)
       {
         size_t           idx = primMesh.vertexOffset + v_ctx;
-        VertexAttributes v;
+        VertexAttributes v{};
         v.position = gltf.m_positions[idx];
         v.normal   = compress_unit_vec(gltf.m_normals[idx]);
         v.tangent  = compress_unit_vec(gltf.m_tangents[idx]);
@@ -321,7 +318,7 @@ void Scene::createLightBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf
   std::vector<Light> all_lights;
   for(const auto& l_gltf : gltf.m_lights)
   {
-    Light l;
+    Light l{};
     l.position  = l_gltf.worldMatrix * nvmath::vec4f(0, 0, 0, 1);
     l.direction = l_gltf.worldMatrix * nvmath::vec4f(0, 0, -1, 0);
     if(!l_gltf.light.color.empty())
@@ -359,7 +356,7 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
   std::vector<GltfShadeMaterial> shadeMaterials;
   for(auto& m : gltf.m_materials)
   {
-    GltfShadeMaterial smat;
+    GltfShadeMaterial smat{};
     smat.pbrBaseColorFactor           = m.baseColorFactor;
     smat.pbrBaseColorTexture          = m.baseColorTexture;
     smat.pbrMetallicFactor            = m.metallicFactor;

@@ -108,6 +108,8 @@ int main(int argc, char** argv)
   contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
+  // Extra queues for parallel load/build
+  contextInfo.addRequestedQueue(contextInfo.defaultQueueGCT, 1, 1.0f);  // Loading scene - mipmap generation
 
 // #define ENABLE_GPU_PRINTF //   Enabling printf in shaders
 // #extension GL_EXT_debug_printf
@@ -142,9 +144,21 @@ int main(int argc, char** argv)
   vkctx.setGCTQueueWithPresent(surface);
   sample.setupGlfwCallbacks(window);
 
+  // Collecting all the Queues the sample will need.
+  // - 3 default queues are created, but need extra for load/generate mip-maps
+  // - GCT0 for graphic (main for rendering)
+  // - GTC1 for loading in parallel and generating mip-maps
+  // - Compute for creating acceleration structures
+  // - Transfer for loading HDR images, creating offscreen pipeline
+  auto                     qGCT1 = vkctx.createQueue(contextInfo.defaultQueueGCT, "GCT1", 1.0f);
+  std::vector<nvvk::Queue> queues;
+  queues.push_back({vkctx.m_queueGCT.queue, vkctx.m_queueGCT.familyIndex, vkctx.m_queueGCT.queueIndex});
+  queues.push_back({qGCT1.queue, qGCT1.familyIndex, qGCT1.queueIndex});
+  queues.push_back({vkctx.m_queueC.queue, vkctx.m_queueC.familyIndex, vkctx.m_queueC.queueIndex});
+  queues.push_back({vkctx.m_queueT.queue, vkctx.m_queueT.familyIndex, vkctx.m_queueT.queueIndex});
+
   // Create example
-  sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex,
-               vkctx.m_queueC.familyIndex, vkctx.m_queueT.familyIndex);
+  sample.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice, queues);
   sample.createSwapchain(surface, SAMPLE_WIDTH, SAMPLE_HEIGHT);
   sample.createDepthBuffer();
   sample.createRenderPass();
@@ -174,7 +188,6 @@ int main(int argc, char** argv)
 
   // Profiler measure the execution time on the GPU
   nvvk::ProfilerVK profiler;
-  std::string      profilerStats;
   profiler.init(vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
   profiler.setLabelUsage(true);  // depends on VK_EXT_debug_utils
 
