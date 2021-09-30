@@ -37,9 +37,9 @@
 
 void HdrSampling::setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator)
 {
-  m_device     = device;
-  m_alloc      = allocator;
-  m_queueIndex = familyIndex;
+  m_device      = device;
+  m_alloc       = allocator;
+  m_familyIndex = familyIndex;
   m_debug.setup(device);
 }
 
@@ -77,12 +77,12 @@ void HdrSampling::loadEnvironment(const std::string& hrdImage)
   VkImageCreateInfo icInfo       = nvvk::makeImage2DCreateInfo(imgSize, format);
 
   {
-    // We are using a different index (1), to allow loading in a different
+    // We are using a different family index (1 - transfer), to allow loading in a different
     // queue/thread that the display (0)
     VkQueue queue;
-    vkGetDeviceQueue(m_device, m_queueIndex, 1, &queue);
+    vkGetDeviceQueue(m_device, m_familyIndex, 0, &queue);
 
-    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_queueIndex, queue);
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_familyIndex, queue);
     nvvk::Image              image  = m_alloc->createImage(cmdBuf, bufferSize, pixels, icInfo);
     VkImageViewCreateInfo    ivInfo = nvvk::makeImageViewCreateInfo(image.image, icInfo);
     m_texHdr                        = m_alloc->createTexture(image, ivInfo, samplerCreateInfo);

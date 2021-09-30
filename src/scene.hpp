@@ -31,6 +31,7 @@
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
+#include "queue.hpp"
 
 
 class Scene
@@ -53,7 +54,7 @@ public:
   };
 
 public:
-  void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t familyIndex, nvvk::ResourceAllocator* allocator);
+  void setup(const VkDevice& device, const VkPhysicalDevice& physicalDevice, const nvvk::Queue& queue, nvvk::ResourceAllocator* allocator);
   bool load(const std::string& filename);
 
   void createInstanceDataBuffer(VkCommandBuffer cmdBuf, nvh::GltfScene& gltf);
@@ -88,7 +89,7 @@ private:
   nvvk::ResourceAllocator* m_pAlloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil          m_debug;   // Utility to name objects
   VkDevice                 m_device;
-  uint32_t                 m_queueFamilyIndex;
+  nvvk::Queue              m_queue;
 
   // Resources
   std::array<nvvk::Buffer, 5>                            m_buffer;           // For single buffer
