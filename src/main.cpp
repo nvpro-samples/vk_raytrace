@@ -188,6 +188,7 @@ int main(int argc, char** argv)
 
   // Profiler measure the execution time on the GPU
   nvvk::ProfilerVK profiler;
+  std::string      profilerStats;
   profiler.init(vkctx.m_device, vkctx.m_physicalDevice, vkctx.m_queueGCT.familyIndex);
   profiler.setLabelUsage(true);  // depends on VK_EXT_debug_utils
 
