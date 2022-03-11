@@ -426,7 +426,7 @@ bool SampleGUI::guiGpuMeasures()
     ImGui::Text("NVML wasn't loaded");
 
   auto memoryNumbers = [](float n) {  // Memory numbers from nvml are in KB
-    static const std::vector<char*> t{" KB", " MB", " GB", " TB"};
+    static const std::vector<const char*> t{" KB", " MB", " GB", " TB"};
     static char                     s[16];
     int                             level{0};
     while(n > 1000)
@@ -625,7 +625,7 @@ void SampleGUI::showBusyWindow()
     pos.y += (available.y - text_size.y) * 0.5f;
 
     ImGui::SetCursorPos(pos);
-    ImGui::TextWrapped((_se->m_busyReasonText + std::string(nb_dots, '.')).c_str());
+    ImGui::TextWrapped("%s", (_se->m_busyReasonText + std::string(nb_dots, '.')).c_str());
   }
   ImGui::PopStyleVar();
   ImGui::End();
