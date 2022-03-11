@@ -300,6 +300,12 @@ void SampleExample::renderGui(nvvk::ProfilerVK& profiler)
   m_gui->titleBar();
   m_gui->menuBar();
   m_gui->render(profiler);
+
+  auto& IO = ImGui::GetIO();
+  if(ImGui::IsMouseDoubleClicked(ImGuiDir_Left) && !ImGui::GetIO().WantCaptureKeyboard)
+  {
+    screenPicking();
+  }
 }
 
 
@@ -531,11 +537,5 @@ void SampleExample::onMouseButton(int button, int action, int mods)
   {
     m_descaling = false;
     resetFrame();
-  }
-
-  auto& IO = ImGui::GetIO();
-  if(IO.MouseDownWasDoubleClick[0] && !ImGui::GetIO().WantCaptureKeyboard)
-  {
-    screenPicking();
   }
 }
