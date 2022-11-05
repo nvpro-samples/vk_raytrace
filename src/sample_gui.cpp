@@ -134,14 +134,16 @@ bool SampleGUI::guiRayTracing()
 
   changed |= GuiH::Selection("Pbr Mode", "PBR material model", &rtxState.pbrMode, nullptr, Normal, {"Disney", "Gltf"});
 
-  static bool bAnyHit = true;
-  if(GuiH::Checkbox("Enable AnyHit",
-                    "AnyHit is used for double sided, cutout opacity, but can be slower when all objects are opaque", &bAnyHit, nullptr))
-  {
-    auto rtx = dynamic_cast<RtxPipeline*>(_se->m_pRender[_se->m_rndMethod]);
-    vkDeviceWaitIdle(_se->m_device);  // cannot run while changing this
-    rtx->useAnyHit(bAnyHit);
-    changed = true;
+  static bool bAnyHit = false;
+  if(_se->m_rndMethod == SampleExample::RndMethod::eRtxPipeline) {
+    if(GuiH::Checkbox("Enable AnyHit",
+                      "AnyHit is used for double sided, cutout opacity, but can be slower when all objects are opaque", &bAnyHit, nullptr))
+    {
+      auto rtx = dynamic_cast<RtxPipeline*>(_se->m_pRender[_se->m_rndMethod]);
+      vkDeviceWaitIdle(_se->m_device);  // cannot run while changing this
+      rtx->useAnyHit(bAnyHit);
+      changed = true;
+    }
   }
 
   GuiH::Group<bool>("Debugging", false, [&] {
