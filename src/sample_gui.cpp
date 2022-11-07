@@ -135,13 +135,16 @@ bool SampleGUI::guiRayTracing()
   changed |= GuiH::Selection("Pbr Mode", "PBR material model", &rtxState.pbrMode, nullptr, Normal, {"Disney", "Gltf"});
 
   static bool bAnyHit = true;
-  if(GuiH::Checkbox("Enable AnyHit",
-                    "AnyHit is used for double sided, cutout opacity, but can be slower when all objects are opaque", &bAnyHit, nullptr))
+  if(_se->m_rndMethod == SampleExample::RndMethod::eRtxPipeline)
   {
-    auto rtx = dynamic_cast<RtxPipeline*>(_se->m_pRender[_se->m_rndMethod]);
-    vkDeviceWaitIdle(_se->m_device);  // cannot run while changing this
-    rtx->useAnyHit(bAnyHit);
-    changed = true;
+    if(GuiH::Checkbox("Enable AnyHit", "AnyHit is used for double sided, cutout opacity, but can be slower when all objects are opaque",
+                      &bAnyHit, nullptr))
+    {
+      auto rtx = dynamic_cast<RtxPipeline*>(_se->m_pRender[_se->m_rndMethod]);
+      vkDeviceWaitIdle(_se->m_device);  // cannot run while changing this
+      rtx->useAnyHit(bAnyHit);
+      changed = true;
+    }
   }
 
   GuiH::Group<bool>("Debugging", false, [&] {
@@ -427,8 +430,8 @@ bool SampleGUI::guiGpuMeasures()
 
   auto memoryNumbers = [](float n) {  // Memory numbers from nvml are in KB
     static const std::vector<const char*> t{" KB", " MB", " GB", " TB"};
-    static char                     s[16];
-    int                             level{0};
+    static char                           s[16];
+    int                                   level{0};
     while(n > 1000)
     {
       n = n / 1000;
