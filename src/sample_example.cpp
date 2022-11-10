@@ -136,6 +136,11 @@ void SampleExample::loadAssets(const char* filename)
       // Loading the scene might have loaded new textures, which is changing the number of elements
       // in the DescriptorSetLayout. Therefore, the PipelineLayout will be out-of-date and need
       // to be re-created. If they are re-created, the pipeline also need to be re-created.
+      if(m_pRender)
+      {
+          vkDeviceWaitIdle(m_device);  // cannot destroy while in use
+          m_pRender[m_rndMethod]->destroy();
+      }
       m_pRender[m_rndMethod]->create(
           m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
     }
@@ -434,6 +439,7 @@ void SampleExample::renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK&
 //
 void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
 {
+  if(m_busy) return;
   nvvk::AppBaseVk::onKeyboard(key, scancode, action, mods);
 
   if(action == GLFW_RELEASE)
