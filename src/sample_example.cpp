@@ -133,9 +133,13 @@ void SampleExample::loadAssets(const char* filename)
 
       // Loading scene and creating acceleration structure
       loadScene(sfile);
+
       // Loading the scene might have loaded new textures, which is changing the number of elements
       // in the DescriptorSetLayout. Therefore, the PipelineLayout will be out-of-date and need
       // to be re-created. If they are re-created, the pipeline also need to be re-created.
+      for(auto& r : m_pRender)
+        r->destroy();
+
       m_pRender[m_rndMethod]->create(
           m_size, {m_accelStruct.getDescLayout(), m_offscreen.getDescLayout(), m_scene.getDescLayout(), m_descSetLayout}, &m_scene);
     }
@@ -434,9 +438,9 @@ void SampleExample::renderScene(const VkCommandBuffer& cmdBuf, nvvk::ProfilerVK&
 //
 void SampleExample::onKeyboard(int key, int scancode, int action, int mods)
 {
-  nvvk::AppBaseVk::onKeyboard(key, scancode, action, mods);
+  nvvkhl::AppBaseVk::onKeyboard(key, scancode, action, mods);
 
-  if(action == GLFW_RELEASE)
+  if(m_busy || action == GLFW_RELEASE)
     return;
 
   switch(key)
@@ -490,7 +494,7 @@ void SampleExample::screenPicking()
     return;
   }
 
-  nvmath::vec3f worldPos = pr.worldRayOrigin + pr.worldRayDirection * pr.hitT;
+  nvmath::vec3f worldPos = nvmath::vec3f(pr.worldRayOrigin + pr.worldRayDirection * pr.hitT);
   // Set the interest position
   nvmath::vec3f eye, center, up;
   CameraManip.getLookat(eye, center, up);
@@ -507,6 +511,9 @@ void SampleExample::screenPicking()
 //
 void SampleExample::onFileDrop(const char* filename)
 {
+  if (m_busy)
+    return;
+
   loadAssets(filename);
 }
 
@@ -517,6 +524,8 @@ void SampleExample::onFileDrop(const char* filename)
 void SampleExample::onMouseMotion(int x, int y)
 {
   AppBaseVk::onMouseMotion(x, y);
+  if(m_busy)
+    return;
 
   if(ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard)
     return;
@@ -533,6 +542,9 @@ void SampleExample::onMouseMotion(int x, int y)
 void SampleExample::onMouseButton(int button, int action, int mods)
 {
   AppBaseVk::onMouseButton(button, action, mods);
+  if (m_busy)
+    return;
+
   if((m_inputs.lmb || m_inputs.rmb || m_inputs.mmb) == false && action == GLFW_RELEASE && m_descaling == true)
   {
     m_descaling = false;
