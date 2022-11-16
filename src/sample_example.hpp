@@ -55,7 +55,7 @@ typedef nvvk::ResourceAllocatorDedicated Allocator;
 #define CPP  // For sun_and_sky
 
 #include "nvh/gltfscene.hpp"
-#include "nvvk/appbase_vk.hpp"
+#include "nvvkhl/appbase_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/profiler_vk.hpp"
 #include "nvvk/raytraceKHR_vk.hpp"
@@ -78,7 +78,7 @@ class SampleGUI;
 // - Rendering is done in an offscreen framebuffer
 // - The image of the framebuffer is displayed in post-process in a full-screen quad
 //
-class SampleExample : public nvvk::AppBaseVk
+class SampleExample : public nvvkhl::AppBaseVk
 {
   friend SampleGUI;
 

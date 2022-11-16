@@ -235,7 +235,7 @@ void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& glt
         VertexAttributes v{};
         v.position = gltf.m_positions[idx];
         v.normal   = compress_unit_vec(gltf.m_normals[idx]);
-        v.tangent  = compress_unit_vec(gltf.m_tangents[idx]);
+        v.tangent  = compress_unit_vec(nvmath::vec3f(gltf.m_tangents[idx]));  // See .w encoding below
         v.texcoord = gltf.m_texcoords0[idx];
         v.color    = packUnorm4x8(gltf.m_colors0[idx]);
 
@@ -319,8 +319,8 @@ void Scene::createLightBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf
   for(const auto& l_gltf : gltf.m_lights)
   {
     Light l{};
-    l.position  = l_gltf.worldMatrix * nvmath::vec4f(0, 0, 0, 1);
-    l.direction = l_gltf.worldMatrix * nvmath::vec4f(0, 0, -1, 0);
+    l.position  = nvmath::vec3f(l_gltf.worldMatrix * nvmath::vec4f(0, 0, 0, 1));
+    l.direction = nvmath::vec3f(l_gltf.worldMatrix * nvmath::vec4f(0, 0, -1, 0));
     if(!l_gltf.light.color.empty())
       l.color = nvmath::vec3f(l_gltf.light.color[0], l_gltf.light.color[1], l_gltf.light.color[2]);
     else
@@ -375,7 +375,7 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.doubleSided                  = m.doubleSided;
     smat.normalTexture                = m.normalTexture;
     smat.normalTextureScale           = m.normalTextureScale;
-    smat.uvTransform                  = m.textureTransform.uvTransform;
+    smat.uvTransform                  = nvmath::mat4f(m.textureTransform.uvTransform);
     smat.unlit                        = m.unlit.active;
     smat.transmissionFactor           = m.transmission.factor;
     smat.transmissionTexture          = m.transmission.texture;
