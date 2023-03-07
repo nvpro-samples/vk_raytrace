@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2021-2023, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,7 +142,7 @@ bool Scene::loadGltfScene(const std::string& filename, tinygltf::Model& tmodel)
     if(result)
     {
       // Loading images in parallel using FreeImage
-      LOGI("Loading %d external images", tmodel.images.size());
+      LOGI("Loading %zu external images", tmodel.images.size());
       tinygltf::loadExternalImages(&tmodel, filename);
       timer.print();
     }
@@ -157,11 +157,11 @@ bool Scene::loadGltfScene(const std::string& filename, tinygltf::Model& tmodel)
 
   if(result == false)
   {
-    LOGE(error.c_str());
+    LOGE("%s", error.c_str());
     assert(!"Error while loading scene");
     return false;
   }
-  LOGW(warn.c_str());
+  LOGW("%s", warn.c_str());
 
   return true;
 }
@@ -201,7 +201,7 @@ void Scene::createInstanceDataBuffer(VkCommandBuffer cmdBuf, nvh::GltfScene& glt
 //
 void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf)
 {
-  LOGI(" - Create %d Vertex Buffers", gltf.m_primMeshes.size());
+  LOGI(" - Create %zu Vertex Buffers", gltf.m_primMeshes.size());
   MilliTimer timer;
 
   std::vector<VertexAttributes> vertex{};
@@ -350,7 +350,7 @@ void Scene::createLightBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf
 // #TODO: compress the material, is it too large.
 void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf)
 {
-  LOGI(" - Create %d Material Buffer", gltf.m_materials.size());
+  LOGI(" - Create %zu Material Buffer", gltf.m_materials.size());
   MilliTimer timer;
 
   std::vector<GltfShadeMaterial> shadeMaterials;
@@ -505,7 +505,7 @@ VkSamplerCreateInfo gltfSamplerToVulkan(tinygltf::Sampler& tsampler)
 //
 void Scene::createTextureImages(VkCommandBuffer cmdBuf, tinygltf::Model& gltfModel)
 {
-  LOGI(" - Create %d Textures, %d Images", gltfModel.textures.size(), gltfModel.images.size());
+  LOGI(" - Create %zu Textures, %zu Images", gltfModel.textures.size(), gltfModel.images.size());
   MilliTimer timer;
 
   VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
