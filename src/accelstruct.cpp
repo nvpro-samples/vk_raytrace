@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2021-2023, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -121,7 +121,7 @@ void AccelStructure::createBottomLevelAS(nvh::GltfScene&                  gltfSc
     allBlas.push_back({geo});
     prim_idx++;
   }
-  LOGI(" BLAS(%d)", allBlas.size());
+  LOGI(" BLAS(%zu)", allBlas.size());
   m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
                                      | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
 }
@@ -157,7 +157,7 @@ void AccelStructure::createTopLevelAS(nvh::GltfScene& gltfScene)
     rayInst.mask                                   = 0xFF;
     tlas.emplace_back(rayInst);
   }
-  LOGI(" TLAS(%d)", tlas.size());
+  LOGI(" TLAS(%zu)", tlas.size());
   m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 }
 
