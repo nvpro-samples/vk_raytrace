@@ -20,6 +20,7 @@
 
 #include <thread>
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "backends/imgui_impl_glfw.h"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
