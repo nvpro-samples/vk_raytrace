@@ -261,12 +261,12 @@ int main(int argc, char** argv)
 
   // Cleanup
   vkDeviceWaitIdle(sample.getDevice());
+  glfwDestroyWindow(window);
   sample.destroyResources();
   sample.destroy();
   profiler.deinit();
   vkctx.deinit();
 
-  glfwDestroyWindow(window);
   glfwTerminate();
 
   return 0;
