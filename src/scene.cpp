@@ -24,6 +24,7 @@
  */
 
 
+#include <filesystem>
 #include <sstream>
 
 #include "imgui/imgui_camera_widget.h"
@@ -38,8 +39,6 @@
 #include "shaders/compress.glsl"
 #include "tiny_gltf.h"
 #include "tools.hpp"
-
-#include "fileformats/tiny_gltf_freeimage.h"
 
 namespace fs = std::filesystem;
 
@@ -134,23 +133,12 @@ bool Scene::loadGltfScene(const std::string& filename, tinygltf::Model& tmodel)
   m_sceneName           = fspath.stem().string();
   if(extension == ".gltf")
   {
-    // Loading the scene using tinygltf, but don't load textures with it
-    // because it is faster to use FreeImage
-    tcontext.RemoveImageLoader();
     result = tcontext.LoadASCIIFromFile(&tmodel, &error, &warn, filename);
     timer.print();
-    if(result)
-    {
-      // Loading images in parallel using FreeImage
-      LOGI("Loading %zu external images", tmodel.images.size());
-      tinygltf::loadExternalImages(&tmodel, filename);
-      timer.print();
-    }
   }
   else
   {
     // Binary loader
-    tcontext.SetImageLoader(&tinygltf::LoadFreeImageData, nullptr);
     result = tcontext.LoadBinaryFromFile(&tmodel, &error, &warn, filename);
     timer.print();
   }
@@ -235,9 +223,9 @@ void Scene::createVertexBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& glt
         VertexAttributes v{};
         v.position = gltf.m_positions[idx];
         v.normal   = compress_unit_vec(gltf.m_normals[idx]);
-        v.tangent  = compress_unit_vec(nvmath::vec3f(gltf.m_tangents[idx]));  // See .w encoding below
+        v.tangent  = compress_unit_vec(glm::vec3(gltf.m_tangents[idx]));  // See .w encoding below
         v.texcoord = gltf.m_texcoords0[idx];
-        v.color    = packUnorm4x8(gltf.m_colors0[idx]);
+        v.color    = glm::packUnorm4x8(gltf.m_colors0[idx]);
 
         // Encode to the Less-Significant-Bit the handiness of the tangent
         // Not a significant change on the UV to make a visual difference
@@ -295,12 +283,12 @@ void Scene::setCameraFromScene(const std::string& filename, const nvh::GltfScene
   if(gltf.m_cameras.empty() == false)
   {
     auto& c = gltf.m_cameras[0];
-    CameraManip.setCamera({c.eye, c.center, c.up, (float)rad2deg(c.cam.perspective.yfov)});
-    ImGuiH::SetHomeCamera({c.eye, c.center, c.up, (float)rad2deg(c.cam.perspective.yfov)});
+    CameraManip.setCamera({c.eye, c.center, c.up, (float)glm::degrees(c.cam.perspective.yfov)});
+    ImGuiH::SetHomeCamera({c.eye, c.center, c.up, (float)glm::degrees(c.cam.perspective.yfov)});
 
     for(auto& c : gltf.m_cameras)
     {
-      ImGuiH::AddCamera({c.eye, c.center, c.up, (float)rad2deg(c.cam.perspective.yfov)});
+      ImGuiH::AddCamera({c.eye, c.center, c.up, (float)glm::degrees(c.cam.perspective.yfov)});
     }
   }
   else
@@ -319,12 +307,12 @@ void Scene::createLightBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& gltf
   for(const auto& l_gltf : gltf.m_lights)
   {
     Light l{};
-    l.position  = nvmath::vec3f(l_gltf.worldMatrix * nvmath::vec4f(0, 0, 0, 1));
-    l.direction = nvmath::vec3f(l_gltf.worldMatrix * nvmath::vec4f(0, 0, -1, 0));
+    l.position  = glm::vec3(l_gltf.worldMatrix * glm::vec4(0, 0, 0, 1));
+    l.direction = glm::vec3(l_gltf.worldMatrix * glm::vec4(0, 0, -1, 0));
     if(!l_gltf.light.color.empty())
-      l.color = nvmath::vec3f(l_gltf.light.color[0], l_gltf.light.color[1], l_gltf.light.color[2]);
+      l.color = glm::vec3(l_gltf.light.color[0], l_gltf.light.color[1], l_gltf.light.color[2]);
     else
-      l.color = nvmath::vec3f(1, 1, 1);
+      l.color = glm::vec3(1, 1, 1);
     l.innerConeCos = static_cast<float>(cos(l_gltf.light.spot.innerConeAngle));
     l.outerConeCos = static_cast<float>(cos(l_gltf.light.spot.outerConeAngle));
     l.range        = static_cast<float>(l_gltf.light.range);
@@ -375,7 +363,7 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.doubleSided                  = m.doubleSided;
     smat.normalTexture                = m.normalTexture;
     smat.normalTextureScale           = m.normalTextureScale;
-    smat.uvTransform                  = nvmath::mat4f(m.textureTransform.uvTransform);
+    smat.uvTransform                  = glm::mat4(m.textureTransform.uvTransform);
     smat.unlit                        = m.unlit.active;
     smat.transmissionFactor           = m.transmission.factor;
     smat.transmissionTexture          = m.transmission.texture;
@@ -390,7 +378,7 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.clearcoatRoughness           = m.clearcoat.roughnessFactor;
     smat.clearcoatTexture             = m.clearcoat.texture;
     smat.clearcoatRoughnessTexture    = m.clearcoat.roughnessTexture;
-    smat.sheen                        = packUnorm4x8(vec4(m.sheen.colorFactor, m.sheen.roughnessFactor));
+    smat.sheen                        = glm::packUnorm4x8(vec4(m.sheen.colorFactor, m.sheen.roughnessFactor));
 
     shadeMaterials.emplace_back(smat);
   }
@@ -508,7 +496,7 @@ void Scene::createTextureImages(VkCommandBuffer cmdBuf, tinygltf::Model& gltfMod
   LOGI(" - Create %zu Textures, %zu Images", gltfModel.textures.size(), gltfModel.images.size());
   MilliTimer timer;
 
-  VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
+  VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
 
   // Make dummy image(1,1), needed as we cannot have an empty array
   auto addDefaultImage = [this, cmdBuf]() {
@@ -646,15 +634,16 @@ void Scene::createDescriptorSet(const nvh::GltfScene& gltf)
 //
 void Scene::updateCamera(const VkCommandBuffer& cmdBuf, float aspectRatio)
 {
-  const auto& view     = CameraManip.getMatrix();
-  const auto  proj     = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.001f, 100000.0f);
-  m_camera.viewInverse = nvmath::invert(view);
-  m_camera.projInverse = nvmath::invert(proj);
+  const auto& view = CameraManip.getMatrix();
+  auto        proj = glm::perspectiveRH_ZO(glm::radians(CameraManip.getFov()), aspectRatio, 0.001f, 100000.0f);
+  proj[1][1] *= -1;
+  m_camera.viewInverse = glm::inverse(view);
+  m_camera.projInverse = glm::inverse(proj);
 
   // Focal is the interest point
-  nvmath::vec3f eye, center, up;
+  glm::vec3 eye, center, up;
   CameraManip.getLookat(eye, center, up);
-  m_camera.focalDist = nvmath::length(center - eye);
+  m_camera.focalDist = glm::length(center - eye);
 
   // UBO on the device
   VkBuffer deviceUBO = m_buffer[eCameraMat].buffer;

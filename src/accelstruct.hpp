@@ -47,9 +47,9 @@ public:
 
 private:
   nvvk::RaytracingBuilderKHR::BlasInput primitiveToGeometry(const nvh::GltfPrimMesh& prim, VkBuffer vertex, VkBuffer index);
-  void                                  createBottomLevelAS(nvh::GltfScene& gltfScene, const std::vector<nvvk::Buffer>& vertex, const std::vector<nvvk::Buffer>& index);
-  void                                  createTopLevelAS(nvh::GltfScene& gltfScene);
-  void                                  createRtDescriptorSet();
+  void createBottomLevelAS(nvh::GltfScene& gltfScene, const std::vector<nvvk::Buffer>& vertex, const std::vector<nvvk::Buffer>& index);
+  void createTopLevelAS(nvh::GltfScene& gltfScene);
+  void createRtDescriptorSet();
 
 
   // Setup

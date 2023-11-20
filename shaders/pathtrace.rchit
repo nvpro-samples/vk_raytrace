@@ -17,9 +17,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
- //-------------------------------------------------------------------------------------------------
- // The Closest-Hit shader only returns the information of the hit. The shading will be done in 
- // the Ray-Generation shader or Ray-Query (compute)
+//-------------------------------------------------------------------------------------------------
+// The Closest-Hit shader only returns the information of the hit. The shading will be done in
+// the Ray-Generation shader or Ray-Query (compute)
 
 #version 460
 #extension GL_GOOGLE_include_directive : enable

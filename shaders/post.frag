@@ -56,7 +56,7 @@ vec3 dither(vec3 linear_color, vec3 noise, float quant)
 
 // http://user.ceng.metu.edu.tr/~akyuz/files/hdrgpu.pdf
 const mat3 RGB2XYZ = mat3(0.4124564, 0.3575761, 0.1804375, 0.2126729, 0.7151522, 0.0721750, 0.0193339, 0.1191920, 0.9503041);
-float      luminance(vec3 color)
+float luminance(vec3 color)
 {
   return dot(color, vec3(0.2126f, 0.7152f, 0.0722f));  //color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
 }
@@ -115,9 +115,9 @@ void main()
   vec3 color = toneMap(hdr.rgb, tm.avgLum);
 
   // Remove banding
-  uvec3 r = pcg3d(uvec3(gl_FragCoord.xy, 0));
-  vec3 noise = uintBitsToFloat(0x3f800000 | (r >> 9)) - 1.0f;
-  color      = dither(sRGBToLinear(color), noise, 1. / 255.);
+  uvec3 r     = pcg3d(uvec3(gl_FragCoord.xy, 0));
+  vec3  noise = uintBitsToFloat(0x3f800000 | (r >> 9)) - 1.0f;
+  color       = dither(sRGBToLinear(color), noise, 1. / 255.);
 
   //contrast
   color = clamp(mix(vec3(0.5), color, tm.contrast), 0, 1);

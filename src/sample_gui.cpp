@@ -27,11 +27,9 @@
 #include <iomanip>
 #include <sstream>
 
-#include "nvmath/nvmath.h"
-
-#include "imgui_camera_widget.h"
-#include "imgui_helper.h"
-#include "imgui_orient.h"
+#include "imgui/imgui_camera_widget.h"
+#include "imgui/imgui_helper.h"
+#include "imgui/imgui_orient.h"
 #include "rtx_pipeline.hpp"
 #include "sample_example.hpp"
 #include "sample_gui.hpp"
@@ -271,7 +269,7 @@ bool SampleGUI::guiEnvironment()
                           GuiH::Flags::Normal, 0.f, 5.f);
 
   // Adjusting the up with the camera
-  nvmath::vec3f eye, center, up;
+  glm::vec3 eye, center, up;
   CameraManip.getLookat(eye, center, up);
   sunAndSky.y_is_up = (up.y == 1);
 
@@ -311,7 +309,7 @@ bool SampleGUI::guiEnvironment()
       changed |= GuiH::Slider("Red Blue Shift", "", &sunAndSky.redblueshift, &dss.redblueshift, GuiH::Flags::Normal, -1.f, 1.f);
       changed |= GuiH::Color("RGB Conversion", "", &sunAndSky.rgb_unit_conversion.x, &dss.rgb_unit_conversion.x, GuiH::Flags::Normal);
 
-      nvmath::vec3f eye, center, up;
+      glm::vec3 eye, center, up;
       CameraManip.getLookat(eye, center, up);
       sunAndSky.y_is_up = up.y == 1;
       changed |= GuiH::Checkbox("Y is Up", "", (bool*)&sunAndSky.y_is_up, nullptr, GuiH::Flags::Disabled);

@@ -18,11 +18,9 @@
  */
 
 
-
 /*
  *  Implement the RTX ray tracing pipeline
  */
-
 
 
 #include <future>
@@ -52,7 +50,7 @@ void RtxPipeline::setup(const VkDevice& device, const VkPhysicalDevice& physical
   m_debug.setup(device);
 
   // Requesting ray tracing properties
-  VkPhysicalDeviceProperties2                     properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+  VkPhysicalDeviceProperties2 properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rtProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
   properties.pNext = &m_rtProperties;
   vkGetPhysicalDeviceProperties2(physicalDevice, &properties);

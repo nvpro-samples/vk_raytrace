@@ -40,7 +40,7 @@ const float M_1_OVER_PI = 0.318309886183790671538;  // 1/pi
 const float M_2_OVER_PI = 0.636619772367581343076;  // 2/pi
 
 
-#define RngStateType uint // Random type
+#define RngStateType uint  // Random type
 
 //-----------------------------------------------------------------------
 struct Ray

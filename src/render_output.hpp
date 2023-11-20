@@ -25,8 +25,6 @@
 
 #pragma once
 
-#include "nvmath/nvmath.h"
-
 #include "nvvk/resourceallocator_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"

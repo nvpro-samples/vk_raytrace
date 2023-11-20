@@ -23,7 +23,6 @@
 // This is used in pathtrace.glsl (Ray-Generation shader)
 
 
-
 //-----------------------------------------------------------------------
 // Shoot a ray an return the information of the closest hit, in the
 // PtPayload structure (PRD)
