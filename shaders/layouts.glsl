@@ -51,7 +51,7 @@ layout(set = S_ENV, binding = eImpSamples,  scalar)		buffer _EnvAccel		{ EnvAcce
 layout(buffer_reference, scalar) buffer Vertices { VertexAttributes v[]; };
 layout(buffer_reference, scalar) buffer Indices	 { uvec3 i[];            };
 
-  // clang-format on
+// clang-format on
 
 
 #endif  // LAYOUTS_GLSL

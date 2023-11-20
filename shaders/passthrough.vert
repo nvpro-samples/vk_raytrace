@@ -17,8 +17,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
- //-------------------------------------------------------------------------------------------------
- // Draw a triangle larger than the screen
+//-------------------------------------------------------------------------------------------------
+// Draw a triangle larger than the screen
 
 #version 450
 layout(location = 0) out vec2 v_texCoord;

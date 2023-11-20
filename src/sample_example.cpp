@@ -22,6 +22,10 @@
  * Main class to render the scene, holds sub-classes for various work
  */
 
+#include <glm/glm.hpp>
+
+#include <filesystem>
+#include <thread>
 
 #define VMA_IMPLEMENTATION
 
@@ -33,7 +37,6 @@
 #include "tools.hpp"
 
 #include "nvml_monitor.hpp"
-#include "fileformats/tiny_gltf_freeimage.h"
 
 
 #if defined(NVP_SUPPORTS_NVML)
@@ -179,12 +182,12 @@ void SampleExample::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 //
 void SampleExample::updateFrame()
 {
-  static nvmath::mat4f refCamMatrix;
-  static float         fov = 0;
+  static glm::mat4 refCamMatrix;
+  static float     fov = 0;
 
   auto& m = CameraManip.getMatrix();
   auto  f = CameraManip.getFov();
-  if(memcmp(&refCamMatrix.a00, &m.a00, sizeof(nvmath::mat4f)) != 0 || f != fov)
+  if(refCamMatrix != m || f != fov)
   {
     resetFrame();
     refCamMatrix = m;
@@ -359,8 +362,8 @@ void SampleExample::createOffscreenRender()
 void SampleExample::drawPost(VkCommandBuffer cmdBuf)
 {
   LABEL_SCOPE_VK(cmdBuf);
-  auto size = nvmath::vec2f(m_size.width, m_size.height);
-  auto area = nvmath::vec2f(m_renderRegion.extent.width, m_renderRegion.extent.height);
+  auto size = glm::vec2(m_size.width, m_size.height);
+  auto area = glm::vec2(m_renderRegion.extent.width, m_renderRegion.extent.height);
 
   VkViewport viewport{static_cast<float>(m_renderRegion.offset.x),
                       static_cast<float>(m_renderRegion.offset.y),
@@ -474,13 +477,14 @@ void SampleExample::screenPicking()
 
   const float aspectRatio = m_renderRegion.extent.width / static_cast<float>(m_renderRegion.extent.height);
   const auto& view        = CameraManip.getMatrix();
-  auto        proj        = nvmath::perspectiveVK(CameraManip.getFov(), aspectRatio, 0.1f, 1000.0f);
+  auto        proj        = glm::perspectiveRH_ZO(glm::radians(CameraManip.getFov()), aspectRatio, 0.1f, 1000.0f);
+  proj[1][1] *= -1;
 
   nvvk::RayPickerKHR::PickInfo pickInfo;
   pickInfo.pickX          = float(x - m_renderRegion.offset.x) / float(m_renderRegion.extent.width);
   pickInfo.pickY          = float(y - m_renderRegion.offset.y) / float(m_renderRegion.extent.height);
-  pickInfo.modelViewInv   = nvmath::invert(view);
-  pickInfo.perspectiveInv = nvmath::invert(proj);
+  pickInfo.modelViewInv   = glm::inverse(view);
+  pickInfo.perspectiveInv = glm::inverse(proj);
 
 
   m_picker.run(cmdBuf, pickInfo);
@@ -494,9 +498,9 @@ void SampleExample::screenPicking()
     return;
   }
 
-  nvmath::vec3f worldPos = nvmath::vec3f(pr.worldRayOrigin + pr.worldRayDirection * pr.hitT);
+  glm::vec3 worldPos = glm::vec3(pr.worldRayOrigin + pr.worldRayDirection * pr.hitT);
   // Set the interest position
-  nvmath::vec3f eye, center, up;
+  glm::vec3 eye, center, up;
   CameraManip.getLookat(eye, center, up);
   CameraManip.setLookat(eye, worldPos, up, false);
 
@@ -511,7 +515,7 @@ void SampleExample::screenPicking()
 //
 void SampleExample::onFileDrop(const char* filename)
 {
-  if (m_busy)
+  if(m_busy)
     return;
 
   loadAssets(filename);
@@ -542,7 +546,7 @@ void SampleExample::onMouseMotion(int x, int y)
 void SampleExample::onMouseButton(int button, int action, int mods)
 {
   AppBaseVk::onMouseButton(button, action, mods);
-  if (m_busy)
+  if(m_busy)
     return;
 
   if((m_inputs.lmb || m_inputs.rmb || m_inputs.mmb) == false && action == GLFW_RELEASE && m_descaling == true)

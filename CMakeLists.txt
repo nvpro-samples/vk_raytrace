@@ -57,7 +57,6 @@ endif()
 # Packages
 _add_package_VulkanSDK()
 _add_package_ImGUI()
-_add_package_FreeImage()
 # Add the following for GPU load and memory
 _add_package_NVML()
 # This should be added after all packages

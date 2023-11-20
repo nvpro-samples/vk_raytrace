@@ -23,7 +23,7 @@
 
 //--------------------------------------------------------------------------------------------------
 // This implements all graphical user interface of SampleExample.
-class SampleExample; // Forward declaration
+class SampleExample;  // Forward declaration
 
 class SampleGUI
 {
@@ -38,14 +38,13 @@ public:
   void showBusyWindow();
 
 private:
-  bool           guiCamera();
-  bool           guiRayTracing();
-  bool           guiTonemapper();
-  bool           guiEnvironment();
-  bool           guiStatistics();
-  bool           guiProfiler(nvvk::ProfilerVK& profiler);
-  bool           guiGpuMeasures();
+  bool guiCamera();
+  bool guiRayTracing();
+  bool guiTonemapper();
+  bool guiEnvironment();
+  bool guiStatistics();
+  bool guiProfiler(nvvk::ProfilerVK& profiler);
+  bool guiGpuMeasures();
 
   SampleExample* _se{nullptr};
 };
-

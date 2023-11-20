@@ -29,13 +29,12 @@
 
 #ifdef __cplusplus
 #include <stdint.h>
-#include "nvmath/nvmath.h"
 // GLSL Type
-using ivec2 = nvmath::vec2i;
-using vec2  = nvmath::vec2f;
-using vec3  = nvmath::vec3f;
-using vec4  = nvmath::vec4f;
-using mat4  = nvmath::mat4f;
+using ivec2 = glm::ivec2;
+using vec2  = glm::vec2;
+using vec3  = glm::vec3;
+using vec4  = glm::vec4;
+using mat4  = glm::mat4;
 using uint  = unsigned int;
 #endif
 

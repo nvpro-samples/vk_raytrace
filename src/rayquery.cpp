@@ -25,7 +25,6 @@
  */
 
 
-
 #include "nvh/alignment.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvvk/shaders_vk.hpp"
