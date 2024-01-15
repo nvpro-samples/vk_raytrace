@@ -257,6 +257,7 @@ struct Tonemapper
   int   autoExposure;
   float Ywhite;  // Burning white
   float key;     // Log-average luminance
+  int   dither;
 };
 
 

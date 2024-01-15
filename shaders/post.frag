@@ -110,16 +110,28 @@ void main()
       hdr.rgb = toneExposure(hdr.rgb, avgLum2);  // Adjust exposure
   }
 
-
   // Tonemap + Linear to sRgb
   vec3 color = toneMap(hdr.rgb, tm.avgLum);
 
   // Remove banding
-  uvec3 r     = pcg3d(uvec3(gl_FragCoord.xy, 0));
-  vec3  noise = uintBitsToFloat(0x3f800000 | (r >> 9)) - 1.0f;
-  color       = dither(sRGBToLinear(color), noise, 1. / 255.);
+  if(tm.dither > 0)
+  {
+    // Generates a 3D random number using the PCG (Permuted Congruential Generator) algorithm
+    uvec3 r = pcg3d(uvec3(gl_FragCoord.xy, 0));
 
-  //contrast
+    // The HEX value 0x3f800000 corresponds to the 32-bit floating-point representation of 1.0f.
+    // It is bitwise ORed into the lower 23 bits of the 32-bit floating-point format,
+    // following the IEEE 754 standard (1 sign bit, 8 exponent bits, 23 mantissa bits).
+    // This operation effectively sets the exponent to 0 (bias of 127), generating a float between 1.0 and 2.0.
+    // The uintBitsToFloat function then interprets this bit pattern as a floating-point number,
+    // and finally, 1.0 is subtracted to bring the range to (0.0, 1.0).
+    vec3 noise = uintBitsToFloat(0x3f800000 | (r >> 9)) - 1.0f;
+
+    // Apply dithering to hide banding artifacts.
+    color = dither(sRGBToLinear(color), noise, 1. / 255.);
+  }
+
+  // contrast
   color = clamp(mix(vec3(0.5), color, tm.contrast), 0, 1);
   // brighness
   color = pow(color, vec3(1.0 / tm.brightness));
