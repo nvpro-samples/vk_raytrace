@@ -14,7 +14,7 @@ message(STATUS "Processing Project ${PROJNAME}:")
 
 #--------------------------------------------------------------------------------------------------
 # C++ target and defines
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 add_executable(${PROJNAME})
 
 if(MSVC)
@@ -93,7 +93,7 @@ file(GLOB HEADER_FILES src/*.hpp src/*.h )
 compile_glsl_directory(
     SRC "${CMAKE_CURRENT_SOURCE_DIR}/shaders" 
     DST "${CMAKE_CURRENT_SOURCE_DIR}/autogen" 
-    VULKAN_TARGET "vulkan1.2"
+    VULKAN_TARGET "vulkan1.3"
     HEADER ON
     DEPENDENCY ${VULKAN_BUILD_DEPENDENCIES}
     )

@@ -194,16 +194,17 @@ bool SampleGUI::guiRayTracing()
 bool SampleGUI::guiTonemapper()
 {
   static Tonemapper default_tm{
-      1.0f,          // brightness;
-      1.0f,          // contrast;
-      1.0f,          // saturation;
-      0.0f,          // vignette;
-      1.0f,          // avgLum;
-      1.0f,          // zoom;
-      {1.0f, 1.0f},  // renderingRatio;
-      0,             // autoExposure;
-      0.5f,          // Ywhite;  // Burning white
-      0.5f,          // key;     // Log-average luminance
+      .brightness     = 1.0f,
+      .contrast       = 1.0f,
+      .saturation     = 1.0f,
+      .vignette       = 0.0f,
+      .avgLum         = 1.0f,
+      .zoom           = 1.0f,
+      .renderingRatio = {1.0f, 1.0f},
+      .autoExposure   = 0,
+      .Ywhite         = 0.5f,
+      .key            = 0.5f,
+      .dither         = 1,
   };
 
   auto&          tm = _se->m_offscreen.m_tonemapper;
@@ -218,6 +219,7 @@ bool SampleGUI::guiTonemapper()
   changed |= GuiH::Slider("Contrast", "", &tm.contrast, &default_tm.contrast, GuiH::Flags::Normal, 0.0f, 2.0f);
   changed |= GuiH::Slider("Saturation", "", &tm.saturation, &default_tm.saturation, GuiH::Flags::Normal, 0.0f, 5.0f);
   changed |= GuiH::Slider("Vignette", "", &tm.vignette, &default_tm.vignette, GuiH::Flags::Normal, 0.0f, 2.0f);
+  changed |= GuiH::Checkbox("Dither", "Help hiding banding artifacts", (bool*)&tm.dither, (bool*)&default_tm.dither);
 
 
   if(autoExposure)
