@@ -26,6 +26,8 @@
 #include <bitset>  // std::bitset
 #include <iomanip>
 #include <sstream>
+#include <implot.h>
+#include <fmt/format.h>
 
 #include "imgui/imgui_camera_widget.h"
 #include "imgui/imgui_helper.h"
@@ -39,6 +41,7 @@
 #ifdef _WIN32
 #include <commdlg.h>
 #endif  // _WIN32
+
 
 using GuiH = ImGuiH::Control;
 
@@ -423,81 +426,108 @@ bool SampleGUI::guiProfiler(nvvk::ProfilerVK& profiler)
 //--------------------------------------------------------------------------------------------------
 //
 //
+
+
+//-----------------------------------------------------------------------------
+int metricFormatter(double value, char* buff, int size, void* data)
+{
+  const char*        unit       = (const char*)data;
+  static double      s_value[]  = {1000000000, 1000000, 1000, 1, 0.001, 0.000001, 0.000000001};
+  static const char* s_prefix[] = {"G", "M", "k", "", "m", "u", "n"};
+  if(value == 0)
+  {
+    return snprintf(buff, size, "0 %s", unit);
+  }
+  for(int i = 0; i < 7; ++i)
+  {
+    if(fabs(value) >= s_value[i])
+    {
+      return snprintf(buff, size, "%g %s%s", value / s_value[i], s_prefix[i], unit);
+    }
+  }
+  return snprintf(buff, size, "%g %s%s", value / s_value[6], s_prefix[6], unit);
+}
+
+
+void imguiGraphLines(uint32_t gpuIndex)
+{
+#if defined(NVP_SUPPORTS_NVML)
+  const int offset = g_nvml.getOffset();
+
+  // Display Graphs
+  const NvmlMonitor::SysInfo& cpuMeasure = g_nvml.getSysInfo();
+  const NvmlMonitor::GpuInfo& info       = g_nvml.getInfo(gpuIndex);
+  const std::vector<float>&   gpuLoad    = g_nvml.getMeasures(gpuIndex).load;
+  const std::vector<float>&   gpuMem     = g_nvml.getMeasures(gpuIndex).memory;
+
+  float       memUsage   = static_cast<float>(gpuMem[offset]) / info.max_mem * 100.f;
+  std::string lineString = fmt::format("Load: {}%", gpuLoad[offset]);
+  std::string memString  = fmt::format("Memory: {:.0f}%", memUsage);
+
+  static ImPlotFlags     s_plotFlags = ImPlotFlags_NoBoxSelect | ImPlotFlags_NoMouseText | ImPlotFlags_Crosshairs;
+  static ImPlotAxisFlags s_axesFlags = ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoLabel;
+  static ImColor         s_lineColor = ImColor(0.07f, 0.9f, 0.06f, 1.0f);
+  static ImColor         s_memColor  = ImColor(0.06f, 0.6f, 0.97f, 1.0f);
+  static ImColor         s_cpuColor  = ImColor(0.96f, 0.96f, 0.0f, 1.0f);
+
+#define SAMPLING_NUM 100  // Show 100 measurements
+
+  if(ImPlot::BeginPlot(info.name.c_str(), ImVec2(-1, 0), s_plotFlags))
+  {
+    ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_NoButtons);
+    ImPlot::SetupAxes(nullptr, "Load", s_axesFlags | ImPlotAxisFlags_NoDecorations, s_axesFlags);
+    ImPlot::SetupAxis(ImAxis_Y2, "Mem", ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_Opposite);
+    ImPlot::SetupAxesLimits(0, SAMPLING_NUM, 0, 100);
+    ImPlot::SetupAxisLimits(ImAxis_Y2, 0, float(info.max_mem));
+    ImPlot::SetupAxisFormat(ImAxis_Y2, metricFormatter, (void*)"iB");
+    ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+
+    // Load
+    ImPlot::SetAxes(ImAxis_X1, ImAxis_Y1);
+    ImPlot::SetNextFillStyle(s_lineColor);
+    ImPlot::PlotShaded(lineString.c_str(), gpuLoad.data(), (int)gpuLoad.size(), -INFINITY, 1.0, 0.0, 0, offset + 1);
+    ImPlot::SetNextLineStyle(s_lineColor);
+    ImPlot::PlotLine(lineString.c_str(), gpuLoad.data(), (int)gpuLoad.size(), 1.0, 0.0, 0, offset + 1);
+    // Memory
+    ImPlot::SetAxes(ImAxis_X1, ImAxis_Y2);
+    ImPlot::SetNextFillStyle(s_memColor);
+    ImPlot::PlotShaded(memString.c_str(), gpuMem.data(), (int)gpuMem.size(), -INFINITY, 1.0, 0.0, 0, offset + 1);
+    ImPlot::SetNextLineStyle(s_memColor);
+    ImPlot::PlotLine(memString.c_str(), gpuMem.data(), (int)gpuMem.size(), 1.0, 0.0, 0, offset + 1);
+    ImPlot::PopStyleVar();
+    // CPU
+    ImPlot::SetAxes(ImAxis_X1, ImAxis_Y1);
+    ImPlot::SetNextLineStyle(s_cpuColor);
+    ImPlot::PlotLine("CPU", cpuMeasure.cpu.data(), (int)cpuMeasure.cpu.size(), 1.0, 0.0, 0, offset + 1);
+
+    if(ImPlot::IsPlotHovered())
+    {
+      ImPlotPoint mouse     = ImPlot::GetPlotMousePos();
+      int         gpuOffset = (int(mouse.x) + offset) % (int)gpuLoad.size();
+      int         cpuOffset = (int(mouse.x) + offset) % (int)cpuMeasure.cpu.size();
+
+      char buff[32];
+      metricFormatter(static_cast<double>(gpuMem[gpuOffset]), buff, 32, (void*)"iB");
+
+      ImGui::BeginTooltip();
+      ImGui::Text("Load: %3.0f%%", gpuLoad[gpuOffset]);
+      ImGui::Text("Memory: %s", buff);
+      ImGui::Text("Cpu: %3.0f%%", cpuMeasure.cpu[cpuOffset]);
+      ImGui::EndTooltip();
+    }
+
+    ImPlot::EndPlot();
+  }
+#endif
+}
+
 bool SampleGUI::guiGpuMeasures()
 {
 #if defined(NVP_SUPPORTS_NVML)
-  if(g_nvml.isValid() == false)
-    ImGui::Text("NVML wasn't loaded");
-
-  auto memoryNumbers = [](float n) {  // Memory numbers from nvml are in KB
-    static const std::vector<const char*> t{" KB", " MB", " GB", " TB"};
-    static char                           s[16];
-    int                                   level{0};
-    while(n > 1000)
-    {
-      n = n / 1000;
-      level++;
-    }
-    sprintf(s, "%.3f %s", n, t[level]);
-    return s;
-  };
-
-  uint32_t offset = g_nvml.getOffset();
 
   for(uint32_t g = 0; g < g_nvml.nbGpu(); g++)  // Number of gpu
   {
-    const auto& i = g_nvml.getInfo(g);
-    const auto& m = g_nvml.getMeasures(g);
-
-    float                mem = m.memory[offset] / float(i.max_mem) * 100.f;
-    std::array<char, 64> desc;
-    sprintf(desc.data(), "%s: \n- Load: %2.0f%s \n- Mem: %2.0f%s", i.name.c_str(), m.load[offset], "%", mem, "%");
-    ImGui::Text("%s \n- Load: %2.0f%s \n- Mem: %2.0f%s %s", i.name.c_str(), m.load[offset], "%", mem, "%",
-                memoryNumbers(m.memory[offset]));
-    {
-      ImGui::ImPlotMulti datas[2];
-      datas[0].plot_type     = static_cast<ImGuiPlotType>(ImGuiPlotType_Area);
-      datas[0].name          = "Load";
-      datas[0].color         = ImColor(0.07f, 0.9f, 0.06f, 1.0f);
-      datas[0].thickness     = 1.5;
-      datas[0].data          = m.load.data();
-      datas[0].values_count  = (int)m.load.size();
-      datas[0].values_offset = offset + 1;
-      datas[0].scale_min     = 0;
-      datas[0].scale_max     = 100;
-
-      datas[1].plot_type     = ImGuiPlotType_Histogram;
-      datas[1].name          = "Mem";
-      datas[1].color         = ImColor(0.06f, 0.6f, 0.97f, 0.8f);
-      datas[1].thickness     = 2.0;
-      datas[1].data          = m.memory.data();
-      datas[1].values_count  = (int)m.memory.size();
-      datas[1].values_offset = offset + 1;
-      datas[1].scale_min     = 0;
-      datas[1].scale_max     = float(i.max_mem);
-
-
-      std::string overlay = std::to_string((int)m.load[offset]) + " %";
-      ImGui::PlotMultiEx("##NoName", 2, datas, overlay.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 150));
-    }
-
-
-    ImGui::Text("CPU");
-    {
-      ImGui::ImPlotMulti datas[1];
-      datas[0].plot_type     = ImGuiPlotType_Lines;
-      datas[0].name          = "CPU";
-      datas[0].color         = ImColor(0.96f, 0.96f, 0.07f, 1.0f);
-      datas[0].thickness     = 1.0;
-      datas[0].data          = g_nvml.getSysInfo().cpu.data();
-      datas[0].values_count  = (int)g_nvml.getSysInfo().cpu.size();
-      datas[0].values_offset = offset + 1;
-      datas[0].scale_min     = 0;
-      datas[0].scale_max     = 100;
-
-      std::string overlay = std::to_string((int)m.load[offset]) + " %";
-      ImGui::PlotMultiEx("##NoName", 1, datas, nullptr, ImVec2(0, 0));
-    }
+    imguiGraphLines(g);
   }
 #else
   ImGui::Text("NVML wasn't loaded");
