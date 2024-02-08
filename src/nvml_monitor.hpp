@@ -64,7 +64,7 @@ public:
 
   struct GpuInfo
   {
-    uint32_t    max_mem{0};       // Max memory for each GPU
+    uint64_t    max_mem{0};       // Max memory for each GPU
     uint32_t    driver_model{0};  // Driver model: WDDM/TCC
     std::string name;
   };
@@ -124,7 +124,7 @@ public:
       if(NVML_SUCCESS != result)
         return;
       nvmlDeviceGetMemoryInfo(device, &memory);
-      m_info[i].max_mem = (uint32_t)(memory.total / (uint64_t)(1024));  // Convert to KB
+      m_info[i].max_mem = memory.total;
 
       // name
       char name[80];
@@ -187,7 +187,7 @@ private:
   {
     nvmlMemory_t memory;
     nvmlDeviceGetMemoryInfo(device, &memory);
-    return static_cast<float>(memory.used / (uint64_t)(1000));  // Convert to KB
+    return static_cast<float>(memory.used);
   }
 
   float getLoad(nvmlDevice_t device)

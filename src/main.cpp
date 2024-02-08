@@ -21,12 +21,13 @@
 #include <thread>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include <implot.h>
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvh/inputparser.h"
-#include "nvp/nvpsystem.hpp"
+#include "nvpsystem.hpp"
 #include "nvvk/context_vk.hpp"
 #include "sample_example.hpp"
 
@@ -169,6 +170,7 @@ int main(int argc, char** argv)
 
   // Setup Imgui
   sample.initGUI();
+  ImPlot::CreateContext();
   sample.createOffscreenRender();
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
@@ -266,6 +268,7 @@ int main(int argc, char** argv)
   glfwDestroyWindow(window);
   sample.destroyResources();
   sample.destroy();
+  ImPlot::DestroyContext();
   profiler.deinit();
   vkctx.deinit();
 
