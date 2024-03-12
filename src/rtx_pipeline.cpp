@@ -55,7 +55,7 @@ void RtxPipeline::setup(const VkDevice& device, const VkPhysicalDevice& physical
   properties.pNext = &m_rtProperties;
   vkGetPhysicalDeviceProperties2(physicalDevice, &properties);
 
-  m_stbWrapper.setup(device, familyIndex, allocator, m_rtProperties);
+  m_sbtWrapper.setup(device, familyIndex, allocator, m_rtProperties);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ void RtxPipeline::setup(const VkDevice& device, const VkPhysicalDevice& physical
 //
 void RtxPipeline::destroy()
 {
-  m_stbWrapper.destroy();
+  m_sbtWrapper.destroy();
 
   vkDestroyPipeline(m_device, m_rtPipeline, nullptr);
   vkDestroyPipelineLayout(m_device, m_rtPipelineLayout, nullptr);
@@ -240,7 +240,7 @@ void RtxPipeline::createPipeline()
 
 
   // --- SBT ---
-  m_stbWrapper.create(m_rtPipeline, rayPipelineInfo);
+  m_sbtWrapper.create(m_rtPipeline, rayPipelineInfo);
 
   // --- Clean up ---
   for(auto& s : stages)
@@ -262,7 +262,7 @@ void RtxPipeline::run(const VkCommandBuffer& cmdBuf, const VkExtent2D& size, nvv
                      0, sizeof(RtxState), &m_state);
 
 
-  auto& regions = m_stbWrapper.getRegions();
+  auto& regions = m_sbtWrapper.getRegions();
   vkCmdTraceRaysKHR(cmdBuf, &regions[0], &regions[1], &regions[2], &regions[3], size.width, size.height, 1);
 }
 
