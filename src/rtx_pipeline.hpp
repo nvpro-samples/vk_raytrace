@@ -75,5 +75,5 @@ private:
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rtProperties{};
   VkPipelineLayout                                m_rtPipelineLayout{VK_NULL_HANDLE};
   VkPipeline                                      m_rtPipeline{VK_NULL_HANDLE};
-  SBTWrapper                                      m_stbWrapper;
+  SBTWrapper                                      m_sbtWrapper;
 };
