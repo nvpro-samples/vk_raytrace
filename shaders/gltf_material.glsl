@@ -98,73 +98,6 @@ void GetMetallicRoughness(inout State state, in GltfShadeMaterial material)
 //-------------------------------------------------------------------------------------------------
 const float c_MinReflectance = 0.04;
 
-//-----------------------------------------------------------------------
-//-----------------------------------------------------------------------
-float getPerceivedBrightness(vec3 vector)
-{
-  return sqrt(0.299 * vector.r * vector.r + 0.587 * vector.g * vector.g + 0.114 * vector.b * vector.b);
-}
-
-//-----------------------------------------------------------------------
-//-----------------------------------------------------------------------
-float solveMetallic(vec3 diffuse, vec3 specular, float oneMinusSpecularStrength)
-//-----------------------------------------------------------------------
-{
-  float specularBrightness = getPerceivedBrightness(specular);
-
-  if(specularBrightness < c_MinReflectance)
-  {
-    return 0.0;
-  }
-
-  float diffuseBrightness = getPerceivedBrightness(diffuse);
-
-  float a = c_MinReflectance;
-  float b = diffuseBrightness * oneMinusSpecularStrength / (1.0 - c_MinReflectance) + specularBrightness - 2.0 * c_MinReflectance;
-  float c = c_MinReflectance - specularBrightness;
-  float D = max(b * b - 4.0 * a * c, 0);
-
-  return clamp((-b + sqrt(D)) / (2.0 * a), 0.0, 1.0);
-}
-
-
-//-----------------------------------------------------------------------
-// Specular-Glossiness which will be converted to metallic-roughness
-//-----------------------------------------------------------------------
-void GetSpecularGlossiness(inout State state, in GltfShadeMaterial material)
-{
-  float perceptualRoughness = 0.0;
-  float metallic            = 0.0;
-  vec4  baseColor           = vec4(0.0, 0.0, 0.0, 1.0);
-
-  vec3 f0             = material.khrSpecularFactor;
-  perceptualRoughness = 1.0 - material.khrGlossinessFactor;
-
-  if(material.khrSpecularGlossinessTexture > -1)
-  {
-    vec4 sgSample =
-        SRGBtoLINEAR(textureLod(texturesMap[nonuniformEXT(material.khrSpecularGlossinessTexture)], state.texCoord, 0));
-    perceptualRoughness = 1 - material.khrGlossinessFactor * sgSample.a;  // glossiness to roughness
-    f0 *= sgSample.rgb;                                                   // specular
-  }
-
-  vec3  specularColor            = f0;  // f0 = specular
-  float oneMinusSpecularStrength = 1.0 - max(max(f0.r, f0.g), f0.b);
-
-  vec4 diffuseColor = material.khrDiffuseFactor;
-  if(material.khrDiffuseTexture > -1)
-    diffuseColor *= SRGBtoLINEAR(textureLod(texturesMap[nonuniformEXT(material.khrDiffuseTexture)], state.texCoord, 0));
-
-  baseColor.rgb = diffuseColor.rgb * oneMinusSpecularStrength;
-  metallic      = solveMetallic(diffuseColor.rgb, specularColor, oneMinusSpecularStrength);
-
-  state.mat.albedo    = baseColor.xyz;
-  state.mat.metallic  = metallic;
-  state.mat.roughness = perceptualRoughness;
-  state.mat.f0        = f0;
-  state.mat.alpha     = baseColor.a;
-}
-
 
 //-----------------------------------------------------------------------
 //-----------------------------------------------------------------------
@@ -200,10 +133,7 @@ void GetMaterialsAndTextures(inout State state, in Ray r)
         SRGBtoLINEAR(textureLod(texturesMap[nonuniformEXT(material.emissiveTexture)], state.texCoord, 0)).rgb;
 
   // Basic material
-  if(material.shadingModel == MATERIAL_METALLICROUGHNESS)
-    GetMetallicRoughness(state, material);
-  else
-    GetSpecularGlossiness(state, material);
+  GetMetallicRoughness(state, material);
 
   // Clamping roughness
   state.mat.roughness = max(state.mat.roughness, 0.001);

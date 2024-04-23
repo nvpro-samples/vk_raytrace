@@ -350,12 +350,6 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.pbrMetallicFactor            = m.metallicFactor;
     smat.pbrRoughnessFactor           = m.roughnessFactor;
     smat.pbrMetallicRoughnessTexture  = m.metallicRoughnessTexture;
-    smat.khrDiffuseFactor             = m.specularGlossiness.diffuseFactor;
-    smat.khrSpecularFactor            = m.specularGlossiness.specularFactor;
-    smat.khrDiffuseTexture            = m.specularGlossiness.diffuseTexture;
-    smat.khrGlossinessFactor          = m.specularGlossiness.glossinessFactor;
-    smat.khrSpecularGlossinessTexture = m.specularGlossiness.specularGlossinessTexture;
-    smat.shadingModel                 = m.shadingModel;
     smat.emissiveTexture              = m.emissiveTexture;
     smat.emissiveFactor               = m.emissiveFactor;
     smat.alphaMode                    = m.alphaMode;

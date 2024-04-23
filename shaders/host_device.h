@@ -140,48 +140,42 @@ struct GltfShadeMaterial
   float pbrRoughnessFactor;
   int   pbrMetallicRoughnessTexture;
   // 8
-  vec4 khrDiffuseFactor;  // KHR_materials_pbrSpecularGlossiness
-  vec3 khrSpecularFactor;
-  int  khrDiffuseTexture;
-  // 16
-  int   shadingModel;  // 0: metallic-roughness, 1: specular-glossiness
-  float khrGlossinessFactor;
-  int   khrSpecularGlossinessTexture;
-  int   emissiveTexture;
-  // 20
+  int emissiveTexture;
+  int _pad0;
+  // 10
   vec3 emissiveFactor;
   int  alphaMode;
-  // 24
+  // 14
   float alphaCutoff;
   int   doubleSided;
   int   normalTexture;
   float normalTextureScale;
-  // 28
+  // 18
   mat4 uvTransform;
-  // 32
+  // 22
   int unlit;
 
   float transmissionFactor;
   int   transmissionTexture;
 
   float ior;
-  // 36
+  // 26
   vec3  anisotropyDirection;
   float anisotropy;
-  // 40
+  // 30
   vec3  attenuationColor;
-  float thicknessFactor;  // 44
+  float thicknessFactor;  // 34
   int   thicknessTexture;
   float attenuationDistance;
   // --
   float clearcoatFactor;
   float clearcoatRoughness;
-  // 48
+  // 38
   int  clearcoatTexture;
   int  clearcoatRoughnessTexture;
   uint sheen;
-  int  pad;
-  // 52
+  int  _pad1;
+  // 42
 };
 
 

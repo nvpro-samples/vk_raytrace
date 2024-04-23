@@ -9,8 +9,8 @@ The lighting equation is based on:
 * [Disney PBR](https://blog.selfshadow.com/publications/s2012-shading-course/burley/s2012_pbs_disney_brdf_slides_v2.pdf)
 
 The rendering pipeline can be switched from:
-* **RTX**: RayGen, Closest-Hit, Miss, Any-Hit model
-* **Compute**: using Ray Query
+* **Ray Tracing Pipeline**: RayGen, Closest-Hit, Miss, Any-Hit model
+* **Ray Query**: Compute shader using Ray Queries
 
 
 
