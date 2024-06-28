@@ -360,18 +360,18 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.uvTransform                  = glm::mat4(m.textureTransform.uvTransform);
     smat.unlit                        = m.unlit.active;
     smat.transmissionFactor           = m.transmission.factor;
-    smat.transmissionTexture          = m.transmission.texture;
+    smat.transmissionTexture          = m.transmission.texture.index;
     smat.anisotropy                   = m.anisotropy.factor;
     smat.anisotropyDirection          = m.anisotropy.direction;
     smat.ior                          = m.ior.ior;
     smat.attenuationColor             = m.volume.attenuationColor;
     smat.thicknessFactor              = m.volume.thicknessFactor;
-    smat.thicknessTexture             = m.volume.thicknessTexture;
+    smat.thicknessTexture             = m.volume.thicknessTexture.index;
     smat.attenuationDistance          = m.volume.attenuationDistance;
     smat.clearcoatFactor              = m.clearcoat.factor;
     smat.clearcoatRoughness           = m.clearcoat.roughnessFactor;
-    smat.clearcoatTexture             = m.clearcoat.texture;
-    smat.clearcoatRoughnessTexture    = m.clearcoat.roughnessTexture;
+    smat.clearcoatTexture             = m.clearcoat.texture.index;
+    smat.clearcoatRoughnessTexture    = m.clearcoat.roughnessTexture.index;
     smat.sheen                        = glm::packUnorm4x8(vec4(m.sheen.colorFactor, m.sheen.roughnessFactor));
 
     shadeMaterials.emplace_back(smat);
