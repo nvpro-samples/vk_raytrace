@@ -361,8 +361,8 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.unlit                        = m.unlit.active;
     smat.transmissionFactor           = m.transmission.factor;
     smat.transmissionTexture          = m.transmission.texture.index;
-    smat.anisotropy                   = m.anisotropy.factor;
-    smat.anisotropyDirection          = m.anisotropy.direction;
+    smat.anisotropy                   = m.anisotropy.anisotropyStrength;
+    smat.anisotropyDirection          = glm::vec3(sin(m.anisotropy.anisotropyRotation), cos(m.anisotropy.anisotropyRotation), 0.f);
     smat.ior                          = m.ior.ior;
     smat.attenuationColor             = m.volume.attenuationColor;
     smat.thicknessFactor              = m.volume.thicknessFactor;
@@ -372,7 +372,7 @@ void Scene::createMaterialBuffer(VkCommandBuffer cmdBuf, const nvh::GltfScene& g
     smat.clearcoatRoughness           = m.clearcoat.roughnessFactor;
     smat.clearcoatTexture             = m.clearcoat.texture.index;
     smat.clearcoatRoughnessTexture    = m.clearcoat.roughnessTexture.index;
-    smat.sheen                        = glm::packUnorm4x8(vec4(m.sheen.colorFactor, m.sheen.roughnessFactor));
+    smat.sheen                        = glm::packUnorm4x8(vec4(m.sheen.sheenColorFactor, m.sheen.sheenRoughnessFactor));
 
     shadeMaterials.emplace_back(smat);
   }
