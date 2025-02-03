@@ -1,8 +1,8 @@
 #*****************************************************************************
-# Copyright 2020 NVIDIA Corporation. All rights reserved.
+# Copyright 2020-2025 NVIDIA Corporation. All rights reserved.
 #*****************************************************************************
 
-cmake_minimum_required(VERSION 3.9.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20.0...3.32.0 FATAL_ERROR)
 
 #--------------------------------------------------------------------------------------------------
 # Project setting
